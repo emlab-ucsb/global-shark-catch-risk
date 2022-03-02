@@ -1,0 +1,52 @@
+---
+title: "Semifinal ML Runs"
+output: html_notebook
+---
+
+This notebook runs the complete hurdle models for each effort dataset
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# General
+library(raster)
+library(sf)
+library(fasterize)
+library(scales)
+library(knitr)
+library(RColorBrewer)
+library(readxl)
+library(googledrive)
+library(cowplot)
+library(tidyverse)
+library(sp)
+library(rgdal)
+library(geosphere)
+library(paletteer)
+
+# Neg Binomial Libraries
+library(pscl)
+
+# ML Libraries
+library(tidymodels)
+library(readr)
+library(broom.mixed)
+library(MultivariateRandomForest)
+library(vroom)
+
+options(scipen = 1000000)
+
+# Get functions
+source("../functions/func-run_wcpfc_models_effort.R")
+source("../functions/func-train_test_split.R")
+```
+
+```{r include=FALSE}
+# Read in data... 
+all_dat <- read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_all.csv")
+
+save_loc <- "../../data/model-data/outputs/wcpfc-only-model/"
+```
+
+```{r}
+# Run through models 
+run_wcpfc_models_effort(data = all_dat, save_loc = save_loc)
+```
