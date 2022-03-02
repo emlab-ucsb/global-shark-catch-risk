@@ -1,0 +1,1352 @@
+---
+title: "RFMO Data Cleaning - IATTC"
+output: html_notebook
+---
+
+This is a notebook designed to grab data saved in Google Drive and re-format it for easier analyses later.
+
+# Table of Contents: {#top}
+
+- [Catch By Flag and Gear]
+- [PublicLLSharkMt]
+- [PublicLLSharkNum]
+- [PublicLLTunaBillfishMt]
+- [PublicLLTunaBillfishNum]
+- [PublicLPTunaFlag]
+- [PublicPSBillfishFlag]
+- [PublicPSBillfishSetType]
+- [PublicPSSharkFlag]
+- [PublicPSSharkSetType]
+- [PublicPSTunaFlag]
+- [PublicPSTunaSetType]
+- [PublicSizePSBillfish]
+- [Combining Files]
+
+```{r, include=FALSE}
+# Import libraries
+library(tidyverse)
+library(reshape)
+```
+
+# Housekeeping
+```{r, echo=TRUE}
+# List files to choose from
+file_path = "../../data/rfmo-observer-data/inputs/iattc/"
+save_location = "../../data/rfmo-observer-data/intermediates/iattc/"
+outputs_location = "../../data/rfmo-observer-data/outputs/"
+```
+
+# Load Data
+```{r, echo=TRUE}
+# List files
+files_list <- list.files(file_path, pattern="csv")
+
+# Load files
+for(file in files_list) { 
+  name <- as.character(colsplit(file, "[.]", c("",""))[,1])
+  temp <- read.csv(paste0(file_path, file))
+  assign(name, temp)
+}
+
+# Clean up 
+remove(temp)
+
+# Load category files (created by EB copy/pasted from website in readme files)
+flag_codes <- read.csv(paste0(file_path, "flag_codes.csv"))
+flag_codes <- flag_codes[,c("Code", "Bandera", "Flag")]
+colnames(flag_codes) <- c("Flag", "Country_Spanish", "Country")
+
+species_codes <- read.delim(paste0(file_path, "ASFIS_sp_2019.txt"), sep=",")
+  # col X3A_CODE is what is linked to the files
+```
+
+# Catch By Flag and Gear
+This dataset seems a little useless for this project because there are no geospatial data that can be extrapolated. 
+```{r, echo=TRUE}
+remove(`CatchFlagGear1918-2018`)
+```
+[Back To Top](#top)
+
+# PublicLLSharkMt
+From the readme sheet: Data reported only in numbers or only in weight are reported identically in __MT and __Num files. However, when the same data are reported in both numner and weight, the __Num file contains number data in the number columns and the weight data are excluded and vice versa.
+```{r, echo=TRUE}
+# Select only data from year 2000 onward
+PublicLLSharkMt <- PublicLLSharkMt %>% 
+  filter(Year >= 2000)
+
+# To be sure I'm not repeated data, for MT files, I will only keep the mt columns
+PublicLLSharkMt <- PublicLLSharkMt %>% 
+  select(-ends_with("n")) 
+
+# Pivot tables so each row represents a different species
+PublicLLSharkMt <- PublicLLSharkMt %>% 
+  pivot_longer(cols=BSHmt:THRmt, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Remove "mt"
+PublicLLSharkMt$SpeciesCode <- gsub("mt", "", PublicLLSharkMt$SpeciesCode)
+
+# Add flag data
+PublicLLSharkMt <- left_join(PublicLLSharkMt, flag_codes[,c("Flag", "Country")], by="Flag")
+
+# Add species data
+PublicLLSharkMt <- left_join(PublicLLSharkMt, species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Make all species names all caps
+PublicLLSharkMt$Scientific_name <- toupper(PublicLLSharkMt$Scientific_name)
+PublicLLSharkMt$English_name <- toupper(PublicLLSharkMt$English_name)
+
+# Add columns that are not currently here
+PublicLLSharkMt <- PublicLLSharkMt %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = Country, 
+         gear = "longline", 
+         settype = NA, 
+         longitude = LonC5, 
+         latitude = LatC5,
+         effort = Hooks, 
+         effort_units = "hooks",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "metric tonnes", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 5x5 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicLLSharkMt <- PublicLLSharkMt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicLLSharkMt %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicLLSharkMt), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicLLSharkMt %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicLLSharkMt), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicLLSharkMt <- PublicLLSharkMt %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicLLSharkMt.csv"
+write.csv(PublicLLSharkMt, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicLLSharkMt, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# PublicLLSharkNum
+From the readme sheet: Data reported only in numbers or only in weight are reported identically in __MT and __Num files. However, when the same data are reported in both numner and weight, the __Num file contains number data in the number columns and the weight data are excluded and vice versa.
+```{r, echo=TRUE}
+# Select only data from year 2000 onward
+PublicLLSharkNum <- PublicLLSharkNum %>% 
+  filter(Year >= 2000)
+
+# To be sure I'm not repeated data, for Num files, I will only keep the n columns
+PublicLLSharkNum <- PublicLLSharkNum %>% 
+  select(-ends_with("mt")) 
+
+# Pivot tables so each row represents a different species
+PublicLLSharkNum <- PublicLLSharkNum %>% 
+  pivot_longer(cols=BSHn:THRn, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Remove "n"
+PublicLLSharkNum$SpeciesCode <- gsub("n", "", PublicLLSharkNum$SpeciesCode)
+
+# Add flag data
+PublicLLSharkNum <- left_join(PublicLLSharkNum, flag_codes[,c("Flag", "Country")], by="Flag")
+
+# Add species data
+PublicLLSharkNum <- left_join(PublicLLSharkNum, species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Make all species names all caps
+PublicLLSharkNum$Scientific_name <- toupper(PublicLLSharkNum$Scientific_name)
+PublicLLSharkNum$English_name <- toupper(PublicLLSharkNum$English_name)
+
+# Add columns that are not currently here
+PublicLLSharkNum <- PublicLLSharkNum %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = Country, 
+         gear = "longline", 
+         settype = NA, 
+         longitude = LonC5, 
+         latitude = LatC5,
+         effort = Hooks, 
+         effort_units = "hooks",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "count", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 5x5 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicLLSharkNum <- PublicLLSharkNum[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicLLSharkNum %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicLLSharkNum), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicLLSharkNum %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicLLSharkNum), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicLLSharkNum <- PublicLLSharkNum %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicLLSharkNum.csv"
+write.csv(PublicLLSharkNum, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicLLSharkNum, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# PublicLLTunaBillfishMt
+From the readme sheet: Data reported only in numbers or only in weight are reported identically in __MT and __Num files. However, when the same data are reported in both numner and weight, the __Num file contains number data in the number columns and the weight data are excluded and vice versa.
+```{r, echo=TRUE}
+# Select only data from year 2000 onward
+PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt %>% 
+  filter(Year >= 2000)
+
+# To be sure I'm not repeated data, for Mt files, I will only keep the mt columns
+PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt %>% 
+  select(-ends_with("n")) 
+
+# Pivot tables so each row represents a different species
+PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt %>% 
+  pivot_longer(cols=ALBmt:SWOmt, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Remove "mt"
+PublicLLTunaBillfishMt$SpeciesCode <- gsub("mt", "", PublicLLTunaBillfishMt$SpeciesCode)
+
+# Add flag data
+PublicLLTunaBillfishMt <- left_join(PublicLLTunaBillfishMt, flag_codes[,c("Flag", "Country")], by="Flag")
+
+# Add species data
+PublicLLTunaBillfishMt <- left_join(PublicLLTunaBillfishMt, species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Make all species names all caps
+PublicLLTunaBillfishMt$Scientific_name <- toupper(PublicLLTunaBillfishMt$Scientific_name)
+PublicLLTunaBillfishMt$English_name <- toupper(PublicLLTunaBillfishMt$English_name)
+
+# Add columns that are not currently here
+PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = Country, 
+         gear = "longline", 
+         settype = NA, 
+         longitude = LonC5, 
+         latitude = LatC5,
+         effort = Hooks, 
+         effort_units = "hooks",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "metric tonnes", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 5x5 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicLLTunaBillfishMt %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicLLTunaBillfishMt), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicLLTunaBillfishMt %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicLLTunaBillfishMt), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicLLTunaBillfishMt.csv"
+write.csv(PublicLLTunaBillfishMt, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicLLTunaBillfishMt, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# PublicLLTunaBillfishNum
+From the readme sheet: Data reported only in numbers or only in weight are reported identically in __MT and __Num files. However, when the same data are reported in both numner and weight, the __Num file contains number data in the number columns and the weight data are excluded and vice versa.
+```{r, echo=TRUE}
+# Select only data from year 2000 onward
+PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum %>% 
+  filter(Year >= 2000)
+
+# To be sure I'm not repeated data, for Num files, I will only keep the n columns
+PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum %>% 
+  select(-ends_with("mt")) 
+
+# Pivot tables so each row represents a different species
+PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum %>% 
+  pivot_longer(cols=ALBn:SWOn, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Remove "n"
+PublicLLTunaBillfishNum$SpeciesCode <- gsub("n", "", PublicLLTunaBillfishNum$SpeciesCode)
+
+# Add flag data
+PublicLLTunaBillfishNum <- left_join(PublicLLTunaBillfishNum, flag_codes[,c("Flag", "Country")], by="Flag")
+
+# Add species data
+PublicLLTunaBillfishNum <- left_join(PublicLLTunaBillfishNum, species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Make all species names all caps
+PublicLLTunaBillfishNum$Scientific_name <- toupper(PublicLLTunaBillfishNum$Scientific_name)
+PublicLLTunaBillfishNum$English_name <- toupper(PublicLLTunaBillfishNum$English_name)
+
+# Add columns that are not currently here
+PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = Country, 
+         gear = "longline", 
+         settype = NA, 
+         longitude = LonC5, 
+         latitude = LatC5,
+         effort = Hooks, 
+         effort_units = "hooks",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "count", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 5x5 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicLLTunaBillfishNum %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicLLTunaBillfishNum), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicLLTunaBillfishNum %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicLLTunaBillfishNum), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicLLTunaBillfishNum.csv"
+write.csv(PublicLLTunaBillfishNum, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicLLTunaBillfishNum, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# PublicLPTunaFlag
+```{r, echo=TRUE}
+# Select only data from year 2000 onward
+PublicLPTunaFlag <- PublicLPTunaFlag %>% 
+  filter(Year >= 2000)
+
+# Pivot tables so each row represents a different species
+PublicLPTunaFlag <- PublicLPTunaFlag %>% 
+  pivot_longer(cols=ALB:YFT, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Add flag data
+PublicLPTunaFlag <- left_join(PublicLPTunaFlag, flag_codes[,c("Flag", "Country")], by="Flag")
+
+# Add species data
+PublicLPTunaFlag <- left_join(PublicLPTunaFlag, species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Make all species names all caps
+PublicLPTunaFlag$Scientific_name <- toupper(PublicLPTunaFlag$Scientific_name)
+PublicLPTunaFlag$English_name <- toupper(PublicLPTunaFlag$English_name)
+
+# Add columns that are not currently here
+PublicLPTunaFlag <- PublicLPTunaFlag %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = Country, 
+         gear = "pole-and-line", 
+         settype = NA, 
+         longitude = LonC1, 
+         latitude = LatC1,
+         effort = NumSets, 
+         effort_units = "number of sets",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "metric tonnes", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 1x1 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicLPTunaFlag <- PublicLPTunaFlag[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicLPTunaFlag %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicLPTunaFlag), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicLPTunaFlag %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicLPTunaFlag), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicLPTunaFlag <- PublicLPTunaFlag %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicLPTunaFlag.csv"
+write.csv(PublicLPTunaFlag, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicLPTunaFlag, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# PublicPSBillfishFlag
+```{r, echo=TRUE}
+# Select only data from year 2000 onward
+PublicPSBillfishFlag <- PublicPSBillfishFlag %>% 
+  filter(Year >= 2000)
+
+# Pivot tables so each row represents a different species
+PublicPSBillfishFlag<- PublicPSBillfishFlag %>% 
+  pivot_longer(cols=BIL:SWO, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Add flag data
+PublicPSBillfishFlag <- left_join(PublicPSBillfishFlag, flag_codes[,c("Flag", "Country")], by="Flag")
+
+# Add species data
+PublicPSBillfishFlag <- left_join(PublicPSBillfishFlag, species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Make all species names all caps
+PublicPSBillfishFlag$Scientific_name <- toupper(PublicPSBillfishFlag$Scientific_name)
+PublicPSBillfishFlag$English_name <- toupper(PublicPSBillfishFlag$English_name)
+
+# Add columns that are not currently here
+PublicPSBillfishFlag <- PublicPSBillfishFlag %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = Country, 
+         gear = "purse-seine", 
+         settype = NA, 
+         longitude = LonC1, 
+         latitude = LatC1,
+         effort = NumSets, 
+         effort_units = "number of sets",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "count", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 1x1 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicPSBillfishFlag <- PublicPSBillfishFlag[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicPSBillfishFlag %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSBillfishFlag), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicPSBillfishFlag %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSBillfishFlag), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicPSBillfishFlag <- PublicPSBillfishFlag %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicPSBillfishFlag.csv"
+write.csv(PublicPSBillfishFlag, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicPSBillfishFlag, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# PublicPSBillfishSetType
+```{r, echo=TRUE}
+# Select only data from year 2000 onward
+PublicPSBillfishSetType <- PublicPSBillfishSetType %>% 
+  filter(Year >= 2000)
+
+# Pivot tables so each row represents a different species
+PublicPSBillfishSetType <- PublicPSBillfishSetType %>% 
+  pivot_longer(cols=BIL:SWO, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Add species data
+PublicPSBillfishSetType <- left_join(PublicPSBillfishSetType, species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Make all species names all caps
+PublicPSBillfishSetType$Scientific_name <- toupper(PublicPSBillfishSetType$Scientific_name)
+PublicPSBillfishSetType$English_name <- toupper(PublicPSBillfishSetType$English_name)
+
+# Add columns that are not currently here
+PublicPSBillfishSetType <- PublicPSBillfishSetType %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = NA, 
+         gear = "purse-seine", 
+         settype = recode(SetType, 
+                          "DEL" = "dolphin set", 
+                          "NOA" = "unassociated tuna set",
+                          "OBJ" = "floating-object set"), 
+         longitude = LonC1, 
+         latitude = LatC1,
+         effort = NumSets, 
+         effort_units = "number of sets",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "count", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 1x1 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicPSBillfishSetType <- PublicPSBillfishSetType[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicPSBillfishSetType %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSBillfishSetType), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicPSBillfishSetType %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSBillfishSetType), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicPSBillfishSetType <- PublicPSBillfishSetType %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicPSBillfishSetType.csv"
+write.csv(PublicPSBillfishSetType, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicPSBillfishSetType, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# PublicPSSharkFlag
+```{r, echo=TRUE}
+# Select only data from year 2000 onward
+PublicPSSharkFlag <- PublicPSSharkFlag %>% 
+  filter(Year >= 2000)
+
+# To be sure I'm not repeating data I will only keep the mt columns first
+PublicPSSharkFlag_mt <- PublicPSSharkFlag %>% 
+  select(-ends_with("n")) 
+
+# Pivot tables so each row represents a different species
+PublicPSSharkFlag_mt <- PublicPSSharkFlag_mt %>% 
+  pivot_longer(cols=BSHmt:THRmt, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Remove "mt"
+PublicPSSharkFlag_mt$SpeciesCode <- gsub("mt", "", PublicPSSharkFlag_mt$SpeciesCode)
+
+# Add flag data
+PublicPSSharkFlag_mt <- left_join(PublicPSSharkFlag_mt, flag_codes[,c("Flag", "Country")], by="Flag")
+
+# Add species data
+PublicPSSharkFlag_mt <- left_join(PublicPSSharkFlag_mt,  species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Add species that are not ASFIS codes
+PublicPSSharkFlag_mt <- PublicPSSharkFlag_mt %>% 
+  mutate(English_name = ifelse(SpeciesCode == "SEPN", "silky or blacktip shark", paste(English_name)), 
+         Scientific_name = ifelse(SpeciesCode == "SEPN", "Carcharhinus falciformis/Carcharhinus limbatus", paste(Scientific_name)))
+
+# Make all species names all caps
+PublicPSSharkFlag_mt$Scientific_name <- toupper(PublicPSSharkFlag_mt$Scientific_name)
+PublicPSSharkFlag_mt$English_name <- toupper(PublicPSSharkFlag_mt$English_name)
+
+# Add columns that are not currently here
+PublicPSSharkFlag_mt <- PublicPSSharkFlag_mt %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = NA, 
+         gear = "purse-seine", 
+         settype = NA,
+         longitude = LonC1, 
+         latitude = LatC1,
+         effort = NumSets, 
+         effort_units = "number of sets",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "metric tonnes", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 1x1 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicPSSharkFlag_mt <- PublicPSSharkFlag_mt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicPSSharkFlag_mt %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSSharkFlag_mt), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicPSSharkFlag_mt %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSSharkFlag_mt), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicPSSharkFlag_mt <- PublicPSSharkFlag_mt %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicPSSharkFlag_mt.csv"
+write.csv(PublicPSSharkFlag_mt, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicPSSharkFlag_mt, quart_agg, yearly_agg)
+
+#### 
+
+# To be sure I'm not repeating data I will only keep the n columns first
+PublicPSSharkFlag_n <- PublicPSSharkFlag %>% 
+  select(-ends_with("mt")) 
+
+# Pivot tables so each row represents a different species
+PublicPSSharkFlag_n <- PublicPSSharkFlag_n %>% 
+  pivot_longer(cols=BSHn:THRn, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Remove "mt"
+PublicPSSharkFlag_n$SpeciesCode <- gsub("n", "", PublicPSSharkFlag_n$SpeciesCode)
+
+# Add flag data
+PublicPSSharkFlag_n <- left_join(PublicPSSharkFlag_n, flag_codes[,c("Flag", "Country")], by="Flag")
+
+# Add species data
+PublicPSSharkFlag_n <- left_join(PublicPSSharkFlag_n,  species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Add species that are not ASFIS codes
+PublicPSSharkFlag_n <- PublicPSSharkFlag_n %>% 
+  mutate(English_name = ifelse(SpeciesCode == "SEPN", "silky or blacktip shark", paste(English_name)), 
+         Scientific_name = ifelse(SpeciesCode == "SEPN", "Carcharhinus falciformis/Carcharhinus limbatus", paste(Scientific_name)))
+
+# Make all species names all caps
+PublicPSSharkFlag_n$Scientific_name <- toupper(PublicPSSharkFlag_n$Scientific_name)
+PublicPSSharkFlag_n$English_name <- toupper(PublicPSSharkFlag_n$English_name)
+
+# Add columns that are not currently here
+PublicPSSharkFlag_n <- PublicPSSharkFlag_n %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = NA, 
+         gear = "purse-seine", 
+         settype = NA,
+         longitude = LonC1, 
+         latitude = LatC1,
+         effort = NumSets, 
+         effort_units = "number of sets",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "count", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 1x1 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicPSSharkFlag_n <- PublicPSSharkFlag_n[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicPSSharkFlag_n %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSSharkFlag_n), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicPSSharkFlag_n %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSSharkFlag_n), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicPSSharkFlag_n <- PublicPSSharkFlag_n %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicPSSharkFlag_n.csv"
+write.csv(PublicPSSharkFlag_n, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicPSSharkFlag_n, quart_agg, yearly_agg)
+remove(PublicPSSharkFlag)
+```
+[Back To Top](#top)
+
+# PublicPSSharkSetType
+```{r, echo=TRUE}
+# Select only data from year 2000 onward
+PublicPSSharkSetType <- PublicPSSharkSetType %>% 
+  filter(Year >= 2000)
+
+# To be sure I'm not repeating data I will only keep the mt columns first
+PublicPSSharkSetType_mt <- PublicPSSharkSetType %>% 
+  select(-ends_with("n")) 
+
+# Pivot tables so each row represents a different species
+PublicPSSharkSetType_mt <- PublicPSSharkSetType_mt %>% 
+  pivot_longer(cols=BSHmt:THRmt, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Remove "mt"
+PublicPSSharkSetType_mt$SpeciesCode <- gsub("mt", "", PublicPSSharkSetType_mt$SpeciesCode)
+
+# Add species data
+PublicPSSharkSetType_mt <- left_join(PublicPSSharkSetType_mt,  species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Add species that are not ASFIS codes
+PublicPSSharkSetType_mt <- PublicPSSharkSetType_mt %>% 
+  mutate(English_name = ifelse(SpeciesCode == "SEPN", "silky or blacktip shark", paste(English_name)), 
+         Scientific_name = ifelse(SpeciesCode == "SEPN", "Carcharhinus falciformis/Carcharhinus limbatus", paste(Scientific_name)))
+
+# Make all species names all caps
+PublicPSSharkSetType_mt$Scientific_name <- toupper(PublicPSSharkSetType_mt$Scientific_name)
+PublicPSSharkSetType_mt$English_name <- toupper(PublicPSSharkSetType_mt$English_name)
+
+# Add columns that are not currently here
+PublicPSSharkSetType_mt <- PublicPSSharkSetType_mt %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = NA, 
+         gear = "purse-seine", 
+         settype = recode(SetType, 
+                          "DEL" = "dolphin set", 
+                          "NOA" = "unassociated tuna set",
+                          "OBJ" = "floating-object set"),
+         longitude = LonC1, 
+         latitude = LatC1,
+         effort = NumSets, 
+         effort_units = "number of sets",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "metric tonnes", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 1x1 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicPSSharkSetType_mt <- PublicPSSharkSetType_mt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicPSSharkSetType_mt %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSSharkSetType_mt), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicPSSharkSetType_mt %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSSharkSetType_mt), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicPSSharkSetType_mt <- PublicPSSharkSetType_mt %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicPSSharkSetType_mt.csv"
+write.csv(PublicPSSharkSetType_mt, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicPSSharkSetType_mt, quart_agg, yearly_agg)
+
+#### 
+
+# To be sure I'm not repeating data I will only keep the n columns first
+PublicPSSharkSetType_n <- PublicPSSharkSetType %>% 
+  select(-ends_with("mt")) 
+
+# Pivot tables so each row represents a different species
+PublicPSSharkSetType_n <- PublicPSSharkSetType_n %>% 
+  pivot_longer(cols=BSHn:THRn, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Remove "mt"
+PublicPSSharkSetType_n$SpeciesCode <- gsub("n", "", PublicPSSharkSetType_n$SpeciesCode)
+
+# Add species data
+PublicPSSharkSetType_n <- left_join(PublicPSSharkSetType_n,  species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Add species that are not ASFIS codes
+PublicPSSharkSetType_n <- PublicPSSharkSetType_n %>% 
+  mutate(English_name = ifelse(SpeciesCode == "SEPN", "silky or blacktip shark", paste(English_name)), 
+         Scientific_name = ifelse(SpeciesCode == "SEPN", "Carcharhinus falciformis/Carcharhinus limbatus", paste(Scientific_name)))
+
+# Make all species names all caps
+PublicPSSharkSetType_n$Scientific_name <- toupper(PublicPSSharkSetType_n$Scientific_name)
+PublicPSSharkSetType_n$English_name <- toupper(PublicPSSharkSetType_n$English_name)
+
+# Add columns that are not currently here
+PublicPSSharkSetType_n <- PublicPSSharkSetType_n %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = NA, 
+         gear = "purse-seine", 
+         settype = recode(SetType, 
+                          "DEL" = "dolphin set", 
+                          "NOA" = "unassociated tuna set",
+                          "OBJ" = "floating-object set"),
+         longitude = LonC1, 
+         latitude = LatC1,
+         effort = NumSets, 
+         effort_units = "number of sets",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "count", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 1x1 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicPSSharkSetType_n <- PublicPSSharkSetType_n[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicPSSharkSetType_n %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSSharkSetType_n), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicPSSharkSetType_n %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSSharkSetType_n), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicPSSharkSetType_n <- PublicPSSharkSetType_n %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)  
+
+# Save File
+filename <- "PublicPSSharkSetType_n.csv"
+write.csv(PublicPSSharkSetType_n, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicPSSharkSetType_n, yearly_agg, quart_agg)
+remove(PublicPSSharkSetType)
+```
+[Back To Top](#top)
+
+# PublicPSTunaFlag
+```{r, echo=TRUE}
+# Select only data from year 2000 onward
+PublicPSTunaFlag <- PublicPSTunaFlag %>% 
+  filter(Year >= 2000)
+
+# Pivot tables so each row represents a different species
+PublicPSTunaFlag<- PublicPSTunaFlag %>% 
+  pivot_longer(cols=ALB:YFT, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Add flag data
+PublicPSTunaFlag <- left_join(PublicPSTunaFlag, flag_codes[,c("Flag", "Country")], by="Flag")
+
+# Add species data
+PublicPSTunaFlag <- left_join(PublicPSTunaFlag, species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Make all species names all caps
+PublicPSTunaFlag$Scientific_name <- toupper(PublicPSTunaFlag$Scientific_name)
+PublicPSTunaFlag$English_name <- toupper(PublicPSTunaFlag$English_name)
+
+# Add columns that are not currently here
+PublicPSTunaFlag <- PublicPSTunaFlag %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = NA, 
+         gear = "purse-seine", 
+         settype = NA,
+         longitude = LonC1, 
+         latitude = LatC1,
+         effort = NumSets, 
+         effort_units = "number of sets",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "metric tonnes", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 1x1 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicPSTunaFlag <- PublicPSTunaFlag[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicPSTunaFlag %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSTunaFlag), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicPSTunaFlag %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSTunaFlag), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicPSTunaFlag <- PublicPSTunaFlag %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicPSTunaFlag.csv"
+write.csv(PublicPSTunaFlag, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicPSTunaFlag, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# PublicPSTunaSetType
+```{r, echo=TRUE}
+# Select only data from year 2000 onward
+PublicPSTunaSetType <- PublicPSTunaSetType %>% 
+  filter(Year >= 2000)
+
+# Pivot tables so each row represents a different species
+PublicPSTunaSetType <- PublicPSTunaSetType  %>% 
+  pivot_longer(cols=ALB:YFT, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
+  filter(MonthlyCatch > 0)
+
+# Add species data
+PublicPSTunaSetType <- left_join(PublicPSTunaSetType, species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("SpeciesCode" = "X3A_CODE") )
+
+# Make all species names all caps
+PublicPSTunaSetType$Scientific_name <- toupper(PublicPSTunaSetType$Scientific_name)
+PublicPSTunaSetType$English_name <- toupper(PublicPSTunaSetType$English_name)
+
+# Add columns that are not currently here
+PublicPSTunaSetType <- PublicPSTunaSetType %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = NA, 
+         gear = "purse-seine", 
+         settype = recode(SetType, 
+                          "DEL" = "dolphin set", 
+                          "NOA" = "unassociated tuna set",
+                          "OBJ" = "floating-object set"),
+         longitude = LonC1, 
+         latitude = LatC1,
+         effort = NumSets, 
+         effort_units = "number of sets",
+         species_commonname = English_name, 
+         species_sciname = Scientific_name, 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = MonthlyCatch, 
+         catch_units = "metric tonnes", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 1x1 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicPSTunaSetType <- PublicPSTunaSetType[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicPSTunaSetType %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSTunaSetType), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicPSTunaSetType %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicPSTunaSetType), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+PublicPSTunaSetType <- PublicPSTunaSetType %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicPSTunaSetType.csv"
+write.csv(PublicPSTunaSetType, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicPSTunaSetType, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# PublicSizePSBillfish
+```{r, echo=TRUE}
+# Keep only data from 2000 + 
+PublicSizePSBillfish <- PublicSizePSBillfish %>% 
+  filter(Year >= 2000)
+
+# Merge with species
+PublicSizePSBillfish <- PublicSizePSBillfish %>% 
+  left_join(species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by=c("Species" = "X3A_CODE")) 
+
+# Create relevant fields
+PublicSizePSBillfish <- PublicSizePSBillfish %>% 
+  mutate(rfmo = "IATTC", 
+         year = Year, 
+         month = Month, 
+         time_period = "monthly", 
+         country = NA, 
+         gear = "purse-seine", 
+         settype = NA,
+         longitude = LonC1, 
+         latitude = LatC1,
+         effort = NA, 
+         effort_units = NA,
+         species_commonname = toupper(English_name), 
+         species_sciname = toupper(Scientific_name), 
+         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
+         catch = NumFish, 
+         catch_units = "count", 
+         measurement = SizeCm, 
+         measurement_unit = "cm", 
+         measurement_method = "fork length",
+         spatial_notes = "center of 1x1 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Re-order columns
+PublicSizePSBillfish <- PublicSizePSBillfish[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- PublicSizePSBillfish %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicSizePSBillfish), c("catch"))) %>%
+  summarise(catch = sum(catch))
+
+# Generate yearly data (aggregates)
+yearly_agg <- PublicSizePSBillfish %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(PublicSizePSBillfish), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch))
+
+# Combine raw with generated data
+PublicSizePSBillfish <- PublicSizePSBillfish %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "PublicSizePSBillfish.csv"
+write.csv(PublicSizePSBillfish, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(PublicSizePSBillfish, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# Combining Files
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Find list of cleaned data
+files_list <- list.files(save_location, pattern="csv")
+
+# Make sure it doesn't include the 'all' dataset
+files_list <- files_list[!grepl("all", files_list)]
+
+# Dataframe to hold combined data
+combined_dat <- NULL
+
+# Loop through files and save to master dataframe
+for(file in files_list) {
+  temp <- read.csv(paste0(save_location, file))
+  combined_dat <- rbind(combined_dat, temp)
+}
+
+# Save final data file for this RFMO
+filename <- "iattc-all.csv"
+write.csv(combined_dat, paste0(outputs_location, filename), row.names = FALSE)
+```
+[Back To Top](#top)

@@ -1,0 +1,535 @@
+---
+title: "RFMO Data Cleaning - CCSBT"
+output: html_notebook
+---
+
+This is a notebook designed to grab data saved in Google Drive and re-format it for easier analyses later.
+
+# Table of Contents: {#top}
+
+- [ERSWG]
+- [Southern Bluefin Tuna Ocean, Year, Flag]
+- [Southern Bluefin Tuna Year, Month, Gear, Ocean]
+- [Longline]
+- [Surface]
+- [Global]
+- [Size Data]
+- [Combining Files]
+
+```{r, include=FALSE}
+# Import libraries
+library(tidyverse)
+library(reshape)
+library(readxl)
+```
+
+# Housekeeping
+```{r, echo=TRUE}
+# List files to choose from
+file_path = "../../data/rfmo-observer-data/inputs/ccsbt/"
+save_location = "../../data/rfmo-observer-data/intermediates/ccsbt/"
+outputs_location = "../../data/rfmo-observer-data/outputs/"
+```
+
+# Load Data
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Load GPS data
+shapefile <- read.csv(paste0(file_path, "ccsbt-zones.csv"))
+shapefile <- shapefile %>% 
+  separate(grid_center, into=c("longitude", "latitude"), sep = " ") %>% 
+  mutate(longitude = gsub("POINT\\(", "", longitude), 
+         latitude = gsub("\\)", "", latitude))
+
+# Load species data
+species <- read.delim(paste0(file_path, "ASFIS_sp_2019.txt"), sep=",")
+species <- species %>% 
+  mutate(English_name = toupper(English_name), 
+         Scientific_name = toupper(Scientific_name))
+
+# Load specific datasets
+# ERSWG
+erswg <- read_xlsx(paste0(file_path, "ERSWG_Data.xlsx"), sheet = "Data")
+erswg_codes <- read_xlsx(paste0(file_path, "ERSWG_Data.xlsx"), sheet = "Codes")
+erswg_species <- erswg_codes[1:15,1:2]
+
+# Southern Bluefin Tuna - Ocean, Year, Flag
+sbt_oyf <- read_xlsx(paste0(file_path, "CatchByOYF.xlsx"), skip = 6)
+
+# Southern Bluefin Tuna - Year, Month, Gear, Ocean
+sbt_ymgo <- read_xlsx(paste0(file_path, "CatchByYMGOLoLa.xlsx"), sheet="CatchByYMGOLoLa", skip = 6)
+ymgo_gearcodes <- read_xlsx(paste0(file_path, "CatchByYMGOLoLa.xlsx"), sheet="Gear Codes", skip = 2)
+
+# Longline
+longline <- read_xlsx(paste0(file_path, "CEData_Longline.xlsx"), sheet="CEData_Longline")
+longline_codes <- read_xlsx(paste0(file_path, "CEData_Longline.xlsx"), sheet="CECodes_Longline")
+longline_countries <- longline_codes[2:7,2:3]
+colnames(longline_countries) <- c("country_code", "country")
+longline_species <- longline_codes[8:25,2:3]
+colnames(longline_species) <- c("species_code", "species")
+
+# Surface
+surface <- read_xlsx(paste0(file_path, "CEData_Surface.xlsx"), sheet="CEData_Surface")
+surface_codes <- read_xlsx(paste0(file_path, "CEData_Surface.xlsx"), sheet="CECodes_Surface")
+surface_countries <- surface_codes[2:3, 2:3]
+colnames(surface_countries) <- c("country_code", "country")
+surface_gear <- surface_codes[4:5, 2:3]
+colnames(surface_gear) <- c("gear_code", "gear")
+
+# Global
+global <- read_xlsx(paste0(file_path, "GlobalCatch_Flag_Gear.xlsx"), sheet="Catch by Flag", skip = 5, col_names = FALSE)
+
+# Size
+size <- read.delim(paste0(file_path, "CatchAtSize.txt"), sep = "\t")
+size_codes <- read.delim(paste0(file_path, "CatchAtSize_Codes.txt"), sep = "\t")
+size_countries <- size_codes[9:12, 2:3]
+colnames(size_countries) <- c("country_code", "country")
+size_gear <- size_codes[13:16, 2:3]
+colnames(size_gear) <- c("gear_code", "gear")
+```
+[Back To Top](#top)
+
+# ERSWG
+```{r, echo=TRUE}
+# Data are already only from 2010 to 2018
+# Merge with location data and species list
+erswg <- erswg %>% 
+  left_join(shapefile[,c("gridcode", "latitude", "longitude", "resolution")], by=c("CCSBT Statistical Area" = "gridcode")) %>% 
+  left_join(erswg_species, by="Species Group Code") 
+
+# Add relevant columns
+erswg <- erswg %>% 
+  mutate(rfmo = "CCSBT", 
+         year = Year, 
+         month = NA, 
+         time_period = "yearly", 
+         country = NA, 
+         gear = `Gear Code`, 
+         settype = NA,
+         effort = `Observed Effort`, 
+         effort_units = ifelse(`Gear Code` == "LL", "hooks", "number of sets"),
+         species_commonname = toupper(Description), 
+         species_sciname = NA, 
+         is_targeted = "no",
+         catch = `Number of Observed Captures`, 
+         catch_units = "count", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = paste0("center of ", resolution, " cell"), 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Cleaning 
+# Gear
+erswg <- erswg %>% 
+  mutate(gear = gsub("LL", "longline", gear), 
+         gear = gsub("PS", "purse-seine", gear))
+
+# Only keep data with gps data
+erswg <- erswg %>% 
+  filter(!is.na(latitude) & !is.na(longitude))
+
+# Spatial Notes
+erswg <- erswg %>% 
+  mutate(spatial_notes = ifelse(spatial_notes == "center of  cell", "point in large, irregular area", spatial_notes))
+
+# Scientific Names
+erswg <- erswg %>% 
+  mutate(species_commonname = gsub("PORBEAGLE SHARK", "PORBEAGLE", species_commonname)) %>% 
+  left_join(species[,c("English_name", "Scientific_name")], by=c("species_commonname" = "English_name")) %>%
+  mutate(species_sciname = Scientific_name)
+
+# Keep only relevant columns
+erswg <- erswg[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Save File
+filename <- "ERSWG.csv"
+write.csv(erswg, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(erswg, erswg_codes, erswg_species, erswg_codes)
+```
+[Back To Top](#top)
+
+# Southern Bluefin Tuna Ocean, Year, Flag
+Dataset is not relevant because we cannot get geospatial data. 
+```{r, echo=TRUE}
+remove(sbt_oyf)
+```
+[Back To Top](#top)
+
+# Southern Bluefin Tuna Year, Month, Gear, Ocean
+```{r, echo=TRUE}
+# Fix column names
+colnames(sbt_ymgo)[1] <- "year"
+
+# Keep only data from year 2000+
+sbt_ymgo <- sbt_ymgo %>% 
+  filter(year >= 2000)
+
+# Join with other datasets
+sbt_ymgo <- sbt_ymgo %>% 
+  left_join(ymgo_gearcodes, by=c("Gear" = "Code"))
+
+# Add relevant columns 
+sbt_ymgo <- sbt_ymgo %>% 
+  mutate(rfmo = "CCSBT", 
+         month = Month, 
+         time_period = "monthly", 
+         country = NA, 
+         gear = tolower(Description), 
+         settype = NA,
+         longitude = Longitude, 
+         latitude = Latitude, 
+         effort = NA, 
+         effort_units = NA,
+         species_commonname = "SOUTHERN BLUEFIN TUNA", 
+         species_sciname = "THUNNUS MACCOYII", 
+         is_targeted = "yes-stated",
+         catch = Tonnes, 
+         catch_units = "metric tonnes", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 5x5 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Keep only relevant columns
+sbt_ymgo <- sbt_ymgo[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Data Cleaning
+# GPS locations
+sbt_ymgo <- sbt_ymgo %>% 
+  filter(!is.na(latitude) & !is.na(longitude))
+
+# Gear types
+sbt_ymgo <- sbt_ymgo %>% 
+  mutate(gear = gsub("purse seine", "purse-seine", gear))
+
+# Generate data
+# Generate quarterly data (aggregates)
+quart_agg <- sbt_ymgo %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(sbt_ymgo), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- sbt_ymgo %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(sbt_ymgo), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+sbt_ymgo <- sbt_ymgo %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "SBT_YMGO.csv"
+write.csv(sbt_ymgo, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(sbt_ymgo, ymgo_gearcodes, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+#  Longline
+```{r, echo=TRUE}
+# Fix column names
+colnames(longline) <- c("year", "month", "country_code", "species_code", "gridcode", "latitude", "longitude", "effort", "catch")
+
+# Keep only data from 2000 onward
+longline <- longline %>% 
+  filter(year >= 2000)
+
+# Join with other datasets  
+longline <- longline %>% 
+  left_join(longline_countries, by="country_code")
+
+# Make relevant columns
+longline <- longline %>% 
+    mutate(rfmo = "CCSBT", 
+         time_period = "monthly", 
+         gear = "longline", 
+         settype = NA,
+         effort_units = "hooks",
+         species_commonname = "SOUTHERN BLUEFIN TUNA", 
+         species_sciname = "THUNNUS MACCOYII", 
+         is_targeted = "yes-stated",
+         catch_units = "count", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 5x5 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Keep relevant columns
+longline <- longline[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Clean 
+# Country
+longline <- longline %>% 
+  mutate(country = gsub(", Republic of|, Fishing Entity of", "", country))
+
+# GPS
+longline <- longline %>% 
+  filter(!is.na(longitude) & !is.na(latitude))
+
+# Keep only values with catch
+longline <- longline %>% 
+  filter(catch > 0)
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- longline %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(longline), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- longline %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(longline), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+longline <- longline %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "longline.csv"
+write.csv(longline, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(longline, longline_codes, longline_countries, longline_species, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# Surface
+```{r, echo=TRUE}
+# Fix column names
+colnames(surface) <- c("year", "month", "country_code", "gear_code", "gridcode", "latitude", "longitude", "effort", "catch")
+
+# Keep only data from 2000 onward
+surface <- surface %>% 
+  filter(year >= 2000)
+
+# Join with other datasets  
+surface <- surface %>% 
+  left_join(surface_countries, by="country_code") %>% 
+  left_join(surface_gear, by="gear_code")
+
+# Make relevant columns
+surface <- surface %>% 
+    mutate(rfmo = "CCSBT", 
+         time_period = "monthly", 
+         gear = tolower(gear),
+         settype = NA,
+         effort_units = "hours searched",
+         species_commonname = "SOUTHERN BLUEFIN TUNA", 
+         species_sciname = "THUNNUS MACCOYII", 
+         is_targeted = "yes-stated",
+         catch = catch/1000,
+         catch_units = "metric tonnes", 
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         spatial_notes = "center of 1x1 cell", 
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Keep relevant columns
+surface <- surface[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Clean 
+# Keep only values with gps location 
+surface <- surface %>% 
+  filter(!is.na(longitude) & !is.na(latitude))
+
+# Keep only values with catch
+surface <- surface %>% 
+  filter(catch > 0)
+
+# Gear
+surface <- surface %>% 
+  mutate(gear = gsub("purse seine", "purse-seine", gear))
+
+# Generate Data
+# Generate quarterly data (aggregates)
+quart_agg <- surface %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(surface), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- surface %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(surface), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+surface <- surface %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "surface.csv"
+write.csv(surface, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(surface, surface_codes, surface_countries, surface_gear, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# Global
+Only includes global catch data; does not include GPS locations. 
+```{r, echo=TRUE}
+remove(global)
+```
+[Back To Top](#top)
+
+# Size Data
+```{r, echo=TRUE}
+# Only keep data from year 2000 onward
+size <- size %>% 
+  filter(YEAR >= 2000)
+
+# Add other data
+size <- size %>% 
+  left_join(size_countries, by=c("COUNTRY_CODE" = "country_code")) %>% 
+  left_join(size_gear, by=c("GEAR_CODE" = "gear_code")) 
+
+# Add important variables
+size <- size %>% 
+  mutate(rfmo = "CCSBT", 
+         year = YEAR, 
+         month = MONTH,
+         time_period = "monthly", 
+         gear = tolower(gear), 
+         settype = NA,
+         longitude = LONGITUDE, 
+         latitude = LATITUDE, 
+         effort = NA, 
+         effort_units = NA,
+         species_commonname = "SOUTHERN BLUEFIN TUNA", 
+         species_sciname = "THUNNUS MACCOYII", 
+         is_targeted = "yes-stated",
+         catch = ADJUSTED_FREQUENCY, 
+         catch_units = "raised frequency", 
+         measurement = LENGTH_CLASS, 
+         measurement_unit = "cm", 
+         measurement_method = NA,
+         spatial_notes = ifelse((GEAR_CODE == "LL"| GEAR_CODE == "UNCL"), "center of 5x5 cell", 
+                                ifelse(GEAR_CODE != "LL" & GEAR_CODE != "UNCL", "center of 1x1 cell", NA)),
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA)
+
+# Keep only relevant columns
+size <- size[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Clean
+# Country
+size <- size %>% 
+  mutate(country = gsub(", Fishing Entity of", "", country))
+
+# Gear 
+size <- size %>% 
+  mutate(gear = gsub("purse seine", "purse-seine", gear))
+
+# GPS
+size <- size %>% 
+  filter(!is.na(longitude) & !is.na(latitude))
+
+# Generate data
+# Generate quarterly data (aggregates)
+quart_agg <- size %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(size), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- size %>% 
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(size), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+size <- size %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "size.csv"
+write.csv(size, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(size, size_codes, size_countries, size_gear, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# Combining Files
+```{r echo=TRUE}
+# Find list of cleaned data
+files_list <- list.files(save_location, pattern="csv")
+
+# Make sure it doesn't include the 'all' dataset
+files_list <- files_list[!grepl("all", files_list)]
+
+# Dataframe to hold combined data
+combined_dat <- NULL
+
+# Loop through files and save to master dataframe
+for(file in files_list) {
+  temp <- read.csv(paste0(save_location, file))
+  combined_dat <- rbind(combined_dat, temp)
+}
+
+# Save final data file for this RFMO
+filename <- "ccsbt-all.csv"
+write.csv(combined_dat, paste0(outputs_location, filename), row.names = FALSE)
+```
+[Back To Top](#top)

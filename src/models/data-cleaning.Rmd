@@ -1,0 +1,667 @@
+---
+title: "Data Cleaning for ML"
+output: html_notebook
+---
+
+This notebook combines RFMO catch data with SDM data. 
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Load Libraries
+library(tidyverse)
+library(readxl)
+library(googledrive)
+library(sf)
+library(rgdal)
+```
+
+```{r include=FALSE}
+# Load Data - only keeping wcpfc for now
+dat <- read.csv("/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/rfmo-review/edited/all_data.csv") %>% 
+  filter(rfmo == "WCPFC") 
+
+# Species grouping
+#drive_download(as_id("https://docs.google.com/spreadsheets/d/1cT2239Hg5UZo0oqPuNS21H27iM_lLgyo-XeeIPJBqI0/edit#gid=1789273262"), path="species_groups.xlsx", overwrite=TRUE)
+species_groups <- read_xlsx("species_groups.xlsx", sheet = "species_list")
+
+# SST data
+sst_wcpfc <- read.csv("/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/intermediates/sst_wcpfc.csv")
+
+# CHL-A data
+chla_wcpfc <- read.csv("/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/intermediates/chla_wcpfc.csv", skip=1, col.names = c("date", "latitude", "longitude", "chlor_a")) 
+
+# SDM list of species
+sdm_species <- data.frame("file"= list.files("/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/sp-dist/data", pattern = "csv")[-1]) %>% 
+  mutate(species = gsub("_prob_dist.csv", "", file), 
+         species = toupper(gsub("[_]", " ", species)))
+
+# prices
+prices <- read.csv("/Volumes/GoogleDrive/Shared drives/emlab/data/ex-vessel-price-database-updated/price-db-results/exvessel_price_database_1976_2017.csv")
+
+prices <- prices %>% 
+  mutate(ASFIS_species = str_to_upper(ASFIS_species), 
+         scientific_name = str_to_upper(scientific_name), 
+         ASFIS_species = case_when(ASFIS_species == "INDO-PACIF. BOTTLENOSE DOLPHIN" ~  "INDO-PACIFIFIC BOTTLENOSE DOLPHIN", 
+                                   ASFIS_species == "SHORTFIN MAKO" ~ "SHORTFIN MAKO SHARK", 
+                                   ASFIS_species == "ALBACORE" ~ "ALBACORE TUNA", 
+                                   TRUE ~ ASFIS_species), 
+         ISSCAAP_group = case_when(ISSCAAP_group == "Sharks, rays, chimaeras" ~ "sharks and rays", 
+                                   ISSCAAP_group == "Miscellaneous aquatic mammals" ~ "marine mammals", 
+                                   ISSCAAP_group == "Turtles" ~ "turtles", 
+                                   TRUE ~ paste(ISSCAAP_group))) %>% 
+  rename(year = Year, 
+         species_commonname = ASFIS_species, 
+         species_group = ISSCAAP_group)
+
+# high seas shapefile
+high_seas <- rgdal::readOGR("/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/mapping-templates/World_High_Seas_v1_20200826/High_Seas_v1.shp")
+
+###
+# grab high seas only locations
+###
+
+# grab unique locations
+high_seas_locs <- dat %>% 
+  select(latitude, longitude) %>% 
+  distinct_all() 
+
+# create structured data frame
+high_seas_locs <- structure(list(longitude=high_seas_locs$longitude, latitude=high_seas_locs$latitude), 
+                            .Names=c("Longitude", "Latitude"), class="data.frame", row.names = c(NA, -nrow(high_seas_locs)))
+
+# specify coordinates and projections
+coordinates(high_seas_locs)<-cbind(high_seas_locs$Longitude, high_seas_locs$Latitude) # assign the lat and long as coordinates
+proj4string(high_seas_locs)<- CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0") # transform this to longlat format
+  
+# see where the points overlap with the high seas shapefile
+high_seas_locs$location <- over(high_seas_locs, high_seas)$name
+
+# only keep locations that are within high seas
+high_seas_locs <- data.frame(high_seas_locs) %>% 
+  select(Longitude, Latitude, location) %>% 
+  filter(!is.na(location))
+```
+
+```{r message=FALSE, warning=FALSE}
+# Add species group names
+dat <- dat %>% 
+  left_join(species_groups %>% 
+              filter(!is.na(scientific_name)) %>%
+              mutate(scientific_name = toupper(scientific_name)) %>% 
+              dplyr::select(scientific_name, group), by = c("species_sciname" = "scientific_name")) %>% 
+  # Found some issues again 
+  mutate(species_sciname = ifelse(species_sciname == "MESOPLODONGINKGODENS", 
+                                     "MESOPLODON GINKGODENS", paste(species_sciname)), 
+         group = case_when(species_commonname == "SHARKS NEI" ~ "sharks and rays", 
+                           species_commonname %in% c("DWARF SPERM WHALE", "AQUATIC MAMMALS NEI", 
+                                                     "SPOTTED DOLPHINS NEI", "WHALES NEI", 
+                                                     "GINKGO-TOOTHED BEAKED WHALE") ~ "marine mammals", 
+                           species_commonname %in% c("ALBATROSSES NEI", "BIRDS NEI", "GULLS - TERNS AND SKUAS", 
+                                                     "WANDERING ALBATROSS COMPLEX", "SHY ALBATROSS NEI", 
+                                                     "WEDGE-TAILED SHEARWATER", "COMMON DIVING PETREL", 
+                                                     "STORM PETRELS", "PRIONS NEI", "GREY-BACK STORM PETREL", 
+                                                     "ROYAL ALBATROSSES") ~ "seabirds", 
+                           TRUE ~ paste(group))) %>% 
+  dplyr::rename(species_group = group) %>% 
+  filter(effort_units %in% c("sets", "hooks") & was_generated == "no") %>% 
+  distinct_all() # duplicated turtles because of multiple "turtles nei" in the species list
+
+# Split into target vs bycatch
+target <- dat %>% 
+  filter(species_group %in% c("tunas", "tuna-like species")) %>% 
+  mutate(catch_units = gsub("metric ", "", catch_units), 
+         country = ifelse(is.na(country), "NA Country", paste(country)), 
+         settype = ifelse(is.na(settype), "longline", paste(settype)), 
+         settype = gsub("other", "purseseine other", paste(settype))) %>% 
+  dplyr::select(year, time_period, country, latitude, longitude, gear, settype, effort, 
+         effort_units, species_commonname, catch, catch_units, sources, species_group, observer_coverage) 
+
+# prices
+target_prices <- prices %>% 
+  filter(species_commonname %in% unique(target$species_commonname)) %>% 
+  left_join(species_groups %>% dplyr::select(scientific_name, group) %>% mutate(scientific_name = str_to_upper(scientific_name)), 
+            by = c("scientific_name")) %>%
+  group_by(year, group) %>% 
+  summarise(median_target_price = median(exvessel, na.rm = T)) %>% 
+  ungroup() %>% 
+  pivot_wider(values_from = median_target_price, names_from = group) %>% 
+  rename(median_tuna_price = tunas,
+         median_tunalike_price = `tuna-like species`)
+  
+# Create pivoted table for target catch by species*catch unit*set type*country etc
+target_catch_pivot <- target %>% 
+  select(-country, -settype, -effort, - effort_units, - species_commonname, - species_group) %>% 
+  pivot_wider(names_from = c(catch_units),
+                          values_from = c(catch),
+                          values_fn = sum, 
+                          values_fill = 0) %>% 
+  full_join( target %>% 
+               select(-country, -settype, -effort, - effort_units, - species_commonname) %>% 
+               pivot_wider(names_from = c(catch_units, species_group),
+                          values_from = c(catch),
+                          values_fn = sum, 
+                          values_fill = 0) %>% 
+               rename(count_tunalike = `count_tuna-like species`, 
+                      tonnes_tunalike = `tonnes_tuna-like species`), 
+             by = c("year", "gear", "time_period", "longitude", "latitude", "sources", "observer_coverage")) %>% 
+  # full_join(target %>%
+  #             select(-settype, -effort, - effort_units, - species_commonname) %>% 
+  #             pivot_wider(names_from = c(catch_units, country),
+  #                         values_from = c(catch),
+  #                         values_fn = sum), 
+  #           by = c("year", "gear", "time_period", "longitude", "latitude")) %>%
+  # full_join(target %>% 
+  #             select(-country, -effort, - effort_units, - species_commonname) %>% 
+  #             pivot_wider(names_from = c(catch_units, settype), 
+  #                         values_from = c(catch), 
+  #                         values_fn = sum), 
+  #           by = c("year", "gear", "time_period", "longitude", "latitude")) %>%
+  full_join(target %>% 
+              select(-effort, - effort_units, - species_commonname, - species_group) %>% 
+              pivot_wider(names_from = c(catch_units, country, settype), 
+                          values_from = c(catch), 
+                          values_fn = sum, 
+                          values_fill = 0), 
+            by = c("year", "gear", "time_period", "longitude", "latitude", "sources", "observer_coverage")) %>%
+  # full_join(target %>% 
+  #             select(-country, -settype, -effort, -effort_units) %>% 
+  #             pivot_wider(names_from = c(species_commonname, catch_units), 
+  #                         values_from = c(catch), 
+  #                         values_fn = sum), 
+  #           by = c("year", "gear", "time_period", "longitude", "latitude")) %>%
+  # full_join(target %>% 
+  #             select(-country, - effort, -effort_units) %>% 
+  #             pivot_wider(names_from = c(species_commonname, catch_units, settype), 
+  #                         values_from = c(catch), 
+  #                         values_fn = sum), 
+  #           by = c("year", "gear", "time_period", "longitude", "latitude")) %>% 
+  # full_join(target %>% 
+  #             select(-settype, - effort, - effort_units) %>% 
+  #             pivot_wider(names_from = c(species_commonname, catch_units, country), 
+  #                          values_from = c(catch), 
+  #                          values_fn = sum), 
+  #           by = c("year", "gear", "time_period", "longitude", "latitude")) %>% 
+   full_join(target %>% 
+              select(-effort, -effort_units,  - species_group) %>% 
+              pivot_wider(names_from = c(species_commonname, catch_units, country, settype), 
+                          values_from = c(catch), 
+                          values_fn = sum, 
+                          values_fill = 0), 
+            by = c("year", "gear", "time_period", "longitude", "latitude", "sources", "observer_coverage")) 
+
+# Fix colnames to reflect that this is for targeted catch
+#colnames(target_catch_pivot)[6:198] <- paste0("target_catch_", colnames(target_catch_pivot)[6:198])
+colnames(target_catch_pivot)[8:ncol(target_catch_pivot)] <- paste0("target_catch_", colnames(target_catch_pivot)[8:ncol(target_catch_pivot)])
+
+# Grab effort data reported with target species (only keep distinct rows - duplicates need to be removed from where multiple species are reported from the same group)
+target_effort_pivot <- target %>% 
+  select(year, time_period, latitude, longitude, country, gear, settype, effort, effort_units, sources, observer_coverage) %>% 
+  distinct_all()
+
+# Create target effort pivot table for all and by country and by set type
+target_effort_pivot <- target_effort_pivot %>% 
+  group_by(year, time_period, latitude, longitude, gear, effort_units, sources, observer_coverage) %>% 
+  summarise(target_effort = sum(effort)) %>% 
+  ungroup() %>% 
+  # full_join(target_effort_pivot %>%
+  #             select(-settype) %>% 
+  #              pivot_wider(names_from = c(country), 
+  #                          values_from = c(effort), 
+  #                          values_fn = sum), 
+  #           by = c("year", "time_period", "latitude", "longitude", "gear", "effort_units")) %>% 
+  # full_join(target_effort_pivot %>%
+  #             select(-country) %>% 
+  #              pivot_wider(names_from = c(settype), 
+  #                          values_from = c(effort), 
+  #                          values_fn = sum), 
+  #             by = c("year", "time_period", "latitude", "longitude", "gear", "effort_units")) %>% 
+   full_join(target_effort_pivot %>%
+               pivot_wider(names_from = c(country, settype), 
+                           values_from = c(effort), 
+                           values_fn = sum, 
+                           values_fill = 0), 
+            by = c("year", "time_period", "latitude", "longitude", "gear", "effort_units", "sources", "observer_coverage"))
+
+# Fix colnames to reflect that this is for targeted effort
+colnames(target_effort_pivot)[10:ncol(target_effort_pivot)] <- paste0("target_effort_", colnames(target_effort_pivot)[10:ncol(target_effort_pivot)])
+
+# Bring back together
+all_target <- target_effort_pivot %>% 
+  full_join(target_catch_pivot, 
+            by = c("year", "time_period", "latitude", "longitude", "gear", "sources", "observer_coverage")) %>% 
+  left_join(target_prices, by = "year")
+
+# Repeat (sort of) for bycatch data
+all_bycatch <- dat %>% 
+  filter(!(species_group %in% c("tunas", "tuna-like species"))) %>% 
+  select(year, gear, longitude, latitude, effort, effort_units, species_commonname, 
+         species_sciname, catch, catch_units, spatial_notes, species_group, sources, observer_coverage) %>% 
+  filter(species_commonname != "OTHER SPECIES") 
+
+#remove(dat, target_catch_pivot, target_effort_pivot, target)
+
+# Merge all data back together
+
+# First save list of species groups and scinames
+species_groups_short <- all_bycatch %>% 
+              select(species_sciname, species_commonname, species_group) %>% 
+              distinct_all()
+
+all_dat <- all_bycatch %>% 
+  full_join(all_target %>% rename(target_sources = sources, target_observer_coverage = observer_coverage), 
+            by = c("year", "latitude", "longitude", "gear", "effort_units")) %>% 
+  rename(target_aggregation_period = time_period) %>% 
+  filter(species_sciname %in% sdm_species$species)
+
+#remove(all_bycatch, all_target)
+
+bycatch_spp <- unique(all_dat$species_commonname)
+
+all_dat <- all_dat %>% 
+  select(-species_sciname, -species_group) %>% 
+  pivot_wider(names_from = species_commonname, 
+              values_from = catch, 
+              values_fill = 0) %>% 
+  pivot_longer(cols = bycatch_spp, 
+               names_to = "species_commonname", 
+               values_to = "catch") %>% 
+  relocate(species_commonname, .after = latitude) %>% 
+  relocate(catch, .after = species_commonname) 
+```
+
+```{r message=FALSE, warning=FALSE}
+# Load, clean, and filter SDM file names
+sdm_list <- list.files("/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/sp-dist/data", pattern = "csv")[-1]
+
+# Get list of locations in actual data
+loc_list <- all_dat %>% 
+  select(latitude, longitude) %>% 
+  distinct_all() %>% 
+  mutate(gps_list = paste(latitude, longitude)) %>% 
+  select(gps_list)
+
+# Create master database with sdm info
+all_sdm <- NULL
+for(file in sdm_list) { 
+  temp_sdm <- read.csv(paste0("/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/sp-dist/data/", file))
+  
+  temp_sdm <- temp_sdm %>% 
+    mutate(lat_bin = as.numeric(paste(cut(CenterLat, breaks = c(0,seq(-92.5, 92.5,5)), 
+                                        labels = seq(-92.5, 92.5, 5)))), 
+         lat_bin = case_when(lat_bin == 92.5 ~ 87.5, 
+                             lat_bin == -82.5 ~ -87.5, 
+                             TRUE ~ lat_bin),
+         lon_bin = as.numeric(paste(cut(CenterLong, breaks = c(0,seq(-182.5, 182.5,5)), 
+                                        labels = seq(-182.5, 182.5, 5)))),
+         lon_bin = case_when(lon_bin == 182.5 ~ 177.5, 
+                             lon_bin == -182.5 ~ -177.5, 
+                             TRUE ~ lon_bin),
+         spatial_notes = "center of 5x5 cell") %>% 
+  mutate(gps_list = paste(lat_bin, lon_bin))  %>% 
+  filter(gps_list %in% loc_list$gps_list)
+
+  temp_sdm <- temp_sdm %>% 
+    mutate(sp_name = toupper(sp_name), 
+           probability = ifelse(is.na(probability), 0, probability),
+           scaled_prob = probability/sum(probability, na.rm = TRUE))
+  
+  if(! (temp_sdm$sp_name[1] %in% all_sdm$sp_name)) { 
+    all_sdm <- all_sdm %>% bind_rows(temp_sdm)
+  }
+} 
+
+remove(temp_sdm, file, sdm_list)
+
+# Scale to match rfmo data
+scaled_sdm <- all_sdm %>% 
+  group_by(lat_bin, lon_bin, Order, Family, sp_name) %>% 
+  summarise(sum_prob = sum(scaled_prob)) %>% 
+  ungroup() %>% 
+  select(sum_prob, lat_bin, lon_bin, sp_name) %>% 
+  distinct_all()
+
+# Remove large datasets we're no longer using
+remove(all_sdm)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+# Join with sdm data 
+dat_sdm <- all_dat %>% 
+  select(latitude, longitude, species_commonname) %>% 
+  distinct_all() %>% 
+  left_join(species_groups_short) %>% 
+  filter(!is.na(species_sciname)) %>%
+  left_join(scaled_sdm, by = c("latitude" = "lat_bin", "longitude" = "lon_bin", 
+                               "species_sciname" = "sp_name")) %>% 
+  mutate(sum_prob = ifelse(is.na(sum_prob), 0, sum_prob)) %>% 
+  rename(sdm_probability = sum_prob)
+
+target_sdm <- target %>% 
+  select(latitude, longitude, species_commonname) %>% 
+  distinct_all() %>% 
+  left_join(species_groups %>% 
+              filter(group %in% c("tunas", "tuna-like species")) %>%
+              mutate(species_commonname = str_to_upper(english_name), 
+                     species_sciname = str_to_upper(scientific_name), 
+                     species_commonname = ifelse(species_commonname == "ALBACORE", "ALBACORE TUNA", species_commonname)) %>% 
+              select(group, species_commonname, species_sciname)) %>% 
+  filter(!is.na(species_sciname)) %>%
+  left_join(scaled_sdm, by = c("latitude" = "lat_bin", "longitude" = "lon_bin", 
+                               "species_sciname" = "sp_name")) %>% 
+  mutate(sum_prob = ifelse(is.na(sum_prob), 0, sum_prob)) %>% 
+  rename(sdm_probability = sum_prob)
+
+grouped_sdm <- dat_sdm %>% 
+  bind_rows(target_sdm %>% rename(species_group = group)) %>% 
+  group_by(species_group, latitude, longitude) %>% 
+  summarise(sdm = sum(sdm_probability, na.rm = T)) %>% 
+  ungroup() %>% 
+  group_by(species_group) %>% 
+  mutate(total_sdm = sum(sdm, na.rm = T)) %>%
+  ungroup() %>% 
+  mutate(sdm_scaled = sdm/total_sdm) %>% 
+  select(-sdm, -total_sdm) %>% 
+  pivot_wider(values_from = sdm_scaled, names_from = species_group) %>% 
+  rename(marine_mammal_sdm = `marine mammals`, 
+         sharks_sdm = `sharks and rays`, 
+         turtles_sdm = turtles, 
+         tunas_sdm = tunas,
+         tunalike_sdm = `tuna-like species`)
+
+remove(species_groups, species_groups_short, scaled_sdm)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+# Add SST data
+
+# Convert sst data so that it can be merged with wcpfc data
+sst_wcpfc <- sst_wcpfc %>% 
+  filter(!is.na(sst)) %>% 
+  mutate(date = as.POSIXct(date, format = "%Y-%m-%dT%H:%M:%SZ"), 
+         year = as.integer(format(date, format = "%Y")),
+         lat_bin = as.numeric(paste(cut(latitude, breaks = c(0,seq(-92.5, 92.5,5)), 
+                                        labels = seq(-92.5, 92.5, 5)))), 
+         lat_bin = case_when(lat_bin == 92.5 ~ 87.5, 
+                             lat_bin == -92.5 ~ -87.5, 
+                             TRUE ~ lat_bin),
+         lon_bin = as.numeric(paste(cut(longitude, breaks = c(0,seq(-182.5, 182.5,5)), 
+                                        labels = seq(-182.5, 182.5, 5)))),
+         lon_bin = case_when(lon_bin == 182.5 ~ 177.5, 
+                             lon_bin == -182.5 ~ -177.5, 
+                             TRUE ~ lon_bin)) %>% 
+  group_by(year, lon_bin, lat_bin) %>% 
+  summarise(mean_sst = mean(sst, na.rm = T), 
+            median_sst = median(sst, na.rm = T), 
+            min_sst = min(sst, na.rm = T), 
+            max_sst = max(sst, na.rm = T), 
+            sd_sst = sd(sst, na.rm = T), 
+            se_sst = sd_sst/(sqrt(n())),
+            cv_sst = sd_sst/mean_sst*100) %>% 
+  ungroup()
+
+# Merge with wcpfc data
+dat_sst <- all_dat %>% 
+  select(year, latitude, longitude) %>% 
+  distinct_all() %>%
+  left_join(sst_wcpfc, by = c("longitude" = "lon_bin", "latitude" = "lat_bin", "year"))
+
+remove(sst_wcpfc)
+```
+
+```{r message=FALSE, warning=FALSE}
+# Convert chl-a data so that it can be merged with wcpfc data
+chla_wcpfc <- chla_wcpfc %>% 
+  filter(!is.na(chlor_a)) %>% 
+  mutate(date = as.POSIXct(date, format = "%Y-%m-%dT%H:%M:%SZ"), 
+         year = as.integer(format(date, format = "%Y")), 
+         lat_bin = as.numeric(paste(cut(latitude, breaks = c(0,seq(-92.5, 92.5,5)), 
+                                        labels = seq(-92.5, 92.5, 5)))), 
+         lat_bin = case_when(lat_bin == 92.5 ~ 87.5, 
+                             lat_bin == -92.5 ~ -87.5, 
+                             TRUE ~ lat_bin),
+         lon_bin = as.numeric(paste(cut(longitude, breaks = c(0,seq(-182.5, 182.5,5)), 
+                                        labels = seq(-182.5, 182.5, 5)))),
+         lon_bin = case_when(lon_bin == 182.5 ~ 177.5, 
+                             lon_bin == -182.5 ~ -177.5, 
+                             TRUE ~ lon_bin)) %>% 
+  group_by(year, lon_bin, lat_bin) %>% 
+  summarise(mean_chla = mean(chlor_a, na.rm = T), 
+            median_chla = median(chlor_a, na.rm = T), 
+            min_chla = min(chlor_a, na.rm = T), 
+            max_chla = max(chlor_a, na.rm = T), 
+            sd_chla = sd(chlor_a, na.rm = T), 
+            se_chla = sd_chla/(sqrt(n())), 
+            cv_chla = sd_chla/mean_chla*100) %>% 
+  ungroup()
+
+# Merge with wcpfc data
+dat_chla <- all_dat %>% 
+  select(year, latitude, longitude) %>% 
+  distinct_all() %>%
+  left_join(chla_wcpfc, by = c("longitude" = "lon_bin", "latitude" = "lat_bin", "year"))
+
+remove(chla_wcpfc)
+```
+
+```{r}
+# Merge everything together... 
+environmentals <- dat_sst %>% 
+  full_join(dat_chla) %>% 
+  arrange(year, latitude, longitude) %>% 
+  fill(mean_sst:cv_chla)
+
+remove(dat_sst, dat_chla)
+
+all_dat <- all_dat %>% 
+  left_join(environmentals) %>% 
+  left_join(dat_sdm) %>% 
+  relocate("species_sciname":"species_group", .after = species_commonname) %>% 
+  relocate(sdm_probability, .after = spatial_notes) %>% 
+  relocate("mean_sst":"cv_chla", .after = sdm_probability)
+
+# Prices - just for species listed
+spp_prices <- prices %>% 
+  filter(species_commonname %in% unique(all_dat$species_commonname)) %>% 
+  group_by(species_group, year) %>% 
+  summarise(median_price_species = median(exvessel, na.rm = T)) %>% 
+  ungroup() %>%
+  filter(!is.na(median_price_species))
+  
+# Prices - larger groups
+group_prices <- prices %>% 
+  filter(species_group %in% c("sharks and rays", "marine mammals", "turtles", "tunas") & !is.na(year)) %>% 
+  group_by(species_group, year) %>% 
+  summarise(median_price_group = median(exvessel, na.rm = T)) %>% 
+  ungroup() %>%
+  filter(!is.na(median_price_group))
+
+all_dat <- all_dat %>% 
+  left_join(spp_prices, by = c("year", "species_group")) %>% 
+  left_join(group_prices, by = c("year", "species_group"))
+
+# add scaled sdms for future models
+all_dat <- all_dat %>% 
+  left_join(grouped_sdm, by = c("latitude", "longitude"))
+
+# Save data before adding GFW
+# Monthly self-reported
+write.csv(all_dat %>% 
+            filter(target_sources == "self-reported catch and effort by month") %>% 
+            select(year:target_effort, target_catch_count, target_catch_count_tunas, target_catch_count_tunalike,
+                   target_catch_tonnes, target_catch_tonnes_tunas, target_catch_tonnes_tunalike,  
+                   median_price_species, median_price_group, median_tuna_price, median_tunalike_price,
+                   marine_mammal_sdm, sharks_sdm, tunalike_sdm, tunas_sdm, turtles_sdm, 
+                   colnames(all_dat)[grepl("NA Country", colnames(all_dat))]), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_monthly.csv", 
+          row.names = FALSE)
+
+# Flag + quarter self reported
+write.csv(all_dat %>% 
+            filter(target_sources == "self-reported catch and effort by flag + quarter"), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_flagquarter.csv", 
+          row.names = FALSE)
+
+# Flag + year self reported
+write.csv(all_dat %>% 
+            filter(target_sources == "self-reported catch and effort by flag + year"), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_flagyear.csv", 
+          row.names = FALSE)
+
+# Save with high seas only data
+high_seas_dat <- all_dat %>% 
+  mutate(comb_loc = paste(longitude, latitude, sep = "|")) %>% 
+  filter(comb_loc %in% unique(high_seas_locs %>% 
+                                mutate(comb_loc = paste(Longitude, Latitude, sep = "|")))$comb_loc) %>% 
+  select(-comb_loc)
+
+# Monthly self-reported
+write.csv(high_seas_dat %>% 
+            filter(target_sources == "self-reported catch and effort by month") %>% 
+            select(year:target_effort, target_catch_count, target_catch_count_tunas, target_catch_count_tunalike,
+                   target_catch_tonnes, target_catch_tonnes_tunas, target_catch_tonnes_tunalike, 
+                   median_price_species, median_price_group, median_tuna_price, median_tunalike_price,
+                   marine_mammal_sdm, sharks_sdm, tunalike_sdm, tunas_sdm, turtles_sdm, 
+                   colnames(high_seas_dat)[grepl("NA Country", colnames(high_seas_dat))]), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_monthly_highseas.csv", 
+          row.names = FALSE)
+
+# Flag + quarter self reported
+write.csv(high_seas_dat %>% 
+            filter(target_sources == "self-reported catch and effort by flag + quarter"), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_flagquarter_highseas.csv", 
+          row.names = FALSE)
+
+# Flag + year self reported
+write.csv(high_seas_dat %>% 
+            filter(target_sources == "self-reported catch and effort by flag + year"), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_flagyear_highseas.csv", 
+          row.names = FALSE)
+```
+
+```{r}
+# GFW data
+gfw <- read.csv("/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/gfw-info/1x1_gfw_query_v20190502.csv")
+
+tonnage_groups <- read.csv("/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/gfw-info/tonnage_groups_v20200410.csv")
+
+# Convert so that it can be merged with wcpfc data
+gfw_wcpfc <- gfw %>%
+  filter(rfmo == "WCPFC") %>% 
+  mutate(gear_group = case_when(grepl("longline", gear) ~ "longline", 
+                                grepl("purse", gear) ~ "purse-seine", 
+                                TRUE ~ "other")) %>% 
+  filter(gear_group != "other") %>% 
+  mutate(lat_bin_new = as.numeric(paste(cut(lat_bin, breaks = c(0,seq(-92.5, 92.5,5)), 
+                                        labels = seq(-92.5, 92.5, 5)))), 
+         lat_bin_new = case_when(lat_bin_new == 92.5 ~ 87.5, 
+                             lat_bin_new == -92.5 ~ -87.5, 
+                             TRUE ~ lat_bin_new),
+         lon_bin_new = as.numeric(paste(cut(lon_bin, breaks = c(0,seq(-182.5, 182.5,5)), 
+                                        labels = seq(-182.5, 182.5, 5)))),
+         lon_bin_new = case_when(lon_bin_new == 182.5 ~ 177.5, 
+                             lon_bin_new == -182.5 ~ -177.5, 
+                             TRUE ~ lon_bin_new)) %>% 
+  left_join(tonnage_groups %>% 
+              mutate(gt_group = gsub("gt", "gtgroup", gt_group)),
+            by = c("gear" = "best_vessel_class", "binned_gt")) %>% 
+  group_by(year, lon_bin_new, lat_bin_new, night, gear, gear_group, flag, gt_group)  %>% 
+  summarise(total_h = sum(total_h), 
+            total_kwh = sum(total_kwh), 
+            total_fishing_h = sum(total_fishing_h), 
+            total_fishing_kwh = sum(total_fishing_kwh), 
+            total_vessels = sum(total_vessels)) %>% 
+  ungroup() %>% 
+  mutate(night = ifelse(night == TRUE , "night", "day")) %>% 
+  pivot_longer("total_h":"total_vessels", 
+               names_to = "gfw_effort_type", 
+               values_to = "gfw_effort")
+
+
+gfw_wcpfc <- gfw_wcpfc %>%
+  select(-flag, -gear, -gt_group) %>% 
+  pivot_wider(names_from = c(night, gfw_effort_type),
+              values_from = c(gfw_effort),
+              values_fn = sum, 
+              values_fill = 0) %>% 
+  left_join(gfw_wcpfc %>% 
+               pivot_wider(names_from = c(flag, gear, gt_group, night, gfw_effort_type),
+                           values_from = c(gfw_effort), 
+                           values_fn = sum, 
+                           values_fill = 0))
+
+# Merge with wcpfc data
+all_dat <- all_dat %>% 
+  left_join(gfw_wcpfc, by = c("longitude" = "lon_bin_new", "latitude" = "lat_bin_new", "year", "gear" = "gear_group"))
+```
+
+
+```{r}
+# Save data
+write.csv(all_dat, "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_all.csv", row.names = FALSE)
+
+# GFW only
+write.csv(all_dat %>% 
+            select(year:observer_coverage, target_catch_count, target_catch_count_tunas, target_catch_count_tunalike,
+                   target_catch_tonnes, target_catch_tonnes_tunas, target_catch_tonnes_tunalike, 
+                   median_price_species, median_price_group, median_tuna_price, median_tunalike_price, 
+                   marine_mammal_sdm, sharks_sdm, tunalike_sdm, tunas_sdm, turtles_sdm, 
+                   colnames(gfw_wcpfc)[5:ncol(gfw_wcpfc)]) %>% distinct_all(), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_gfw.csv", row.names = FALSE)
+
+# Monthly self-reported
+write.csv(all_dat %>% 
+            filter(target_sources == "self-reported catch and effort by month") %>% 
+            select(year:target_effort, target_catch_count, target_catch_count_tunas, target_catch_count_tunalike,
+                   target_catch_tonnes, target_catch_tonnes_tunas, target_catch_tonnes_tunalike, 
+                   median_price_species, median_price_group, median_tuna_price, median_tunalike_price,
+                   marine_mammal_sdm, sharks_sdm, tunalike_sdm, tunas_sdm, turtles_sdm, 
+                   colnames(all_dat)[grepl("NA Country", colnames(all_dat))], colnames(gfw_wcpfc)[5:ncol(gfw_wcpfc)]) %>%
+            distinct_all(), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_monthly_with_gfw.csv", 
+          row.names = FALSE)
+
+# Flag + quarter self reported
+write.csv(all_dat %>% 
+            filter(target_sources == "self-reported catch and effort by flag + quarter") %>% distinct_all(), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_flagquarter_with_gfw.csv", 
+          row.names = FALSE)
+
+# Flag + year self reported
+write.csv(all_dat %>% 
+            filter(target_sources == "self-reported catch and effort by flag + year") %>% distinct_all(), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_flagyear_with_gfw.csv", 
+          row.names = FALSE)
+```
+
+```{r}
+# Save high seas data
+high_seas_dat <- all_dat %>% 
+  mutate(comb_loc = paste(longitude, latitude, sep = "|")) %>% 
+  filter(comb_loc %in% unique(high_seas_locs %>% 
+                                mutate(comb_loc = paste(Longitude, Latitude, sep = "|")))$comb_loc) %>%
+  select(-comb_loc)
+
+# Save data
+write.csv(high_seas_dat, "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_all_highseas.csv", row.names = FALSE)
+
+# GFW only
+write.csv(high_seas_dat %>% 
+            select(year:observer_coverage, target_catch_count, target_catch_count_tunas, target_catch_count_tunalike,
+                   target_catch_tonnes, target_catch_tonnes_tunas, target_catch_tonnes_tunalike, 
+                   median_price_species, median_price_group, median_tuna_price, median_tunalike_price,
+                   marine_mammal_sdm, sharks_sdm, tunalike_sdm, tunas_sdm, turtles_sdm, 
+                   colnames(gfw_wcpfc)[5:ncol(gfw_wcpfc)]) %>% distinct_all(), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_gfw_highseas.csv", row.names = FALSE)
+
+# Monthly self-reported
+write.csv(high_seas_dat %>% 
+            filter(target_sources == "self-reported catch and effort by month") %>% 
+            select(year:target_effort, target_catch_count, target_catch_count_tunas, target_catch_count_tunalike,
+                   target_catch_tonnes, target_catch_tonnes_tunas, target_catch_tonnes_tunalike, 
+                   median_price_species, median_price_group, median_tuna_price, median_tunalike_price,
+                   marine_mammal_sdm, sharks_sdm, tunalike_sdm, tunas_sdm, turtles_sdm, 
+                   colnames(high_seas_dat)[grepl("NA Country", colnames(high_seas_dat))], colnames(gfw_wcpfc)[5:ncol(gfw_wcpfc)]) %>%
+            distinct_all(), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_monthly_with_gfw_highseas.csv", 
+          row.names = FALSE)
+
+# Flag + quarter self reported
+write.csv(high_seas_dat %>% 
+            filter(target_sources == "self-reported catch and effort by flag + quarter") %>% distinct_all(), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_flagquarter_with_gfw_highseas.csv", 
+          row.names = FALSE)
+
+# Flag + year self reported
+write.csv(high_seas_dat %>% 
+            filter(target_sources == "self-reported catch and effort by flag + year") %>% distinct_all(), "/Volumes/GoogleDrive/Shared drives/emlab/projects/current-projects/blue-prosperity-coalition/broader-research/mpa-bycatch/data/model/inputs/wcpfc_flagyear_with_gfw_highseas.csv", 
+          row.names = FALSE)
+```
+

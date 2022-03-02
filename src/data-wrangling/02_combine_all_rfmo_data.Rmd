@@ -1,0 +1,269 @@
+---
+title: "Combine RFMO Cleaned Datasets"
+output: html_notebook
+---
+
+This script combines all cleaned RFMO catch datasets.
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+
+
+```{r, echo=TRUE}
+# List files to choose from
+file_path <- "../../data/rfmo-observer-data/outputs/"
+
+list_files <- list.files(file_path, pattern="csv")
+list_files <- list_files[!grepl("all_data", list_files)]
+
+# Combine files
+dat <- NULL 
+for(file in list_files) { 
+  temp <- read.csv(paste0(file_path, file))
+  dat <- dat %>% bind_rows(temp)
+}
+
+# Clean up
+remove(temp)
+```
+
+# Quick Preview
+```{r, echo=TRUE}
+head(dat)
+```
+
+# Clean up
+
+## Unique Common Names
+```{r, echo=TRUE}
+dat %>% 
+  distinct(species_commonname) %>% 
+  mutate(species_commonname = as.character(species_commonname)) %>% 
+  arrange_all()
+```
+
+## Make them all the same
+```{r, echo=TRUE}
+dat <- dat %>% 
+  mutate(species_commonname = gsub("\\(NS)", "NEI", species_commonname), 
+         species_commonname = case_when( 
+           species_commonname == "ALBACORE, YELLOWFIN AND BIGEYE TUNAS" ~
+             "ALBACORE, YELLOWFIN, BIGEYE TUNA", 
+           species_commonname == "ALBACORE, YELLOWFIN TUNA AND BIGEYE TUNA" ~ 
+             "ALBACORE, YELLOWFIN, BIGEYE TUNA", 
+           species_commonname == "ALBACORE" ~ "ALBACORE TUNA",  
+           species_commonname == "(NORTHERN) SHORTFIN SQUID" ~ "NORTHERN SHORTFIN SQUID", 
+           species_commonname == "ATLANT. YELLOW-NOSED ALBATROSS" ~ 
+             "ATLANTIC YELLOW-NOSED ALBATROSS", 
+           species_commonname == "ATLANTIC REDFISHES (NS)" ~ "ATLANTIC REDFISHES NEI",
+           species_commonname == "BIGEYE THRESHER" ~ "BIGEYE THRESHER SHARK", 
+           species_commonname == "BIRD (UNIDENTIFIED)" ~ "BIRDS NEI",
+           species_commonname == "GIANT MANTAS" ~ "GIANT MANTA", 
+           species_commonname == "GREAT HAMMERHEAD" ~ "GREAT HAMMERHEAD SHARK", 
+           species_commonname == "GROUNDFISHES" ~ "GROUNDFISHES NEI", 
+           species_commonname == "HAMMERHEAD SHARK NEI" ~ "HAMMERHEAD SHARKS NEI", 
+           species_commonname == "HAMMERHEAD SHARKS, ETC. NEI" ~ "HAMMERHEAD SHARKS NEI", 
+           species_commonname == "INDO-PACIF. BOTTLENOSE DOLPHIN" ~ 
+             "INDO-PACIFIFIC BOTTLENOSE DOLPHIN", 
+           species_commonname == "LANCETFISHES NEI" ~ "LANCETFISH NEI", 
+           species_commonname == "LITTLE TUNNY(=ATL.BLACK SKIPJ)" ~ "LITTLE TUNNY", 
+           species_commonname == "MARLINS,SAILFISHES,ETC. NEI" ~ 
+             "MARLINS, SAILFISH, SPEARFISH NEI", 
+           species_commonname == "MARLINS AND SAILFISH AND SPEARFISH NEI" ~ 
+             "MARLINS, SAILFISH, SPEARFISH NEI", 
+           species_commonname == "N ATLANTIC HARVESTFISH" ~ "NORTH ATLANTIC HARVESTFISH", 
+           species_commonname == "PELAGIC THRESHER" ~ "PELAGIC THRESHER SHARK", 
+           species_commonname == "PORBEAGLE" ~ "PORBEAGLE SHARK", 
+           species_commonname == "RAYS STINGRAYS MANTAS NEI" ~ 
+             "RAYS, STINGRAYS, MANTAS NEI",
+           species_commonname == "RAYS AND STINGRAYS AND MANTAS NEI" ~ 
+             "RAYS, STINGRAYS, MANTAS NEI", 
+           species_commonname == "SHARKS (UNIDENTIFIED)" ~ "SHARKS NEI", 
+           species_commonname == "SHARKS VARIOUS NEI" ~ "SHARKS NEI", 
+           species_commonname == "SHARKS, RAYS, SKATES, ETC. NEI" ~ 
+             "SHARKS, RAYS, SKATES NEI", 
+           species_commonname == "SHORT-BILLED SPEARFISH" ~ "SHORTBILL SPEARFISH", 
+           species_commonname == "SHORTFIN MAKO" ~ "SHORTFIN MAKO SHARK", 
+           species_commonname == "SNAPPER (UNIDENTIFIED)" ~ "SNAPPER NEI", 
+           species_commonname == "STIMPSON SURF CLAM" ~ "STIMPSON'S SURF CLAM", 
+           species_commonname == "THRESHER" ~ "THRESHER SHARK", 
+           species_commonname == "TURTLE (UNIDENTIFIED)" ~ "TURTLES NEI",
+           species_commonname == "TURTLES" ~ "TURTLES NEI",
+           species_commonname == "VARIOUS SHARKS NEI" ~ "SHARKS NEI", 
+           species_commonname == "UNIDENTIFIED ALBATROSSES" ~ "ALBATROSSES NEI", 
+           species_commonname == "UNIDENTIFIED SEABIRDS" ~ "SEABIRDS NEI", 
+           species_commonname == "WHALE (UNIDENTIFIED)"  ~ "WHALES NEI", 
+           species_commonname == "WHALES" ~ "WHALES NEI", 
+           species_commonname == "ANGELSHARKS, SAND DEVILS NEI" ~ 
+             "ANGEL SHARKS, SAND DEVILS NEI", 
+           species_commonname == "BARRACUDAS, ETC. NEI" ~ "BARRACUDAS NEI", 
+           species_commonname == "BARRACUDAS" ~ "BARRACUDAS NEI", 
+           species_commonname == "BOREAL (GREENLAND) SHARK" ~ "GREENLAND SHARK", 
+           species_commonname == "DOGFISHES NEI" ~ "DOGFISH SHARKS NEI", 
+           species_commonname == "NON TARGETED, ASSOCIATED AND DEPENDENT SPECIES" ~ 
+             "OTHER SPECIES", 
+           species_commonname == "OTHER" ~ "OTHER SPECIES",
+           species_commonname == "SEABIRDS" ~ "SEABIRDS NEI", 
+           species_commonname == "SHY-TYPE ALBATROSSES" ~ "SHY ALBATROSS NEI",
+           species_commonname == "WOLFFISHES (CATFISH) NEI" ~ "WOLFFISHES NEI",
+           species_commonname == "TRUE TUNAS NEI" ~ "TUNAS NEI",
+           TRUE ~ species_commonname))
+
+# Show new dataframe
+dat %>% 
+  distinct(species_commonname) %>% 
+  mutate(species_commonname = as.character(species_commonname)) %>% 
+  arrange_all()
+```
+
+
+
+## Unique Species Names
+```{r, echo=TRUE}
+# Figure out which names are not consistent accross common names
+fix_names <- NULL
+for(name in unique(dat$species_commonname)) { 
+  temp_dat <- dat %>% 
+    filter(species_commonname == name) %>%
+    select(species_sciname) %>% 
+    distinct_all()
+  if(nrow(temp_dat) > 1) { 
+    need_help <- data.frame("species_commonname" = name, 
+                            "species_sciname" = temp_dat$species_sciname)
+    fix_names <- rbind(fix_names, need_help)
+  } 
+}
+
+dat <- dat %>% 
+  mutate(species_sciname = as.character(species_sciname)) %>% 
+  mutate(species_sciname = case_when(
+    species_commonname == "PORBEAGLE SHARK" ~ "LAMNA NASUS", 
+    species_commonname == "ALBATROSSES NEI" ~ NA_character_, 
+    species_commonname == "TURTLES NEI" ~ NA_character_, 
+    species_commonname == "SEABIRDS NEI" ~ NA_character_, 
+    species_commonname == "OTHER SPECIES" ~ NA_character_, 
+    species_commonname == "WHALES NEI" ~ NA_character_, 
+    species_commonname == "MAKO SHARKS" ~ "ISURUS SPP", 
+    species_commonname == "SHARKS NEI" ~ NA_character_, 
+    species_commonname == "THRESHER SHARKS NEI" ~ "ALOPIAS SPP", 
+    species_commonname == "HAMMERHEAD SHARKS NEI" ~	"SPHYRNA SPP",
+    species_commonname == "TUNAS NEI" ~ "THUNNINI", 
+    species_commonname == "ATLANTIC YELLOW-NOSED ALBATROSS" ~ "THALASSARCHE CHLORORHYNCHOS",
+    species_commonname == "BLACK-BROWED ALBATROSS" ~ "THALASSARCHE MELANOPHRYS", 
+    species_commonname == "PETRELS AND SHEARWATERS NEI" ~ "PROCELLARIIDAE", 
+    species_commonname == "WHITE-CAPPED ALBATROSS" ~ "THALASSARCHE STEADI", 
+    species_commonname == "WHALE SHARK" ~ "RHINCODON TYPUS", 
+    species_commonname == "BIGEYE THRESHER SHARK" ~ "ALOPIAS SUPERCILIOSUS", 
+    species_commonname == "VELVET DOGFISH" ~ "ZAMEUS SQUAMULOSUS", 
+    species_commonname == "DOGFISH SHARKS NEI" ~ "SQUALUS SPP", 
+    species_commonname == "GREENLAND SHARK" ~ "SOMNIOSUS MICROCEPHALUS",
+    species_commonname == "LANCETFISH NEI" ~ "ALEPISAURUS SPP",
+    species_commonname == "BARRACUDAS NEI" ~ "SPHYRAENA SPP", 
+    species_commonname == "AMBERJACKS NEI" ~  "SERIOLA SPP", 
+    species_commonname == "OLIVE RIDLEY TURTLE" ~ "LEPIDOCHELYS OLIVACEA", 
+    species_commonname == "LEATHERBACK TURTLE" ~ "DERMOCHELYS CORIACEA", 
+    species_commonname == "BILLFISH NEI" ~ "XIPHIOIDEI", 
+    species_commonname == "FRIGATE AND BULLET TUNAS" ~ "AUXIS SPP", 
+    species_commonname == "MARLINS NEI" ~ "MAKAIRA SPP", 
+    species_commonname == "BROADNOSE SEVENGILL SHARK" ~ "NOTORYNCHUS CEPEDIANUS",
+    species_commonname == "GROUNDFISHES NEI" ~ "OSTEICHTHYES",
+    species_commonname == "ALBACORE, YELLOWFIN, BIGEYE TUNA" ~ "THUNNUS SPP", 
+    TRUE ~ species_sciname))      
+```
+
+## Gear Types
+```{r, echo=TRUE}
+dat %>% 
+  distinct(gear) %>% 
+  mutate(gear = as.character(gear)) %>%
+  arrange_all()
+
+dat <- dat %>% 
+  mutate(gear = as.character(gear)) %>% 
+  mutate(gear_group = case_when(
+    grepl("gillnet and|gillnet operated", gear) ~ "gillnet with others",
+    grepl("and purse-seine|and purse seine", gear) ~ "purse seine with others",
+    grepl("coastal longline and troll line combination", gear) ~ "longline with others",
+    grepl("hand line and troll line|hand line, pole and line and troll line|rod and reel and pole and line", gear) ~ "various",
+    grepl("baitboat", gear) ~ "baitboat",
+    grepl("longline", gear) ~ "longline",
+    grepl("trawl", gear) ~ "trawl",
+    grepl("handline|hand line", gear) ~ "handline", 
+    grepl("gillnet", gear) ~ "gillnet", 
+    grepl("pair seine", gear) ~ "pair seine",
+    grepl("set lines", gear) ~ "set lines",
+    grepl("not known|gears not|unclassified", gear) ~ NA_character_, 
+    grepl("dredge", gear) ~ "dredge", 
+    grepl("purse-seine|purse seine", gear) ~ "purse seine", 
+    grepl("rod-and-reel|rod and reel", gear) ~ "rod and reel", 
+    grepl("sport", gear) ~ "sportfishing", 
+    grepl("trap", gear) ~ "traps",
+    grepl("pot", gear) ~ "pots",
+    grepl("ring net", gear) ~ "ring net", 
+    grepl("trammel", gear) ~ "trammel", 
+    grepl("troll", gear) ~ "troll", 
+    grepl("harpoon", gear) ~ "harpoon", 
+    grepl("beach seine", gear) ~ "beach seine", 
+    grepl("pole-and-line", gear) ~ "pole and line",
+    grepl("danish seine", gear) ~ "danish seine",
+    TRUE ~ gear))
+
+
+dat %>% 
+  distinct(gear_group) %>% 
+  arrange_all()
+```
+
+## Countries
+```{r, echo=TRUE}
+dat %>% 
+  distinct(country) %>% 
+  mutate(country = as.character(country)) %>%
+  arrange_all()
+
+dat <- dat %>% 
+  mutate(country = as.character(country)) %>% 
+  mutate(country = case_when(
+    grepl("Canada", country) ~ "Canada", 
+    grepl("China", country) ~ "China", 
+    grepl("Taipei", country) ~ "Taipei", 
+    grepl("Denmark", country) ~ "Denmark", 
+    grepl("España", country) ~ "Spain", 
+    grepl("Germany", country) ~ "Germany", 
+    grepl("France", country) ~ "France",
+    grepl("Guinea Ecuatorial|Guinée Rep", country) ~ "Guinea",
+    grepl("Korea", country) ~ "Korea",
+    grepl("Japan", country) ~ "Japan", 
+    grepl("Mixed|NEI|Nei", country) ~ "various", 
+    grepl("ICCAT", country) ~ NA_character_, 
+    grepl("Russia", country) ~ "Russia",
+    grepl("Serbia & Montenegro", country) ~ "Serbia and Montenegro", 
+    grepl("S Tomé e Príncipe", country) ~ "São Tomé and Príncipe", 
+    grepl("UK", country) ~ "United Kingdom", 
+    grepl("U.S.A|United States", country) ~ "United States of America",
+    grepl("Iran", country) ~ "Iran",
+    TRUE ~ country))
+```
+
+## Effort Units
+```{r, echo=TRUE}
+dat %>% 
+  distinct(effort_units) %>% 
+  arrange_all()
+
+dat <- dat %>% 
+  mutate(effort_units = as.character(effort_units)) %>% 
+  mutate(effort_units = case_when(
+    effort_units %in% c("number of sets", "number of sets ") ~ "sets",
+    grepl("hours fished|hours fishing", effort_units) ~ "fishing hours", 
+    grepl("days fished|days fishing", effort_units) ~ "fishing days", 
+    grepl("days present on fishing grounds", effort_units) ~ "days at fishing ground", 
+    TRUE ~ effort_units))
+```
+
+# Save 
+```{r, echo=TRUE}
+write.csv(dat %>% distinct_all(), paste0(file_path, "all_data.csv"), row.names = FALSE)
+```
+

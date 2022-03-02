@@ -1,0 +1,638 @@
+---
+title: "RFMO Data Cleaning - IOTC"
+output: html_notebook
+---
+
+This is a notebook designed to grab data saved in Google Drive and re-format it for easier analyses later.
+
+# Table of Contents: {#top}
+
+- [CE Coastal]
+- [CE Longline]
+- [CE Surface]
+- [NCDB]
+- [SFSKH]
+- [Combining Files]
+
+```{r, include=FALSE}
+# Import libraries
+library(tidyverse)
+library(reshape)
+library(readxl)
+```
+
+# Housekeeping
+```{r, echo=TRUE}
+# List files to choose from
+file_path = "../../data/rfmo-observer-data/inputs/iotc/"
+save_location = "../../data/rfmo-observer-data/intermediates/iotc/"
+outputs_location = "../../data/rfmo-observer-data/outputs/"
+```
+
+# Load Data
+```{r, echo=TRUE}
+# List csv files
+list_files <- list.files(file_path, pattern="csv")
+
+# Load files
+for(file in list_files) { 
+  name <- colsplit(file, "[.]", c("",""))[,1]
+  name <- as.character(colsplit(name, "-", c("","","",""))[,4])
+  temp <- read.csv(paste0(file_path, file))
+  assign(name, temp)
+}
+
+# Clean up
+remove(temp)
+
+# Load excel files
+ncdb <- read_xlsx(paste0(file_path, "IOTC-2019-DATASETS-NCDB_061219.xlsx"), sheet="Catches_Captures")
+sfskh <- read_xlsx(paste0(file_path, "IOTC-2019-WPEB15-DATA09 - SFSKH.xlsx"), sheet="SKH")
+
+# Fleet/Country
+fleet <- read_xlsx(paste0(file_path, "IOTC-2019-DATASETS-CEref.xlsx"), sheet="CodeFleet")
+colnames(fleet) <- c("Fleet", "Country", "French")
+
+# Gear
+gear <- read_xlsx(paste0(file_path, "IOTC-2019-DATASETS-CEref.xlsx"), sheet="CodeGear")
+colnames(gear)[4] <- "gear"
+
+# Effort
+effort <- read_xlsx(paste0(file_path, "IOTC-2019-DATASETS-CEref.xlsx"), sheet="CodeEffort")
+effort <- unique(effort[,c("EffortUnits", "Description")])
+
+# Grid sizes
+grid_size <- data.frame("size" = c(1,2,3,4,5,6), "lat_shift" = c(5,10,10,20,1,5), "lon_shift"=c(10,20,10,20,1,5))
+grid_size <- grid_size %>% # add spatial notes
+  mutate(spatial_notes = paste0("center of ", lat_shift, "x", lon_shift, " cell"))
+grid_size <- grid_size %>%  # fix shift (right now shift == grid size, when it should be 0.5*grid size)
+  mutate(lat_shift = lat_shift/2, 
+         lon_shift = lon_shift/2)
+
+# Species
+species <- read.delim(paste0(file_path, "ASFIS_sp_2019.txt"), sep=",")
+
+# NCDB Location Info
+ncdb_gps <- data.frame("AreaIOTC" = c("Western Indian Ocean", "Eastern Indian Ocean"), 
+                       "latitude" = c(-25, -30), 
+                       "longitude" = c(60, 90), 
+                       "spatial_notes" = c("generated point within larger area",
+                                           "generated point within larger area"))
+```
+[Back To Top](#top)
+
+# CE Coastal
+```{r, echo=TRUE}
+# Filter to year 2000 or greater
+CECoastal <- CECoastal %>% 
+  filter(Year >= 2000)
+
+# Pivot tables so each row represents a different species
+CECoastal <- CECoastal %>% 
+  pivot_longer(cols=YFT.NO:NTAD.MT, names_to = 'speciescode', values_to = 'catch') %>% 
+  filter(catch > 0)
+
+# Split speciescodes into species code and catch units (number vs metric tonnes)
+CECoastal <- CECoastal %>% 
+  separate(speciescode, into=c("speciescode", "catch_units"), sep=-3) %>% 
+  mutate(catch_units = gsub(".NO", "count", catch_units), 
+         catch_units = gsub(".MT", "metric tonnes", catch_units))
+
+# Fix GPS locations and add spatial notes
+CECoastal <- CECoastal %>% 
+  separate(Grid, into = c("size", "quadrant", "latitude", "longitude"), sep = c(1,2,4), convert=TRUE) %>%
+  left_join(grid_size, by="size") %>%
+  mutate(latitude = ifelse(quadrant == 2|quadrant == 3, as.numeric(latitude)*(-1)-lat_shift, as.numeric(latitude)+lat_shift), 
+         longitude == ifelse(quadrant == 3|quadrant == 4, as.numeric(longitude)*(-1)-lon_shift, as.numeric(longitude)+lon_shift))
+
+# Add fleet/country
+CECoastal <- CECoastal %>% 
+  mutate(Fleet = gsub(" ", "", Fleet)) %>% # fix extra spaces
+  left_join(fleet[,c("Fleet", "Country")], by="Fleet") %>%
+  mutate(Country = gsub("[.]", " ", Country), 
+         Country = gsub("REP", "Republic", Country), 
+         Country = str_to_title(Country), 
+         Country = gsub("Uk", "UK", Country), 
+         Country = gsub("Eu ", "", Country))
+
+# Add species data
+CECoastal <- left_join(CECoastal, species[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("speciescode" = "X3A_CODE") )
+
+# Make all species names all caps
+CECoastal$species_sciname <- toupper(CECoastal$Scientific_name)
+CECoastal$species_commonname <- toupper(CECoastal$English_name)
+
+# Fix species names that were not included in the ASFIS codes
+CECoastal <- CECoastal %>% 
+  mutate(species_commonname = ifelse(speciescode == "BILL", "BILLFISH NEI",
+                                     ifelse(speciescode == "NTAD", "OTHER SPECIES", species_commonname)), 
+         species_sciname = ifelse(speciescode == "NTAD", "OTHER SPECIES", species_sciname))
+
+# Add gear
+CECoastal <- CECoastal %>% 
+  left_join(gear[,c("CECode", "gear")], by=c("Gear" = "CECode")) %>% 
+  mutate(gear = tolower(gear),
+         gear = gsub("  ", " ", gear))
+
+# Add effort units
+CECoastal <- CECoastal %>% 
+  left_join(effort[,c("EffortUnits", "Description")], by="EffortUnits") %>%
+  mutate(Description = gsub("Number of ", "", Description), 
+         Description = gsub("Men-days", "men days", Description))
+
+# Create/mutate relevant columns
+CECoastal <- CECoastal %>% 
+  mutate(rfmo = "IOTC", 
+         year = Year, 
+         month = MonthStart, 
+         time_period = "monthly", 
+         country = Country,
+         settype = NA,  
+         effort = Effort,
+         effort_units = Description,
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
+         quality_code = QualityCode, 
+         was_generated = "no", 
+         sources = NA)
+
+# Select relevant columns 
+CECoastal <- CECoastal[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate quarterly data (aggregates)
+quart_agg <- CECoastal %>% 
+  filter(time_period == "monthly") %>%
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(CECoastal), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- CECoastal %>% 
+  filter(time_period == "monthly") %>%
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(CECoastal), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+CECoastal <- CECoastal %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "CECoastal.csv"
+write.csv(CECoastal, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(CECoastal, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# CE Longline
+```{r, echo=TRUE}
+# Filter to year 2000 or greater
+CELongline <- CELongline %>% 
+  filter(Year >= 2000)
+
+# Pivot tables so each row represents a different species
+CELongline <- CELongline %>% 
+  pivot_longer(cols=YFT.NO:NTAD.MT, names_to = 'speciescode', values_to = 'catch') %>% 
+  filter(catch > 0)
+
+# Split speciescodes into species code and catch units (number vs metric tonnes)
+CELongline <- CELongline %>% 
+  separate(speciescode, into=c("speciescode", "catch_units"), sep=-3) %>% 
+  mutate(catch_units = gsub(".NO", "count", catch_units), 
+         catch_units = gsub(".MT", "metric tonnes", catch_units))
+
+# Fix GPS locations and add spatial notes
+CELongline <- CELongline %>% 
+  separate(Grid, into = c("size", "quadrant", "latitude", "longitude"), sep = c(1,2,4), convert=TRUE) %>%
+  left_join(grid_size, by="size") %>%
+  mutate(latitude = ifelse(quadrant == 2|quadrant == 3, as.numeric(latitude)*(-1)-lat_shift, as.numeric(latitude)+lat_shift), 
+         longitude == ifelse(quadrant == 3|quadrant == 4, as.numeric(longitude)*(-1)-lon_shift, as.numeric(longitude)+lon_shift))
+
+# Add fleet/country
+CELongline <- CELongline %>% 
+  mutate(Fleet = gsub(" ", "", Fleet)) %>% # fix extra spaces 
+  left_join(fleet[,c("Fleet", "Country")], by="Fleet") %>%
+  mutate(Country = gsub("[.]", " ", Country), 
+         Country = gsub("REP", "Republic", Country), 
+         Country = str_to_title(Country), 
+         Country = gsub("Uk", "UK", Country), 
+         Country = gsub("Eu ", "", Country), 
+         Country = gsub(",China", "", Country))
+
+# Add species data
+CELongline <- left_join(CELongline, species[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("speciescode" = "X3A_CODE") )
+
+# Make all species names all caps
+CELongline$species_sciname <- toupper(CELongline$Scientific_name)
+CELongline$species_commonname <- toupper(CELongline$English_name)
+
+# Fix species names that were not included in the ASFIS codes
+CELongline <- CELongline %>% 
+  mutate(species_commonname = ifelse(speciescode == "BILL", "BILLFISH NEI",
+                                     ifelse(speciescode == "NTAD", "OTHER SPECIES", species_commonname)), 
+         species_sciname = ifelse(speciescode == "NTAD", "OTHER SPECIES", species_sciname))
+
+# Add gear
+CELongline <- left_join(CELongline, gear[,c("CECode", "gear")], by=c("Gear" = "CECode")) %>%
+  mutate(gear = tolower(gear), 
+         gear = gsub("  ", " ", gear))
+
+# Add effort units
+CELongline <- CELongline %>% 
+  left_join(effort[,c("EffortUnits", "Description")], by="EffortUnits") %>%
+  mutate(Description = gsub("Number of ", "", Description), 
+         Description = gsub("Men-days", "men days", Description), 
+         Description = gsub("sets", "number of sets", Description))
+
+# Create/mutate relevant columns
+CELongline <- CELongline %>% 
+  mutate(rfmo = "IOTC", 
+         year = Year, 
+         month = MonthStart, 
+         time_period = "monthly", 
+         country = Country,
+         settype = NA,  
+         effort = Effort,
+         effort_units = Description,
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
+         quality_code = QualityCode, 
+         was_generated = "no", 
+         sources = NA)
+
+# Select relevant columns 
+CELongline <- CELongline[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate quarterly data (aggregates)
+quart_agg <- CELongline %>% 
+  filter(time_period == "monthly") %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(CELongline), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- CELongline %>% 
+  filter(time_period == "monthly") %>%
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(CELongline), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+CELongline <- CELongline %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "CELongline.csv"
+write.csv(CELongline, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(CELongline, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# CE Surface
+```{r, echo=TRUE}
+# Filter to year 2000 or greater
+CESurface <- CESurface %>% 
+  filter(Year >= 2000)
+
+# Pivot tables so each row represents a different species
+CESurface <- CESurface %>% 
+  pivot_longer(cols=YFT.FS:NTAD.UNCL, names_to = 'speciescode', values_to = 'catch') %>% 
+  filter(catch > 0)
+
+# Split speciescodes into species code and settype
+CESurface <- CESurface %>% 
+  separate(speciescode, into=c("speciescode", "settype"), sep="[.]") %>% 
+  mutate(settype = gsub("FS", "free schools", settype), 
+         settype = gsub("LS", "associated schools", settype), 
+         settype = gsub("UNCL", NA, settype))
+
+# Fix GPS locations and add spatial notes
+CESurface <- CESurface %>% 
+  separate(Grid, into = c("size", "quadrant", "latitude", "longitude"), sep = c(1,2,4), convert=TRUE) %>%
+  left_join(grid_size, by="size") %>%
+  mutate(latitude = ifelse(quadrant == 2|quadrant == 3, as.numeric(latitude)*(-1)-lat_shift, as.numeric(latitude)+lat_shift), 
+         longitude == ifelse(quadrant == 3|quadrant == 4, as.numeric(longitude)*(-1)-lon_shift, as.numeric(longitude)+lon_shift))
+
+# Add fleet/country
+CESurface <- CESurface %>% 
+  mutate(Fleet = gsub(" ", "", Fleet)) %>% # fix extra spaces 
+  left_join(fleet[,c("Fleet", "Country")], by="Fleet") %>%
+  mutate(Country = gsub("[.]", " ", Country), 
+         Country = gsub("REP", "Republic", Country), 
+         Country = str_to_title(Country), 
+         Country = gsub("Uk", "UK", Country), 
+         Country = gsub("Eu ", "", Country), 
+         Country = gsub(",China", "", Country))
+
+# Add species data
+CESurface <- left_join(CESurface, species[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("speciescode" = "X3A_CODE") )
+
+# Make all species names all caps
+CESurface$species_sciname <- toupper(CESurface$Scientific_name)
+CESurface$species_commonname <- toupper(CESurface$English_name)
+
+# Fix species names that were not included in the ASFIS codes
+CESurface <- CESurface %>% 
+  mutate(species_commonname = ifelse(speciescode == "NTAD", "OTHER SPECIES", species_commonname),
+    species_sciname = ifelse(speciescode == "NTAD", "OTHER SPECIES", species_sciname))
+
+# Add gear
+CESurface <- left_join(CESurface, gear[,c("CECode", "gear")], by=c("Gear" = "CECode")) %>%
+  mutate(gear = tolower(gear), 
+         gear = gsub("  ", " ", gear), 
+         gear = gsub("purse seine", "purse-seine", gear),
+         gear = ifelse(Gear == "BBOF", "baitboat (offshore)", gear))
+
+# Add effort units
+CESurface <- CESurface %>% 
+  left_join(effort[,c("EffortUnits", "Description")], by="EffortUnits") %>%
+  mutate(Description = gsub("Number of ", "", Description), 
+         Description = gsub("sets", "number of sets", Description))
+
+# Create/mutate relevant columns
+CESurface <- CESurface %>% 
+  mutate(rfmo = "IOTC", 
+         year = Year, 
+         month = MonthStart, 
+         time_period = "monthly", 
+         country = Country,
+         effort = Effort,
+         effort_units = Description,
+         catch_units = "metric tonnes",
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA, 
+         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
+         quality_code = QualityCode, 
+         was_generated = "no", 
+         sources = NA)
+
+# Select relevant columns 
+CESurface <- CESurface[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate quarterly data (aggregates)
+quart_agg <- CESurface %>% 
+  filter(time_period == "monthly") %>%
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(CESurface), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- CESurface %>% 
+  filter(time_period == "monthly") %>%
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(CESurface), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+CESurface <- CESurface %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "CESurface.csv"
+write.csv(CESurface, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(CESurface, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# NCDB 
+Not sure if this dataset is relevant; no effort data are provided. 
+```{r, echo=TRUE}
+# Keep only data from the 2000 onward
+ncdb <- ncdb %>% 
+  filter(`Year/An` >= 2000)
+
+# Merge with area information to get gps locations  
+ncdb <- ncdb %>% 
+  left_join(ncdb_gps, by=c("AreaIOTC")) 
+
+# Make species/common names consistent 
+ncdb$species_commonname <- toupper(ncdb$Species)
+ncdb$species_sciname <- toupper(ncdb$SpLat)
+
+# Create/alter columns 
+ncdb <- ncdb %>% 
+  mutate(rfmo = "IOTC", 
+         year = `Year/An`, 
+         month = NA, 
+         time_period = "yearly",
+         country = str_to_title(Fleet),
+         gear = tolower(Gear),
+         settype = NA, 
+         effort = NA, 
+         effort_units = NA, 
+         is_targeted = ifelse(SpIOTC == TRUE, "yes-stated", "no"),
+         catch = `Catch/Capture(t)`,
+         catch_units = "metric tonnes",
+         measurement = NA, 
+         measurement_unit = NA, 
+         measurement_method = NA,
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = NA
+         )
+
+# Keep only relevant columns
+ncdb <- ncdb[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Fix gear types to work with other RFMOs
+ncdb <- ncdb %>% 
+  mutate(gear = gsub("purse seine", "purse-seine", gear))
+
+# Fix countries
+ncdb <- ncdb %>% 
+  mutate(country = gsub("Eu.", "", country), 
+         country = gsub("Un.", "United", country), 
+         country = gsub("Rep.", "Republic", country), 
+         country = gsub(",China", "", country),
+         country = gsub("[.]", " ", country), 
+         country = str_to_title(country), 
+         country = gsub("Uk", "UK", country))
+
+# Save File
+filename <- "ncdb.csv"
+write.csv(ncdb, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(ncdb)
+```
+[Back To Top](#top)
+
+# SFSKH
+It's unclear if these data are relevant. Provides size estimates for sharks caught, but there's no error estimates. 
+Will add anyway, and include another column in the new dataset (will have to update other RFMOs).
+```{r, echo=TRUE}
+# Fix GPS locations and add spatial notes
+sfskh <- sfskh %>% 
+  separate(Grid, into = c("size", "quadrant", "latitude", "longitude"), sep = c(1,2,4), convert=TRUE) %>%
+  left_join(grid_size, by="size") %>%
+  mutate(latitude = ifelse(quadrant == 2|quadrant == 3, as.numeric(latitude)*(-1)-lat_shift, as.numeric(latitude)+lat_shift), 
+         longitude == ifelse(quadrant == 3|quadrant == 4, as.numeric(longitude)*(-1)-lon_shift, as.numeric(longitude)+lon_shift))
+
+# Move size classes to different columns
+sfskh <- sfskh %>% 
+  pivot_longer(cols=C001:C150, names_to = 'class_code', values_to = 'catch') %>% 
+  filter(catch > 0)
+
+# Fix class codes to reflect actual sizes
+sfskh <- sfskh %>% 
+  mutate(class_code = gsub("C", "", class_code),
+         class_code = as.numeric(class_code),
+         measurement = FirstClassLow+(SizeInterval*(class_code-1)), 
+         measurement_method = "fork length", 
+         measurement_unit = "cm")
+
+# Get country codes
+sfskh <- sfskh %>% 
+  left_join(fleet[,c("Fleet", "Country")], by="Fleet") %>%
+  mutate(Country = gsub("[.]", " ", Country), 
+         Country = gsub("REP", "Republic", Country), 
+         Country = str_to_title(Country), 
+         Country = gsub("Uk", "UK", Country), 
+         Country = gsub("Eu ", "", Country), 
+         Country = gsub(",China", "", Country))
+
+# Get gear codes
+sfskh <- sfskh %>% 
+  left_join(gear[,c("CECode", "gear")], by=c("Gear" = "CECode")) %>%
+  mutate(gear = tolower(gear), 
+         gear = gsub("  ", " ", gear), 
+         gear = ifelse(Gear == "LLOB", "longline", gear), # not in the metadata - guessing
+         gear = ifelse(Gear == "ELLOB", "longline targeting swordfish", gear), 
+         gear = ifelse(Gear == "PSOB", "purse-seine", gear))
+
+# Get species
+sfskh <- sfskh %>% 
+  left_join(species[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("Species" = "X3A_CODE") )
+
+# Alter settype 
+sfskh <- sfskh %>% 
+  mutate(settype = SchoolType, 
+         settype = gsub("UNCL", "unclassified", settype), 
+         settype = gsub("FS", "free schools", settype), 
+         settype = gsub("LS", "associated schools", settype))
+
+# Add other columns
+sfskh <- sfskh %>% 
+  mutate(rfmo = "IOTC",
+         year = Year, 
+         month = MonthStart, 
+         time_period = MonthEnd - MonthStart, 
+         time_period = gsub(0, "monthly", time_period), 
+         time_period = gsub(6, "7 months", time_period), 
+         time_period = gsub(2, "quarterly", time_period), 
+         country = Country, 
+         effort = NA, 
+         effort_units = NA, 
+         species_commonname = toupper(English_name), 
+         species_sciname = toupper(Scientific_name),
+         is_targeted = "no", 
+         catch_units = "count",
+         quality_code = 0, 
+         was_generated = "no", 
+         sources = NA)
+
+# Keep only relevant columns
+sfskh <- sfskh[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate quarterly data (aggregates)
+quart_agg <- sfskh %>% 
+  filter(time_period == "monthly") %>% 
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(sfskh), c("catch"))) %>%
+  summarise(catch = sum(catch))
+
+# Generate yearly data (aggregates)
+yearly_agg <- sfskh %>% 
+  filter(time_period == "monthly") %>%
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(sfskh), c("catch"))) %>%
+  summarise(catch = sum(catch))
+
+# Combine raw with generated data
+sfskh <- sfskh %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "sfskh.csv"
+write.csv(sfskh, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(sfskh, quart_agg, yearly_agg)
+```
+[Back To Top](#top)
+
+# Combining Files
+```{r echo=TRUE}
+# Find list of cleaned data
+files_list <- list.files(save_location, pattern="csv")
+
+# Make sure it doesn't include the 'all' dataset
+files_list <- files_list[!grepl("all", files_list)]
+
+# Dataframe to hold combined data
+combined_dat <- NULL
+
+# Loop through files and save to master dataframe
+for(file in files_list) {
+  temp <- read.csv(paste0(save_location, file))
+  combined_dat <- rbind(combined_dat, temp)
+}
+
+# Remove instances of NA for lat or lon (some issues with grid in sfskh)
+combined_dat <- combined_dat %>% 
+  filter(!is.na(latitude) & !is.na(longitude))
+
+# Save final data file for this RFMO
+filename <- "iotc-all.csv"
+write.csv(combined_dat, paste0(outputs_location, filename), row.names = FALSE)
+```
+[Back To Top](#top)
