@@ -1,4 +1,4 @@
-## Run WCPFC-specific mdoel sceario
+## Run WCPFC-specific model scenario - Effort Option
 
 #' Function that runs a wide variety of model scenarios for the WCPFC region
 #' @param data dataframe of catch values
