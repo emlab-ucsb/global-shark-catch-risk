@@ -1,0 +1,238 @@
+---
+title: "Data Cleaning for ML - All RFMO data"
+output: html_notebook
+---
+
+This notebook combines RFMO catch data with SDM, SST, chl-a, and GFW data for all RFMOs using 5x5 and 1x1 degree grids.
+
+Data that are reported in 1x1 cells are left as is. Data that are reported in 5x5 cells are converted to 1x1 cells using catch = catch/25. 
+
+Data that are reported as counts are left as is. Data that are reported as metric tonnes are converted to count using established length-weight relationships and common lengths from Fishbase to calculate a common weight (mt). Reported catch (mt) is divided by the common weight (mt) to get count. 
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Load Libraries
+library(tidyverse)
+library(readxl)
+library(googledrive)
+library(sf)
+library(rgdal)
+```
+
+```{r include=FALSE}
+# Load Data
+all_data <- vroom::vroom("../../data/rfmo-observer-data/outputs/all_data.csv") 
+
+# Species grouping
+species_groups <- read_xlsx("../../data/species-information/species_groups.xlsx", sheet = "species_list")
+
+# SDM data
+all_sdm <- read.csv("../../data/iucn-sdm-data/outputs/global_combined_iucn_sdm_1x1.csv")
+
+# SST data
+sst_data <- read.csv("../../data/sea-surface-temperature/outputs/binned_global_sst_1x1.csv")
+
+# Chlorophyll-A data
+chla_data <- read.csv("../../data/chlorophyll-a/outputs/binned_global_chla_1x1.csv")
+
+# GFW data
+gfw_data <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_1x1.csv")
+```
+
+```{r message=FALSE, warning=FALSE}
+# Cut down a bit if can... 
+short_data <- NULL 
+
+# But some splits we have to do by rfmo... 
+for(rfmos in unique(all_data$rfmo)) { 
+  
+  temp <- all_data %>% 
+    filter(rfmo == rfmos &
+             spatial_notes %in% c("center of 5x5 cell", "center of 1x1 cell") &
+           (gear_group == "longline" & effort_units == "hooks") &
+           was_generated == "no" &
+           year <= 2018)
+
+  if(rfmos == "WCPFC") { 
+    temp <- temp %>% 
+      filter(sources %in% c("bycatch and effort from observers",
+                            "self-reported catch and effort by flag + year")) %>% 
+      mutate(aggregation_period = "yearly")
+  } else { 
+      temp <- temp %>%
+        group_by(rfmo, year, latitude, longitude, gear_group, time_period, effort_units,
+                 spatial_notes, species_commonname, species_sciname, catch_units) %>% 
+        summarise(catch = sum(catch, na.rm = T)) %>% 
+        ungroup() %>% 
+        mutate(was_generated = "yes", 
+               aggregation_period = time_period, 
+               time_period = "yearly") %>% 
+        filter(aggregation_period == "monthly")
+  }
+  
+  short_data <- short_data %>% 
+    bind_rows(temp)
+} 
+
+# Combine to remove the country specific data (since the best model doesn't use it)
+short_data <- short_data %>% 
+  mutate(species_sciname = ifelse(is.na(species_sciname), species_commonname, species_sciname)) %>%
+  group_by(rfmo, year, latitude, longitude, gear_group, species_commonname, spatial_notes,
+           species_sciname, catch_units) %>% 
+  summarise(catch = sum(catch, na.rm = T)) %>% 
+  ungroup() 
+
+names <- short_data %>% 
+  select(species_commonname, species_sciname) %>% 
+  distinct_all()
+
+# pad with zeros...
+short_data <- short_data %>%
+  select(-species_commonname) %>%
+  pivot_wider(names_from = c(year, species_sciname, catch_units),
+              values_fn = sum,
+              values_from = catch,
+              values_fill = 0) %>%
+  pivot_longer(cols = colnames(.)[!grepl("latitude|longitude|rfmo|gear_group|spatial_notes", colnames(.))],
+               names_to = c("year","species_sciname", "catch_units"),
+               names_sep = "_",
+               values_to = "catch")
+
+short_data <- short_data %>% 
+  left_join(names) %>% 
+  left_join(species_groups %>% 
+              rename(species_group = group, 
+                     species_commonname = english_name) %>% 
+              mutate(species_commonname = str_to_upper(species_commonname)) %>% 
+              select(-species_commonname),
+            by = c("species_sciname" = "scientific_name")) %>% 
+  select(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes,
+         species_commonname, species_sciname, catch, catch_units) %>%
+  mutate(species_sciname = case_when(species_sciname == "TETRAPTURUS AUDAX" ~ "KAJIKIA AUDAX",
+                                     species_sciname == "MAKAIRA INDICA" ~ "ISTIOMPAX INDICA", 
+                                     species_sciname == "TETRAPTURUS ALBIDUS" ~ "KAJIKIA ALBIDA",
+                                     species_sciname == "TETRAPTURUS PFLUEGERI" ~ "TETRAPTURUS PFLUEGERI", 
+                                     TRUE ~ species_sciname))
+
+# how much data contributed to "nei"s
+short_data <- short_data %>% 
+  mutate(species_group = case_when(is.na(species_group) & 
+                                     grepl("NEI|OTHER", species_commonname) & 
+                                     grepl("SHARK", species_commonname) ~ "sharks and rays", 
+                                   species_commonname == "SILKY OR BLACKTIP SHARK" ~ "sharks and rays",
+                                   is.na(species_group) & 
+                                     grepl("NEI|OTHER", species_commonname) & 
+                                     grepl("MARLIN|BILLFISH|TUNA-LIKE", species_commonname) ~ "tuna-like species", 
+                                   species_commonname == "FRIGATE AND BULLET TUNAS" ~ "tunas",
+                                   is.na(species_group) & 
+                                     grepl("NEI|OTHER", species_commonname) & 
+                                     grepl("TUNA", species_commonname) ~ "tunas",
+                                   TRUE ~ species_group))
+
+# Now standardize nei species if can...
+short_data <- short_data %>%
+  mutate(species_resolution = case_when(grepl("NEI|OTHER|SPP", species_commonname) ~ "NEI",
+                                        grepl("NEI|OTHER|SPP", species_sciname) ~ "NEI",
+                                        species_commonname == "SILKY OR BLACKTIP SHARK" ~ "NEI",
+                                        species_commonname == "FRIGATE AND BULLET TUNAS" ~ "NEI",
+                                        !grepl(" ", species_sciname) ~ "NEI",
+                                        TRUE ~ "SPECIES SPECIFIC"),
+         species_commonname = case_when(species_commonname == "OTHER SHARKS" ~ "SHARKS NEI",
+                                        species_commonname == "OTHER TUNA" ~ "TUNAS NEI",
+                                        TRUE ~ species_commonname),
+         species_sciname = case_when(species_commonname == "TUNAS NEI" ~ "THUNNUS",
+                                     is.na(species_sciname) ~ species_commonname,
+                                     TRUE ~ gsub(" SPP|[.]", "", species_sciname)))
+```
+
+```{r rescale-rfmo-data}
+# Rescale to 1x1 degree 
+locations_y <- short_data %>%
+  filter(spatial_notes == "center of 5x5 cell") %>% 
+  select(latitude) %>%
+  distinct_all() %>%
+  mutate(latitude_lag0 = latitude,
+         latitude_lag1 = latitude-1,
+         latitude_lag2 = latitude-2,
+         latitude_plus1 = latitude+1,
+         latitude_plus2 = latitude+2) %>%
+  pivot_longer(latitude_lag0:latitude_plus2, values_to = "latitude_rescaled") %>%
+  select(-name)
+
+locations_x <- short_data %>%
+  filter(spatial_notes == "center of 5x5 cell") %>% 
+  select(longitude) %>%
+  distinct_all() %>%
+  mutate(longitude_lag0 = longitude,
+         longitude_lag1 = longitude-1,
+         longitude_lag2 = longitude-2,
+         longitude_plus1 = longitude+1,
+         longitude_plus2 = longitude+2) %>%
+  pivot_longer(longitude_lag0:longitude_plus2, values_to = "longitude_rescaled") %>%
+  select(-name)
+
+# New dataset
+short_data_5x5 <- short_data %>%
+  filter(spatial_notes == "center of 5x5 cell") %>%  
+  left_join(locations_y) %>%
+  left_join(locations_x) %>%
+  mutate(longitude_rescaled = ifelse(is.na(longitude_rescaled), longitude, longitude_rescaled),
+         latitude_rescaled = ifelse(is.na(latitude_rescaled), latitude, latitude_rescaled),
+         catch = catch/25) %>%
+  rename(latitude_orig = latitude,
+         longitude_orig = longitude,
+         latitude = latitude_rescaled,
+         longitude = longitude_rescaled) %>% 
+  mutate(spatial_notes = "center of 1x1 cell") %>% 
+  select(colnames(short_data))
+
+short_data <- short_data %>% 
+  filter(spatial_notes != "center of 5x5 cell") %>% 
+  bind_rows(short_data_5x5)
+```
+
+```{r}
+# Update mt to count
+mt_count <- read.csv("../../data/species-information/spp_weight_comparison.csv") %>% 
+  mutate(scientific_name = str_to_upper(scientific_name)) 
+
+# Add sharks nei to the mix
+mt_count <- mt_count %>% 
+  bind_rows(data.frame(scientific_name = "OTHER SHARKS", 
+                       common_weight_kg = mean(mt_count$common_weight_kg, na.rm = T))) %>% 
+  mutate(common_weight_mt = common_weight_kg/1000) %>% 
+  dplyr::select(scientific_name, common_weight_mt)
+
+# Run conversions
+short_data_mt <- short_data %>% 
+  filter(catch_units == "metric tonnes") %>% 
+  left_join(mt_count, by = c("species_sciname" = "scientific_name")) %>% 
+  mutate(catch = catch/common_weight_mt, 
+         catch_units = "count") %>%
+  select(colnames(short_data))
+
+# Add back to dataset
+short_data <- short_data %>% 
+  filter(catch_units == "count") %>% 
+  bind_rows(short_data_mt) %>% 
+  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>% 
+  summarise(catch = sum(catch, na.rm = T)) %>% 
+  ungroup()
+```
+
+# Combine the data
+
+```{r}
+combined_data <- short_data %>%
+  filter(species_group %in% c("sharks and rays")) %>% # only run using shark and ray datasets
+  mutate(year = as.integer(year)) %>% 
+  filter(year >= 2012) %>% # lower limit for GFW data
+  left_join(all_sdm) %>% 
+  left_join(gfw_data) %>% 
+  left_join(sst_data) %>% 
+  left_join(chla_data) %>% 
+  filter(!is.na(mean_chla) | !is.na(mean_sst) | !is.na(sdm) | !is.na(total_fishing_kwh))
+
+write.csv(combined_data, 
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1.csv", 
+          row.names = FALSE)
+```
