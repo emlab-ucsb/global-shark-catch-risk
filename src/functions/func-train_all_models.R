@@ -6,7 +6,7 @@
 #' @param trees a numeric value for number of trees to use in the modeling framework
 #' 
 
-train_all_models <- function(data, save_loc, trees = 1000){
+train_all_models <- function(data, save_loc){
   
   for(rfmos in unique(data$rfmo)) { 
     
@@ -115,15 +115,21 @@ train_all_models <- function(data, save_loc, trees = 1000){
       ###
       # Classification Model
       ###
-      ntrees = trees 
       
-      class_model_tune <- rand_forest(trees = ntrees, 
+      set.seed(1234)
+      class_folds <- vfold_cv(train_class)
+      
+      class_model_tune <- rand_forest(trees = 1000, 
                                  mtry = tune(),  # tune the hyperparameters
                                  min_n = tune()) %>% 
-        set_engine("ranger", 
-                   importance = "impurity") %>% 
-        set_mode("classification") %>% 
-        translate()
+        set_engine("ranger", num.threads = 8) %>% 
+        set_mode("classification")
+      
+      class_grid  <- grid_regular(
+        min_n(range = c(10, 30)),
+        mtry(range = c(2, 8)),
+        levels = 5
+      )
       
       # Set Workflow
       class_wflow_tune <- 
@@ -131,66 +137,67 @@ train_all_models <- function(data, save_loc, trees = 1000){
         add_model(class_model_tune) %>% 
         add_recipe(class_recipe)
       
-      # Cross validation - https://juliasilge.com/blog/sf-trees-random-tuning/
-      ## EB stopped here
+      # Run tuning
+      cluster <- parallel::makePSOCKcluster(8)
+      doParallel::registerDoParallel(cluster)
+      
       set.seed(1234)
-      class_folds <- vfold_cv(train_class)
+      tune_res_rf_class <-  class_wflow_tune %>% finetune::tune_race_anova(resamples = class_folds, grid = class_grid)
       
-      doParallel::registerDoParallel()
-      set.seed(1234)
-      tune_class <- tune_grid(class_wflow_tune, 
-                              resamples = class_folds, 
-                              grid = 25)
+      best_tune_class <- tune_res_rf_class %>% 
+        tune::select_best(metric = "roc_auc")
       
-      
-      
-      # Set Workflow
-      class_wflow <- 
-        workflow() %>% 
-        add_model(class_model) %>% 
-        add_recipe(class_recipe)
-      
-      # Fit Model
-      class_fit <- class_wflow %>% 
+      class_tuned <- class_wflow_tune %>% 
+        finalize_workflow(best_tune_class) %>% 
         fit(data = train_class)
-      
-      # Return feature importance
-      importance_class <- class_fit %>% 
-        extract_fit_parsnip() %>% 
-        vip::vi()
       
       ###
       # Regression Model
       ###
-      reg_model <- rand_forest(trees = ntrees, 
+      set.seed(1234)
+      reg_folds <- vfold_cv(train_reg)
+      
+      reg_model_tune <- rand_forest(trees = 1000, 
                                mtry = tune(), # tune the hyperparameters 
                                min_n = tune()) %>% 
-        set_engine("ranger", 
-                   importance = "impurity") %>% 
+        set_engine("ranger", num.threads = 8) %>% 
         set_mode("regression") %>% 
         translate()
       
+      reg_grid <- grid_regular(
+        min_n(range = c(10, 30)),
+        mtry(range = c(2, 8)),
+        levels = 5
+      )
+      
       # Set Workflow
-      reg_wflow <- 
+      reg_wflow_tune <- 
         workflow() %>% 
-        add_model(reg_model) %>% 
+        add_model(reg_model_tune) %>% 
         add_recipe(reg_recipe)
       
-      # Fit Model
-      reg_fit <- reg_wflow %>% 
+      cluster <- parallel::makePSOCKcluster(8)
+      doParallel::registerDoParallel(cluster)
+      
+      set.seed(1235)
+      tune_res_rf_reg <- reg_wflow_tune %>% finetune::tune_race_anova(resamples = reg_folds, grid = reg_grid)
+      
+      best_tune_reg <- tune_res_rf_reg %>% 
+        tune::select_best(metric = "rsq")
+      
+      reg_tuned <- reg_wflow_tune %>% 
+        finalize_workflow(best_tune_reg) %>% 
         fit(data = train_reg)
       
-      # Return feature importance
-      importance_reg <- reg_fit %>% 
-        extract_fit_parsnip() %>% 
-        vip::vi()
+      class_tuned_pred <- class_tuned %>% 
+        predict(final_test)
       
       # Predict Final Testing
-      final_class <- predict(class_fit, final_test) %>% 
+      final_class <- predict(class_tuned, final_test) %>% 
         mutate(.pred_class = ifelse(.pred_class == "absent", 0, 1)) %>% 
         bind_cols(final_test)
       
-      final_reg <- predict(reg_fit, final_test) %>% 
+      final_reg <- predict(reg_tuned, final_test) %>% 
         bind_cols(final_test)
       
       final_predict <- final_class %>% 
@@ -203,8 +210,8 @@ train_all_models <- function(data, save_loc, trees = 1000){
         dplyr::select(-.estimator) 
       
       # Save outputs
-      output_fit <- list("class_fit", class_fit, 
-                         "reg_fit" = reg_fit, 
+      output_fit <- list("class_tuned", class_tuned, 
+                         "reg_tuned" = reg_tuned, 
                          "class_predict" = final_class, 
                          "reg_predict" = final_reg, 
                          "final_predict" = final_predict, 
