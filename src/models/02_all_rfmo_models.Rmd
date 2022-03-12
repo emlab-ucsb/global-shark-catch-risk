@@ -35,6 +35,7 @@ library(vroom)
 options(scipen = 1000000)
 
 # Get functions
+source("../functions/func-all_rfmo_initial_models.R")
 source("../functions/func-train_all_models.R")
 source("../functions/func-train_test_split.R")
 
@@ -43,10 +44,29 @@ save_loc = "../../data/model-data/outputs/all-rfmo-models/"
 
 ```{r include=FALSE}
 # Read in data... 
-dat <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1.csv") 
+dat <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count.csv") 
+dat2 <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count.csv") 
+dat3 <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count.csv") 
 ```
 
 ```{r}
-# Run through models 
-train_all_models(data = dat, save_loc = save_loc)
+all_rfmo_initial_models(data = dat, save_loc = paste0(save_loc, "5x5_count_"))
+all_rfmo_initial_models(data = dat2, save_loc = paste0(save_loc, "1x1_count_"))
+all_rfmo_initial_models(data = dat3, save_loc = paste0(save_loc, "1x1_mt_to_count_"))
 ```
+
+
+```{r}
+# Run through models 
+# train_all_models(data = dat %>% filter(rfmo == "WCPFC"), save_loc = save_loc)
+```
+
+```{r}
+# files <- list.files(save_loc)
+# for(file in files) {
+#   name <- gsub("_trained_model.rds", "", file)
+#   t <- readRDS(file.path(save_loc, file))
+#   assign(name, t)
+# } 
+```
+

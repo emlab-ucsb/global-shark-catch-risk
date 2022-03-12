@@ -20,22 +20,28 @@ library(rgdal)
 
 ```{r include=FALSE}
 # Load Data
-all_data <- vroom::vroom("../../data/rfmo-observer-data/outputs/all_data.csv") 
+all_data <- read.csv("../../data/rfmo-observer-data/outputs/all_data.csv") 
 
 # Species grouping
-species_groups <- read_xlsx("../../data/species-information/species_groups.xlsx", sheet = "species_list")
+species_groups <- read_xlsx("../../data/species-information/species_groups.xlsx", sheet = "species_list") %>% 
+  filter(group %in% c("tunas", "tuna-like species", "sharks and rays")) %>% 
+  mutate(scientific_name = str_to_upper(scientific_name))
 
 # SDM data
 all_sdm <- read.csv("../../data/iucn-sdm-data/outputs/global_combined_iucn_sdm_1x1.csv")
+all_sdm_5x5 <- read.csv("../../data/iucn-sdm-data/outputs/global_combined_iucn_sdm_5x5.csv")
 
 # SST data
 sst_data <- read.csv("../../data/sea-surface-temperature/outputs/binned_global_sst_1x1.csv")
+sst_data_5x5 <- read.csv("../../data/sea-surface-temperature/outputs/binned_global_sst_5x5.csv")
 
 # Chlorophyll-A data
 chla_data <- read.csv("../../data/chlorophyll-a/outputs/binned_global_chla_1x1.csv")
+chla_data_5x5 <- read.csv("../../data/chlorophyll-a/outputs/binned_global_chla_5x5.csv")
 
 # GFW data
 gfw_data <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_1x1.csv")
+gfw_data_5x5 <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_5x5.csv")
 ```
 
 ```{r message=FALSE, warning=FALSE}
@@ -48,7 +54,7 @@ for(rfmos in unique(all_data$rfmo)) {
   temp <- all_data %>% 
     filter(rfmo == rfmos &
              spatial_notes %in% c("center of 5x5 cell", "center of 1x1 cell") &
-           (gear_group == "longline" & effort_units == "hooks") &
+           gear_group == "longline" & effort_units == "hooks" &
            was_generated == "no" &
            year <= 2018)
 
@@ -76,23 +82,23 @@ for(rfmos in unique(all_data$rfmo)) {
 # Combine to remove the country specific data (since the best model doesn't use it)
 short_data <- short_data %>% 
   mutate(species_sciname = ifelse(is.na(species_sciname), species_commonname, species_sciname)) %>%
-  group_by(rfmo, year, latitude, longitude, gear_group, species_commonname, spatial_notes,
+  group_by(rfmo, year, latitude, longitude, gear_group, effort_units, species_commonname, spatial_notes,
            species_sciname, catch_units) %>% 
   summarise(catch = sum(catch, na.rm = T)) %>% 
   ungroup() 
 
 names <- short_data %>% 
-  select(species_commonname, species_sciname) %>% 
+  dplyr::select(species_commonname, species_sciname) %>% 
   distinct_all()
 
 # pad with zeros...
 short_data <- short_data %>%
-  select(-species_commonname) %>%
+  dplyr::select(-species_commonname) %>%
   pivot_wider(names_from = c(year, species_sciname, catch_units),
               values_fn = sum,
               values_from = catch,
               values_fill = 0) %>%
-  pivot_longer(cols = colnames(.)[!grepl("latitude|longitude|rfmo|gear_group|spatial_notes", colnames(.))],
+  pivot_longer(cols = colnames(.)[!grepl("latitude|longitude|rfmo|gear_group|effort_units|spatial_notes", colnames(.))],
                names_to = c("year","species_sciname", "catch_units"),
                names_sep = "_",
                values_to = "catch")
@@ -105,7 +111,7 @@ short_data <- short_data %>%
               mutate(species_commonname = str_to_upper(species_commonname)) %>% 
               select(-species_commonname),
             by = c("species_sciname" = "scientific_name")) %>% 
-  select(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes,
+  select(rfmo, year, latitude, longitude, gear_group, effort_units, species_group, spatial_notes,
          species_commonname, species_sciname, catch, catch_units) %>%
   mutate(species_sciname = case_when(species_sciname == "TETRAPTURUS AUDAX" ~ "KAJIKIA AUDAX",
                                      species_sciname == "MAKAIRA INDICA" ~ "ISTIOMPAX INDICA", 
@@ -140,14 +146,40 @@ short_data <- short_data %>%
                                         species_commonname == "OTHER TUNA" ~ "TUNAS NEI",
                                         TRUE ~ species_commonname),
          species_sciname = case_when(species_commonname == "TUNAS NEI" ~ "THUNNUS",
+                                     species_commonname == "SHARKS NEI" ~ "SHARKS NEI", 
                                      is.na(species_sciname) ~ species_commonname,
                                      TRUE ~ gsub(" SPP|[.]", "", species_sciname)))
+
+# Only keep species for sharks and rays
+short_data <- short_data %>%
+  filter(species_group %in% c("sharks and rays")) # only run using shark and ray datasets
 ```
+
+# Combine the data
+
+```{r}
+combined_data <- short_data %>%
+  mutate(year = as.integer(year)) %>% 
+  filter(spatial_notes == "center of 5x5 cell" & catch_units == "count") %>% 
+  filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
+  left_join(all_sdm_5x5 %>% distinct_all()) %>% 
+  left_join(gfw_data_5x5 %>% distinct_all()) %>% 
+  left_join(sst_data_5x5 %>% distinct_all()) %>% 
+  left_join(chla_data_5x5 %>% distinct_all()) %>% 
+  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
+  filter(!is.na(sdm))
+
+write.csv(combined_data, 
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count.csv", 
+          row.names = FALSE)
+```
+
+# Convert to 1x1 degrees
 
 ```{r rescale-rfmo-data}
 # Rescale to 1x1 degree 
 locations_y <- short_data %>%
-  filter(spatial_notes == "center of 5x5 cell") %>% 
+  filter(spatial_notes == "center of 5x5 cell") %>%
   select(latitude) %>%
   distinct_all() %>%
   mutate(latitude_lag0 = latitude,
@@ -159,7 +191,7 @@ locations_y <- short_data %>%
   select(-name)
 
 locations_x <- short_data %>%
-  filter(spatial_notes == "center of 5x5 cell") %>% 
+  filter(spatial_notes == "center of 5x5 cell") %>%
   select(longitude) %>%
   distinct_all() %>%
   mutate(longitude_lag0 = longitude,
@@ -172,7 +204,7 @@ locations_x <- short_data %>%
 
 # New dataset
 short_data_5x5 <- short_data %>%
-  filter(spatial_notes == "center of 5x5 cell") %>%  
+  filter(spatial_notes == "center of 5x5 cell") %>%
   left_join(locations_y) %>%
   left_join(locations_x) %>%
   mutate(longitude_rescaled = ifelse(is.na(longitude_rescaled), longitude, longitude_rescaled),
@@ -181,41 +213,62 @@ short_data_5x5 <- short_data %>%
   rename(latitude_orig = latitude,
          longitude_orig = longitude,
          latitude = latitude_rescaled,
-         longitude = longitude_rescaled) %>% 
-  mutate(spatial_notes = "center of 1x1 cell") %>% 
+         longitude = longitude_rescaled) %>%
+  mutate(spatial_notes = "center of 1x1 cell") %>%
   select(colnames(short_data))
 
-short_data <- short_data %>% 
-  filter(spatial_notes != "center of 5x5 cell") %>% 
+short_data <- short_data %>%
+  filter(spatial_notes != "center of 5x5 cell") %>%
   bind_rows(short_data_5x5)
 ```
 
+# Combine the data
+
+```{r}
+combined_data <- short_data %>%
+  mutate(year = as.integer(year)) %>% 
+  filter(catch_units == "count") %>% 
+  filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
+  left_join(all_sdm %>% distinct_all()) %>% 
+  left_join(gfw_data %>% distinct_all()) %>% 
+  left_join(sst_data %>% distinct_all()) %>% 
+  left_join(chla_data %>% distinct_all()) %>% 
+  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
+  filter(!is.na(sdm))
+
+write.csv(combined_data, 
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count.csv", 
+          row.names = FALSE)
+```
+
+# Convert mt to count
+
 ```{r}
 # Update mt to count
-mt_count <- read.csv("../../data/species-information/spp_weight_comparison.csv") %>% 
-  mutate(scientific_name = str_to_upper(scientific_name)) 
+mt_count <- read.csv("../../data/species-information/spp_weight_comparison.csv") %>%
+  mutate(scientific_name = str_to_upper(scientific_name))
 
 # Add sharks nei to the mix
-mt_count <- mt_count %>% 
-  bind_rows(data.frame(scientific_name = "OTHER SHARKS", 
-                       common_weight_kg = mean(mt_count$common_weight_kg, na.rm = T))) %>% 
-  mutate(common_weight_mt = common_weight_kg/1000) %>% 
+mt_count <- mt_count %>%
+  bind_rows(data.frame(scientific_name = "SHARKS NEI",
+                       common_weight_kg = mean(mt_count$common_weight_kg, na.rm = T))) %>%
+  mutate(common_weight_mt = common_weight_kg/1000) %>%
   dplyr::select(scientific_name, common_weight_mt)
 
 # Run conversions
-short_data_mt <- short_data %>% 
-  filter(catch_units == "metric tonnes") %>% 
-  left_join(mt_count, by = c("species_sciname" = "scientific_name")) %>% 
-  mutate(catch = catch/common_weight_mt, 
+short_data_mt <- short_data %>%
+  filter(catch_units == "metric tonnes") %>%
+  left_join(mt_count, by = c("species_sciname" = "scientific_name")) %>%
+  mutate(catch = catch/common_weight_mt,
          catch_units = "count") %>%
   select(colnames(short_data))
 
 # Add back to dataset
-short_data <- short_data %>% 
-  filter(catch_units == "count") %>% 
-  bind_rows(short_data_mt) %>% 
-  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>% 
-  summarise(catch = sum(catch, na.rm = T)) %>% 
+short_data <- short_data %>%
+  filter(catch_units == "count") %>%
+  bind_rows(short_data_mt) %>%
+  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>%
+  summarise(catch = sum(catch, na.rm = T)) %>%
   ungroup()
 ```
 
@@ -223,16 +276,16 @@ short_data <- short_data %>%
 
 ```{r}
 combined_data <- short_data %>%
-  filter(species_group %in% c("sharks and rays")) %>% # only run using shark and ray datasets
   mutate(year = as.integer(year)) %>% 
-  filter(year >= 2012) %>% # lower limit for GFW data
-  left_join(all_sdm) %>% 
-  left_join(gfw_data) %>% 
-  left_join(sst_data) %>% 
-  left_join(chla_data) %>% 
-  filter(!is.na(mean_chla) | !is.na(mean_sst) | !is.na(sdm) | !is.na(total_fishing_kwh))
+  filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
+  left_join(all_sdm %>% distinct_all()) %>% 
+  left_join(gfw_data %>% distinct_all()) %>% 
+  left_join(sst_data %>% distinct_all()) %>% 
+  left_join(chla_data %>% distinct_all()) %>% 
+  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
+  filter(!is.na(sdm))
 
 write.csv(combined_data, 
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1.csv", 
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count.csv", 
           row.names = FALSE)
 ```
