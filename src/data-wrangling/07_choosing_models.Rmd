@@ -1,0 +1,135 @@
+---
+title: "Choosing the Right Model"
+output: html_notebook
+---
+
+This script tests the difference in spatial distribution data (5x5 or 1x1 cells) among the RFMOs to determine which model might be the most appropriate.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Load Libraries
+library(tidyverse)
+library(readxl)
+library(googledrive)
+library(sf)
+library(rgdal)
+```
+
+
+```{r}
+# Load data
+all_data <- read.csv("../../data/rfmo-observer-data/outputs/all_data.csv") 
+
+# Species grouping
+species_groups <- read_xlsx("../../data/species-information/species_groups.xlsx", sheet = "species_list") %>% 
+  filter(group %in% c("tunas", "tuna-like species", "sharks and rays")) %>% 
+  mutate(scientific_name = str_to_upper(scientific_name))
+```
+
+```{r}
+# Cut down a bit if can... 
+short_data <- NULL 
+
+# But some splits we have to do by rfmo... 
+for(rfmos in unique(all_data$rfmo)) { 
+  
+  temp <- all_data %>% 
+    filter(rfmo == rfmos &
+             spatial_notes %in% c("center of 5x5 cell", "center of 1x1 cell") &
+           gear_group == "longline" & effort_units == "hooks" &
+           was_generated == "no" &
+           year <= 2018)
+
+  if(rfmos == "WCPFC") { 
+    temp <- temp %>% 
+      filter(sources %in% c("bycatch and effort from observers",
+                            "self-reported catch and effort by flag + year")) %>% 
+      mutate(aggregation_period = "yearly")
+  } else { 
+      temp <- temp %>%
+        group_by(rfmo, year, latitude, longitude, gear_group, time_period, effort_units,
+                 spatial_notes, species_commonname, species_sciname, catch_units) %>% 
+        summarise(catch = sum(catch, na.rm = T)) %>% 
+        ungroup() %>% 
+        mutate(was_generated = "yes", 
+               aggregation_period = time_period, 
+               time_period = "yearly") %>% 
+        filter(aggregation_period == "monthly")
+  }
+  
+  short_data <- short_data %>% 
+    bind_rows(temp)
+} 
+
+# Combine to remove the country specific data (since the best model doesn't use it)
+short_data <- short_data %>% 
+  mutate(species_sciname = ifelse(is.na(species_sciname), species_commonname, species_sciname)) %>%
+  group_by(rfmo, year, latitude, longitude, gear_group, effort_units, species_commonname, spatial_notes,
+           species_sciname, catch_units) %>% 
+  summarise(catch = sum(catch, na.rm = T)) %>% 
+  ungroup() 
+
+# Change some scientific names that throw issues
+short_data <- short_data %>% 
+  left_join(species_groups %>% 
+              rename(species_group = group, 
+                     species_commonname = english_name) %>% 
+              mutate(species_commonname = str_to_upper(species_commonname)) %>% 
+              select(-species_commonname),
+            by = c("species_sciname" = "scientific_name")) %>% 
+  select(rfmo, year, latitude, longitude, gear_group, effort_units, species_group, spatial_notes,
+         species_commonname, species_sciname, catch, catch_units) %>%
+  mutate(species_sciname = case_when(species_sciname == "TETRAPTURUS AUDAX" ~ "KAJIKIA AUDAX",
+                                     species_sciname == "MAKAIRA INDICA" ~ "ISTIOMPAX INDICA", 
+                                     species_sciname == "TETRAPTURUS ALBIDUS" ~ "KAJIKIA ALBIDA",
+                                     species_sciname == "TETRAPTURUS PFLUEGERI" ~ "TETRAPTURUS PFLUEGERI", 
+                                     TRUE ~ species_sciname))
+
+# how much data contributed to "nei"s
+short_data <- short_data %>% 
+  mutate(species_group = case_when(is.na(species_group) & 
+                                     grepl("NEI|OTHER", species_commonname) & 
+                                     grepl("SHARK", species_commonname) ~ "sharks and rays", 
+                                   species_commonname == "SILKY OR BLACKTIP SHARK" ~ "sharks and rays",
+                                   is.na(species_group) & 
+                                     grepl("NEI|OTHER", species_commonname) & 
+                                     grepl("MARLIN|BILLFISH|TUNA-LIKE", species_commonname) ~ "tuna-like species", 
+                                   species_commonname == "FRIGATE AND BULLET TUNAS" ~ "tunas",
+                                   is.na(species_group) & 
+                                     grepl("NEI|OTHER", species_commonname) & 
+                                     grepl("TUNA", species_commonname) ~ "tunas",
+                                   TRUE ~ species_group))
+
+# Now standardize nei species if can...
+short_data <- short_data %>%
+  mutate(species_resolution = case_when(grepl("NEI|OTHER|SPP", species_commonname) ~ "NEI",
+                                        grepl("NEI|OTHER|SPP", species_sciname) ~ "NEI",
+                                        species_commonname == "SILKY OR BLACKTIP SHARK" ~ "NEI",
+                                        species_commonname == "FRIGATE AND BULLET TUNAS" ~ "NEI",
+                                        !grepl(" ", species_sciname) ~ "NEI",
+                                        TRUE ~ "SPECIES SPECIFIC"),
+         species_commonname = case_when(species_commonname == "OTHER SHARKS" ~ "SHARKS NEI",
+                                        species_commonname == "OTHER TUNA" ~ "TUNAS NEI",
+                                        TRUE ~ species_commonname),
+         species_sciname = case_when(species_commonname == "TUNAS NEI" ~ "THUNNUS",
+                                     species_commonname == "SHARKS NEI" ~ "SHARKS NEI", 
+                                     is.na(species_sciname) ~ species_commonname,
+                                     TRUE ~ gsub(" SPP|[.]", "", species_sciname)))
+
+# Only keep species for sharks and rays
+short_data <- short_data %>%
+  filter(species_group %in% c("sharks and rays")) # only run using shark and ray datasets
+
+
+short_data %>% 
+  group_by(rfmo, spatial_notes, catch_units) %>% 
+  summarise(n_rows = n()) %>% 
+  ungroup() %>% 
+  left_join(short_data %>% 
+              group_by(rfmo) %>% 
+              summarise(n_total = n()) %>% 
+              ungroup()) %>% 
+  mutate(perc_total = n_rows/n_total*100) %>% 
+  select(rfmo, spatial_notes, catch_units, perc_total) %>% 
+  pivot_wider(names_from = c(spatial_notes, catch_units), values_from = perc_total, names_sep = "|")
+```
+
