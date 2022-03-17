@@ -165,12 +165,58 @@ combined_data <- short_data %>%
   left_join(all_sdm_5x5 %>% distinct_all()) %>% 
   left_join(gfw_data_5x5 %>% distinct_all()) %>% 
   left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all()) %>% 
-  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
-  filter(!is.na(sdm))
+  left_join(chla_data_5x5 %>% distinct_all()) 
+
+write.csv(combined_data,
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count.csv",
+          row.names = FALSE)
+```
+
+# Convert mt to count
+
+```{r}
+# Update mt to count
+mt_count <- read.csv("../../data/species-information/spp_weight_comparison.csv") %>%
+  mutate(scientific_name = str_to_upper(scientific_name))
+
+# Add sharks nei to the mix
+mt_count <- mt_count %>%
+  bind_rows(data.frame(scientific_name = "SHARKS NEI",
+                       common_weight_kg = mean(mt_count$common_weight_kg, na.rm = T))) %>%
+  mutate(common_weight_mt = common_weight_kg/1000) %>%
+  dplyr::select(scientific_name, common_weight_mt)
+
+# Run conversions
+short_data_mt <- short_data %>%
+  filter(catch_units == "metric tonnes") %>%
+  left_join(mt_count, by = c("species_sciname" = "scientific_name")) %>%
+  mutate(catch = catch/common_weight_mt,
+         catch_units = "count") %>%
+  select(colnames(short_data))
+
+# Add back to dataset
+short_data2 <- short_data %>%
+  filter(catch_units == "count") %>%
+  bind_rows(short_data_mt) %>%
+  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>%
+  summarise(catch = sum(catch, na.rm = T)) %>%
+  ungroup()
+```
+
+# Combine the data
+
+```{r}
+combined_data <- short_data2 %>%
+  mutate(year = as.integer(year)) %>% 
+  filter(spatial_notes == "center of 5x5 cell") %>% 
+  filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
+  left_join(all_sdm_5x5 %>% distinct_all()) %>% 
+  left_join(gfw_data_5x5 %>% distinct_all()) %>% 
+  left_join(sst_data_5x5 %>% distinct_all()) %>% 
+  left_join(chla_data_5x5 %>% distinct_all())
 
 write.csv(combined_data, 
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count.csv", 
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count.csv", 
           row.names = FALSE)
 ```
 
@@ -232,9 +278,7 @@ combined_data <- short_data %>%
   left_join(all_sdm %>% distinct_all()) %>% 
   left_join(gfw_data %>% distinct_all()) %>% 
   left_join(sst_data %>% distinct_all()) %>% 
-  left_join(chla_data %>% distinct_all()) %>% 
-  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
-  filter(!is.na(sdm))
+  left_join(chla_data %>% distinct_all()) 
 
 write.csv(combined_data, 
           "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count.csv", 
@@ -281,9 +325,7 @@ combined_data <- short_data %>%
   left_join(all_sdm %>% distinct_all()) %>% 
   left_join(gfw_data %>% distinct_all()) %>% 
   left_join(sst_data %>% distinct_all()) %>% 
-  left_join(chla_data %>% distinct_all()) %>% 
-  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
-  filter(!is.na(sdm))
+  left_join(chla_data %>% distinct_all()) 
 
 write.csv(combined_data, 
           "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count.csv", 

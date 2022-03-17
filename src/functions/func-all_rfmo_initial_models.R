@@ -129,7 +129,7 @@ all_rfmo_initial_models <- function(data, save_loc){
         add_model(class_model_tune) %>% 
         add_recipe(class_recipe)
       
-      class_tuned <- class_wflow_tune %>% 
+      class_fit <- class_wflow_tune %>% 
         fit(data = train_class)
       
       ###
@@ -147,15 +147,15 @@ all_rfmo_initial_models <- function(data, save_loc){
         add_model(reg_model_tune) %>% 
         add_recipe(reg_recipe)
       
-      reg_tuned <- reg_wflow_tune %>% 
+      reg_fit <- reg_wflow_tune %>% 
         fit(data = train_reg)
       
       # Predict Final Testing
-      final_class <- predict(class_tuned, final_test) %>% 
+      final_class <- predict(class_fit, final_test) %>% 
         mutate(.pred_class = ifelse(.pred_class == "absent", 0, 1)) %>% 
         bind_cols(final_test)
       
-      final_reg <- predict(reg_tuned, final_test) %>% 
+      final_reg <- predict(reg_fit, final_test) %>% 
         bind_cols(final_test)
       
       final_predict <- final_class %>% 
@@ -177,8 +177,42 @@ all_rfmo_initial_models <- function(data, save_loc){
       
       final_metrics_total <- final_metrics_total %>% 
         bind_rows(final_metrics)
+      
+      # Predict on full dataset
+      prep_pred <- prep_ll %>% 
+        group_by(latitude, longitude) %>% 
+        mutate(source_effort = mean(source_effort, na.rm = T), 
+               mean_chla = mean(mean_chla, na.rm = T), 
+               mean_sst = mean(mean_sst, na.rm = T),
+               cv_chla = mean(cv_chla, na.rm = T), 
+               cv_sst = mean(cv_sst, na.rm = T)) %>% 
+        ungroup() %>% 
+        dplyr::select(pres_abs, catch, sdm, species_commonname, mean_sst, mean_chla, cv_sst, cv_chla, source_effort, latitude, longitude, year) %>% 
+        distinct_all()
+      
+      pred_class <- predict(class_fit, prep_pred) %>% 
+        mutate(.pred_class = ifelse(.pred_class == "absent", 0, 1)) %>% 
+        bind_cols(prep_pred)
+      
+      pred_reg <- predict(reg_fit, prep_pred) %>% 
+        bind_cols(prep_pred)
+      
+      full_predict <- pred_class %>% 
+        left_join(pred_reg) %>% 
+        mutate(.final_pred = .pred_class*.pred)
+      
+      output_fit <- list("class_fit", class_fit, 
+                         "reg_fit" = reg_fit, 
+                         "class_predict" = final_class, 
+                         "reg_predict" = final_reg, 
+                         "final_predict" = final_predict, 
+                         "full_predict" = full_predict,
+                         "metrics" = final_metrics)
+      
+      saveRDS(output_fit, paste0(save_loc, rfmos, "_untuned_trained_model.rds"))
     
     }
   }
   write.csv(final_metrics_total, paste0(save_loc, "all_rfmos_results.csv"), row.names = FALSE)
+  
 } 

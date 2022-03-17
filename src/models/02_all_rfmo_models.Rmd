@@ -45,14 +45,16 @@ save_loc = "../../data/model-data/outputs/all-rfmo-models/"
 ```{r include=FALSE}
 # Read in data... 
 dat <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count.csv") 
-dat2 <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count.csv") 
-dat3 <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count.csv") 
+dat2 <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count.csv") 
+dat3 <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count.csv") 
+dat4 <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count.csv") 
 ```
 
 ```{r}
 all_rfmo_initial_models(data = dat, save_loc = paste0(save_loc, "5x5_count_"))
-all_rfmo_initial_models(data = dat2, save_loc = paste0(save_loc, "1x1_count_"))
-all_rfmo_initial_models(data = dat3, save_loc = paste0(save_loc, "1x1_mt_to_count_"))
+all_rfmo_initial_models(data = dat2, save_loc = paste0(save_loc, "5x5_mt_to_count_"))
+all_rfmo_initial_models(data = dat3, save_loc = paste0(save_loc, "1x1_count_"))
+all_rfmo_initial_models(data = dat4, save_loc = paste0(save_loc, "1x1_mt_to_count_"))
 ```
 
 
