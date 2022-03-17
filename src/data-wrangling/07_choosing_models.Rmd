@@ -8,7 +8,7 @@ output:
       in_header: ../header.tex
 ---
 
-This script tests the difference in spatial distribution data (5x5 or 1x1 cells) among the RFMOs to determine which model might be the most appropriate.
+This script tests the difference in spatial distribution data (5x5 or 1x1 cells) and catch reporting (count or count and metric tonnes converted t ocount) among the RFMOs to determine which model might be the most appropriate.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -139,7 +139,7 @@ short_data <- short_data %>%
   filter(species_group %in% c("sharks and rays") & catch > 0) # only run using shark and ray datasets
 ```
 
-```{r}
+```{r fig.cap = "RFMO data breakdowns."}
 short_data_table <- short_data %>% 
   group_by(rfmo, spatial_notes, catch_units) %>% 
   summarise(n_rows = n()) %>% 
@@ -171,6 +171,19 @@ land_low_res_moll <- projectRaster(land_low_res_moll, crs = 4326)
 ```
 
 # IATTC
+
+```{r fig.cap = "IATTC data breakdown.",  fig.width = 5}
+ggplot() + 
+  geom_bar(data = short_data_table %>% 
+             filter(rfmo == "IATTC") %>% 
+             mutate(group = paste0(spatial_notes, " (", catch_units, ")")), mapping = aes(x = rfmo, weight = perc_total, fill = group)) + 
+  scale_fill_manual("", values = c("center of 1x1 cell (count)" = "lightskyblue1", 
+                                   "center of 1x1 cell (metric tonnes)" = "lightskyblue4", 
+                                   "center of 5x5 cell (count)" = "darkolivegreen3", 
+                                   "center of 5x5 cell (metric tonnes)" = "darkolivegreen")) + 
+  ylab("% of all data (rows)") + xlab("") + 
+  theme_classic()
+```
 
 All bycatch data from IATTC were reported at a 5x5 degree grid as counts or metric tonnes. 
 
@@ -381,6 +394,19 @@ ggdraw() +
 
 # ICCAT
 
+```{r fig.cap = "ICCAT data breakdown.", fig.width = 5}
+ggplot() + 
+  geom_bar(data = short_data_table %>% 
+             filter(rfmo == "ICCAT") %>% 
+             mutate(group = paste0(spatial_notes, " (", catch_units, ")")), mapping = aes(x = rfmo, weight = perc_total, fill = group)) + 
+  scale_fill_manual("", values = c("center of 1x1 cell (count)" = "lightskyblue1", 
+                                   "center of 1x1 cell (metric tonnes)" = "lightskyblue4", 
+                                   "center of 5x5 cell (count)" = "darkolivegreen3", 
+                                   "center of 5x5 cell (metric tonnes)" = "darkolivegreen")) + 
+  ylab("% of all data (rows)") + xlab("") + 
+  theme_classic()
+```
+
 All bycatch data from ICCAT were reported at a 5x5 degree grid and a 1x1 degree grid as counts or metric tonnes. Most bycatch data was reported at a 5x5 degree grid as metric tonnes.
 
 We ran four models: 
@@ -589,6 +615,19 @@ ggdraw() +
 
 # IOTC
 
+```{r fig.cap = "IOTC data breakdown.", fig.width = 5}
+ggplot() + 
+  geom_bar(data = short_data_table %>% 
+             filter(rfmo == "IOTC") %>% 
+             mutate(group = paste0(spatial_notes, " (", catch_units, ")")), mapping = aes(x = rfmo, weight = perc_total, fill = group)) + 
+  scale_fill_manual("", values = c("center of 1x1 cell (count)" = "lightskyblue1", 
+                                   "center of 1x1 cell (metric tonnes)" = "lightskyblue4", 
+                                   "center of 5x5 cell (count)" = "darkolivegreen3", 
+                                   "center of 5x5 cell (metric tonnes)" = "darkolivegreen")) + 
+  ylab("% of all data (rows)") + xlab("") + 
+  theme_classic()
+```
+
 All bycatch data from IOTC were reported at a 5x5 degree grid and a 1x1 degree grid as counts or metric tonnes. Most bycatch data was reported at a 5x5 degree grid.
 
 We ran four models: 
@@ -796,6 +835,19 @@ ggdraw() +
 ```
 
 # WCPFC
+
+```{r fig.cap = "WCPFC data breakdown.", fig.width = 5}
+ggplot() + 
+  geom_bar(data = short_data_table %>% 
+             filter(rfmo == "WCPFC") %>% 
+             mutate(group = paste0(spatial_notes, " (", catch_units, ")")), mapping = aes(x = rfmo, weight = perc_total, fill = group)) + 
+  scale_fill_manual("", values = c("center of 1x1 cell (count)" = "lightskyblue1", 
+                                   "center of 1x1 cell (metric tonnes)" = "lightskyblue4", 
+                                   "center of 5x5 cell (count)" = "darkolivegreen3", 
+                                   "center of 5x5 cell (metric tonnes)" = "darkolivegreen")) + 
+  ylab("% of all data (rows)") + xlab("") + 
+  theme_classic()
+```
 
 All bycatch data from WCPFC were reported at a 5x5 degree grid as counts.
 

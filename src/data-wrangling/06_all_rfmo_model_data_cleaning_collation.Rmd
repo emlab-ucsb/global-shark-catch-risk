@@ -165,7 +165,9 @@ combined_data <- short_data %>%
   left_join(all_sdm_5x5 %>% distinct_all()) %>% 
   left_join(gfw_data_5x5 %>% distinct_all()) %>% 
   left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all()) 
+  left_join(chla_data_5x5 %>% distinct_all()) %>% 
+  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
+  filter(!is.na(sdm))
 
 write.csv(combined_data,
           "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count.csv",
@@ -213,7 +215,9 @@ combined_data <- short_data2 %>%
   left_join(all_sdm_5x5 %>% distinct_all()) %>% 
   left_join(gfw_data_5x5 %>% distinct_all()) %>% 
   left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all())
+  left_join(chla_data_5x5 %>% distinct_all()) %>% 
+  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
+  filter(!is.na(sdm))
 
 write.csv(combined_data, 
           "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count.csv", 
@@ -278,7 +282,9 @@ combined_data <- short_data %>%
   left_join(all_sdm %>% distinct_all()) %>% 
   left_join(gfw_data %>% distinct_all()) %>% 
   left_join(sst_data %>% distinct_all()) %>% 
-  left_join(chla_data %>% distinct_all()) 
+  left_join(chla_data %>% distinct_all()) %>% 
+  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
+  filter(!is.na(sdm))
 
 write.csv(combined_data, 
           "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count.csv", 
@@ -325,7 +331,9 @@ combined_data <- short_data %>%
   left_join(all_sdm %>% distinct_all()) %>% 
   left_join(gfw_data %>% distinct_all()) %>% 
   left_join(sst_data %>% distinct_all()) %>% 
-  left_join(chla_data %>% distinct_all()) 
+  left_join(chla_data %>% distinct_all()) %>% 
+  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
+  filter(!is.na(sdm))
 
 write.csv(combined_data, 
           "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count.csv", 
