@@ -183,7 +183,8 @@ nei_sdms <- nei_sdms %>%
          sdm = mean_sdm)
 
 all_sdm <- all_sdm %>%
-  bind_rows(nei_sdms)
+  bind_rows(nei_sdms) %>% 
+  distinct_all()
 
 write.csv(all_sdm, paste0("../../data/iucn-sdm-data/outputs/global_combined_iucn_sdm_",spatial_scale,"x",spatial_scale,".csv"),
           row.names = F)
@@ -248,7 +249,8 @@ for(file in file_list) {
      ungroup()
 
   sst_data <- sst_data %>%
-    bind_rows(temp_save)
+    bind_rows(temp_save) %>% 
+    distinct_all()
 
 }
 
@@ -317,7 +319,8 @@ for(file in file_list) {
     ungroup()
 
   chla_data <- chla_data %>%
-    bind_rows(temp_save)
+    bind_rows(temp_save) %>% 
+    distinct_all()
 
 }
 
@@ -387,7 +390,8 @@ for(file in file_list) {
            latitude = lat_bin)
 
   ssh_data <- ssh_data %>%
-    bind_rows(temp_save)
+    bind_rows(temp_save) %>% 
+    distinct_all()
 
 }
 
@@ -455,7 +459,8 @@ gfw_shift <- gfw_shift %>%
   summarise(total_fishing_kwh = sum(total_fishing_kwh, na.rm = T)) %>%
   ungroup() %>%
   rename(latitude = lat_bin,
-         longitude = lon_bin)
+         longitude = lon_bin) %>% 
+  distinct_all()
 # save
 write.csv(gfw_shift,  paste0("../../data/global-fishing-watch/outputs/binned_global_gfw_",spatial_scale,"x",spatial_scale,".csv"), row.names = F)
 ```
