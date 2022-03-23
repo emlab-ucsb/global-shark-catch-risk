@@ -30,7 +30,17 @@ run_wcpfc_models_effort <- function(data, save_loc){
     if(effort_source == "gfw") { 
       prep_ll <- data %>%
         mutate(target_effort = total_fishing_kwh) %>% 
-        filter(!is.na(target_effort))
+        filter(!is.na(target_effort)) 
+      
+      # Save to the lowest possible resolution (should just remove duplicates from different effort sources)
+      prep_ll <- prep_ll %>% 
+        group_by(sdm_probability, species_commonname, mean_sst, mean_chla, latitude, longitude, year) %>% 
+        summarise(catch = mean(catch, na.rm = T), 
+                  target_effort = mean(target_effort, na.rm = T)) %>%  
+        ungroup() %>% 
+        mutate(pres_abs = factor(ifelse(catch > 0, "present", "absent")),
+               zone = paste(latitude, longitude, sep = "|"))  
+      
     } else { 
       prep_ll <- data %>% 
         filter(target_sources == effort_source)
@@ -40,6 +50,13 @@ run_wcpfc_models_effort <- function(data, save_loc){
                                   dplyr::select_if(grepl("target_effort|target_catch", colnames(.))) %>% 
                                   dplyr::select_if(colSums(.) == 0))) %>% 
         filter(!is.na(target_effort))
+      
+      # Save to lowest possible resolution (should just remove duplicates from different effort sources)
+      # prep_ll <- prep_ll %>% 
+      #   group_by(across(c(-catch, -target_effort))) %>% 
+      #   summarise(catch = mean(catch, na.rm = T), 
+      #             target_effort = mean(target_effort, na.rm = T)) %>% 
+      #   ungroup() 
     }
     
     # Add spatial groups
@@ -107,7 +124,7 @@ run_wcpfc_models_effort <- function(data, save_loc){
                                               "target effort",
                                               "bycatch sdms, species name, sst mean, chla mean, total effort", 
                                               "target catch in mt (only data from flagquarter or flagyear)", 
-                                              "bycatch sdms, species name, sst mean, chla mean, total effort by country  (only data from flagquarter or flagyear)", 
+                                              "bycatch sdms, species name, sst mean, chla mean, total effort by country (only data from flagquarter or flagyear)", 
                                               "bycatch sdms, species name, sst mean, chla mean, total effort by country, target catch by species in mt (only data from flagquarter or flagyear)"), 
                                effort_sources = c(rep("self-reported catch and effort by month", 3), 
                                                   rep(NA, 3), 

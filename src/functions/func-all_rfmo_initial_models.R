@@ -22,6 +22,10 @@ all_rfmo_initial_models <- function(data, save_loc){
       mutate(pres_abs = factor(ifelse(catch > 0, "present", "absent")),
              zone = paste(latitude, longitude, sep = "|"))  %>% 
       filter(!is.na(total_fishing_kwh)) %>% 
+      group_by(year, latitude, longitude, gear_group, effort_units, species_group, species_commonname, species_sciname, catch_units, species_resolution,  species_commonname, species_sciname, species_group, catch_units, sdm_probability, mean_sst, median_sst, min_sst, max_sst, sd_sst, se_sst, cv_sst, mean_chla, median_chla, min_chla, max_chla, sd_chla, se_chla, cv_chla, mean_ssh, median_ssh, min_ssh, max_ssh, sd_ssh, se_ssh, cv_ssh, target_effort, median_price_group, median_price_species) %>% 
+      summarize(catch = sum(catch, na.rm = T), 
+                target_effort = mean(target_effort, na.rm = T)) %>% 
+      ungroup() 
       distinct_all()
     
     if(nrow(prep_ll) == 0) { 

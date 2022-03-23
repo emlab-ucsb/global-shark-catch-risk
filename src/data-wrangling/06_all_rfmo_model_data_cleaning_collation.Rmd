@@ -20,7 +20,20 @@ library(rgdal)
 
 ```{r include=FALSE}
 # Load Data
-all_data <- read.csv("../../data/rfmo-observer-data/outputs/all_data.csv") 
+all_data <- read.csv("../../data/rfmo-observer-data/outputs/all_data.csv")  %>%  # for non-wcpfc data (we already cleaned wcpfc)
+  filter(rfmo != "WCPFC")
+
+cleaned_wcpfc <- read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_all.csv") %>% 
+    filter(gear == "longline" & 
+             catch_units == "count" & 
+             effort_units == "hooks") %>% 
+    mutate_if(is_character, as.factor) %>% 
+    arrange(year, latitude, longitude) %>%
+  filter(target_sources == "self-reported catch and effort by flag + year") %>%
+  select(-colnames(prep_ll %>% # remove columns where target effort or catch sums to 0
+                              dplyr::select_if(grepl("target_effort|target_catch", colnames(.))) %>% 
+                              dplyr::select_if(colSums(.) == 0))) %>% 
+    filter(!is.na(target_effort))
 
 # Species grouping
 species_groups <- read_xlsx("../../data/species-information/species_groups.xlsx", sheet = "species_list") %>% 
@@ -42,6 +55,25 @@ chla_data_5x5 <- read.csv("../../data/chlorophyll-a/outputs/binned_global_chla_5
 # GFW data
 gfw_data <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_1x1.csv")
 gfw_data_5x5 <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_5x5.csv")
+
+# Group price data
+# Ex-vessel price data
+prices <- read.csv("../../data/ex-vessel-prices/exvessel_price_database_1976_2017.csv")
+
+prices <- prices %>% 
+  mutate(ASFIS_species = str_to_upper(ASFIS_species), 
+         scientific_name = str_to_upper(scientific_name), 
+         ASFIS_species = case_when(ASFIS_species == "INDO-PACIF. BOTTLENOSE DOLPHIN" ~  "INDO-PACIFIC BOTTLENOSE DOLPHIN", 
+                                   ASFIS_species == "SHORTFIN MAKO" ~ "SHORTFIN MAKO SHARK", 
+                                   ASFIS_species == "ALBACORE" ~ "ALBACORE TUNA", 
+                                   TRUE ~ ASFIS_species), 
+         ISSCAAP_group = case_when(ISSCAAP_group == "Sharks, rays, chimaeras" ~ "sharks and rays", 
+                                   ISSCAAP_group == "Miscellaneous aquatic mammals" ~ "marine mammals", 
+                                   ISSCAAP_group == "Turtles" ~ "turtles", 
+                                   TRUE ~ paste(ISSCAAP_group))) %>% 
+  rename(year = Year, 
+         species_commonname = ASFIS_species, 
+         species_group = ISSCAAP_group)
 ```
 
 ```{r message=FALSE, warning=FALSE}
@@ -54,31 +86,59 @@ for(rfmos in unique(all_data$rfmo)) {
   temp <- all_data %>% 
     filter(rfmo == rfmos &
              spatial_notes %in% c("center of 5x5 cell", "center of 1x1 cell") &
-           gear_group == "longline" & effort_units == "hooks" &
+           gear_group == "longline" & #effort_units == "hooks" &
+             catch_units %in% c("metric tonnes", "count") & 
            was_generated == "no" &
            year <= 2018)
 
-  if(rfmos == "WCPFC") { 
-    temp <- temp %>% 
-      filter(sources %in% c("bycatch and effort from observers",
-                            "self-reported catch and effort by flag + year")) %>% 
-      mutate(aggregation_period = "yearly")
-  } else { 
+  # if(rfmos == "WCPFC") { 
+  #   temp <- temp %>% 
+  #     filter(sources %in% c("bycatch and effort from observers",
+  #                           "self-reported catch and effort by flag + year")) %>% 
+  #     mutate(aggregation_period = "yearly")
+  # } else { 
       temp <- temp %>%
-        group_by(rfmo, year, latitude, longitude, gear_group, time_period, effort_units,
+        select(rfmo, year, country, latitude, longitude, gear_group, time_period, effort, effort_units, spatial_notes, 
+               species_commonname, species_sciname, catch, catch_units) %>% 
+        distinct_all() %>% 
+        group_by(rfmo, year, country, latitude, longitude, gear_group, time_period, effort_units,
                  spatial_notes, species_commonname, species_sciname, catch_units) %>% 
-        summarise(catch = sum(catch, na.rm = T)) %>% 
+        summarise(catch = sum(catch, na.rm = T), 
+                  effort = sum(effort, na.rm = T)) %>% 
         ungroup() %>% 
         mutate(was_generated = "yes", 
                aggregation_period = time_period, 
                time_period = "yearly") %>% 
         filter(aggregation_period == "monthly")
-  }
+  # }
   
   short_data <- short_data %>% 
     bind_rows(temp)
 } 
 
+# Calculate effort for model runs
+effort_pivot <- short_data %>% 
+  filter(effort_units == "hooks") %>% 
+  dplyr::select(rfmo, year, country, latitude, longitude, gear_group, time_period, effort_units, effort, spatial_notes) %>% 
+  distinct_all() %>% 
+  group_by(rfmo, year, country, latitude, longitude, gear_group, time_period, effort_units, spatial_notes) %>% 
+  summarise(effort = sum(effort, na.rm = T)) %>% 
+  ungroup()
+
+effort_pivot <- effort_pivot %>% 
+  group_by(rfmo, year, latitude, longitude, gear_group, time_period, effort_units, spatial_notes) %>% 
+  summarise(total_effort = sum(effort, na.rm = T)) %>% 
+  ungroup() %>%
+  full_join(effort_pivot  %>%
+               pivot_wider(names_from = country, 
+                           values_from = effort, 
+                           values_fn = sum, 
+                           values_fill = 0), 
+            by = c("year","rfmo", "time_period", "latitude", "longitude", "gear_group", "effort_units", "spatial_notes")) 
+
+colnames(effort_pivot)[10:ncol(effort_pivot)] <- paste0("total_effort_",colnames(effort_pivot)[10:ncol(effort_pivot)])
+  
+  
 # Combine to remove the country specific data (since the best model doesn't use it)
 short_data <- short_data %>% 
   mutate(species_sciname = ifelse(is.na(species_sciname), species_commonname, species_sciname)) %>%
@@ -91,8 +151,12 @@ names <- short_data %>%
   dplyr::select(species_commonname, species_sciname) %>% 
   distinct_all()
 
+short_data2 <- short_data %>% 
+  full_join(., effort_pivot) %>%
+  mutate(species_sciname = ifelse(is.na(species_sciname), "empty", species_sciname))
+
 # pad with zeros...
-short_data <- short_data %>%
+short_data2 <- short_data %>%
   dplyr::select(-species_commonname) %>%
   pivot_wider(names_from = c(year, species_sciname, catch_units),
               values_fn = sum,
@@ -152,7 +216,8 @@ short_data <- short_data %>%
 
 # Only keep species for sharks and rays
 short_data <- short_data %>%
-  filter(species_group %in% c("sharks and rays")) # only run using shark and ray datasets
+  filter(species_group %in% c("sharks and rays")) %>%  # only run using shark and ray datasets
+  bind_rows(cleaned_wcpfc)
 ```
 
 # Combine the data
@@ -178,7 +243,7 @@ write.csv(combined_data,
 
 ```{r}
 # Update mt to count
-mt_count <- read.csv("../../data/species-information/spp_weight_comparison.csv") %>%
+mt_count <- read.csv("../../data/species-information/spp_weight_count_conversion.csv") %>%
   mutate(scientific_name = str_to_upper(scientific_name))
 
 # Add sharks nei to the mix
@@ -295,7 +360,7 @@ write.csv(combined_data,
 
 ```{r}
 # Update mt to count
-mt_count <- read.csv("../../data/species-information/spp_weight_comparison.csv") %>%
+mt_count <- read.csv("../../data/species-information/spp_weight_count_conversion.csv") %>%
   mutate(scientific_name = str_to_upper(scientific_name))
 
 # Add sharks nei to the mix

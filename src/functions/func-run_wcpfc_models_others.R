@@ -18,13 +18,17 @@ run_wcpfc_models_others <- function(data, save_loc){
     mutate_if(is_character, as.factor) %>% 
     arrange(year, latitude, longitude) %>% 
     fill(mean_sst:cv_ssh, .direction = "downup") %>% 
-    mutate(target_effort = total_fishing_kwh) %>% 
-    filter(!is.na(target_effort) & 
-             target_sources == "self-reported catch and effort by month") %>% # just choosing one - it doesn't matter because all the bycatch data are from observers
     mutate(pres_abs = factor(ifelse(catch > 0, "present", "absent")),
-           zone = paste(latitude, longitude, sep = "|")) %>% 
-    dplyr::select(year:catch, catch_units, sdm_probability, mean_sst:cv_ssh, target_effort, median_price_group, median_price_species, pres_abs, zone) %>% 
-    distinct_all()
+           zone = paste(latitude, longitude, sep = "|"))  
+  
+  prep_ll <- prep_ll %>% 
+    filter(target_sources == "self-reported catch and effort by flag + year")
+  
+  prep_ll <- prep_ll %>% 
+    dplyr::select(-colnames(prep_ll %>% # remove columns where target effort or catch sums to 0
+                              dplyr::select_if(grepl("target_effort|target_catch", colnames(.))) %>% 
+                              dplyr::select_if(colSums(.) == 0))) %>% 
+    filter(!is.na(target_effort))
   
   # Add spatial groups
   unique_pts <- prep_ll %>% 
@@ -91,83 +95,106 @@ run_wcpfc_models_others <- function(data, save_loc){
             # Grab data
             train_class <- train_data_class_orig %>% 
               dplyr::select(pres_abs, sdm_probability, species_commonname, mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh, 
-                            median_price_group, median_price_species, target_effort) %>% 
+                            median_price_group, median_price_species, 
+                            colnames(train_data_class_orig)[grepl("target_effort", colnames(train_data_class_orig)) &
+                                                              grepl("longline", colnames(train_data_class_orig))]) %>% 
               distinct_all()
             
             train_reg <- train_data_reg_orig %>% 
               dplyr::select(catch, sdm_probability, species_commonname, mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh, 
-                            median_price_group, median_price_species, target_effort) %>% 
+                            median_price_group, median_price_species, colnames(train_data_reg_orig)[grepl("target_effort", colnames(train_data_reg_orig)) &
+                                                                                                        grepl("longline", colnames(train_data_reg_orig))]) %>% 
               distinct_all()
             
             final_test <- test_data_class_orig %>% 
               dplyr::select(pres_abs, catch, sdm_probability, species_commonname, mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh, 
-                            median_price_group, median_price_species, target_effort, latitude, longitude, year) %>% 
+                            median_price_group, median_price_species, 
+                            colnames(train_data_class_orig)[grepl("target_effort", colnames(train_data_class_orig)) & grepl("longline", colnames(train_data_class_orig))], 
+                            latitude, longitude, year) %>% 
               distinct_all()
             
             if(ssh_options == FALSE) { 
               train_class <- train_class %>% 
-                dplyr::select(-mean_ssh, -cv_ssh)
+                dplyr::select(-mean_ssh, -cv_ssh) %>% 
+                distinct_all()
               
               train_reg <- train_reg %>% 
-                dplyr::select(-mean_ssh, -cv_ssh)
+                dplyr::select(-mean_ssh, -cv_ssh) %>% 
+                distinct_all()
               
               final_test <- final_test %>% 
-                dplyr::select(-mean_ssh, -cv_ssh)
+                dplyr::select(-mean_ssh, -cv_ssh) %>% 
+                distinct_all()
             }
             
             if(enviro_options == "mean" & ssh_options == TRUE) { 
               train_class <- train_class %>% 
-                dplyr::select(-cv_sst, -cv_chla, -cv_ssh)
+                dplyr::select(-cv_sst, -cv_chla, -cv_ssh) %>% 
+                distinct_all()
               
               train_reg <- train_reg %>% 
-                dplyr::select(-cv_sst, -cv_chla, -cv_ssh)
+                dplyr::select(-cv_sst, -cv_chla, -cv_ssh) %>% 
+                distinct_all()
               
               final_test <- final_test %>% 
-                dplyr::select(-cv_sst, -cv_chla, -cv_ssh)
+                dplyr::select(-cv_sst, -cv_chla, -cv_ssh) %>% 
+                distinct_all()
             }
             
             if(enviro_options == "mean" & ssh_options  == FALSE) { 
               train_class <- train_class %>% 
-                dplyr::select(-cv_sst, -cv_chla)
+                dplyr::select(-cv_sst, -cv_chla) %>% 
+                distinct_all()
               
               train_reg <- train_reg %>% 
-                dplyr::select(-cv_sst, -cv_chla)
+                dplyr::select(-cv_sst, -cv_chla) %>% 
+                distinct_all()
               
               final_test <- final_test %>% 
-                dplyr::select(-cv_sst, -cv_chla)
+                dplyr::select(-cv_sst, -cv_chla) %>% 
+                distinct_all()
             }
             
             if(price_options == "noprice") { 
               train_class <- train_class %>% 
-                dplyr::select(-median_price_species, -median_price_group)
+                dplyr::select(-median_price_species, -median_price_group) %>% 
+                distinct_all()
               
               train_reg <- train_reg %>% 
-                dplyr::select(-median_price_species, -median_price_group)
+                dplyr::select(-median_price_species, -median_price_group) %>% 
+                distinct_all()
               
               final_test <- final_test %>% 
-                dplyr::select(-median_price_species, -median_price_group)
+                dplyr::select(-median_price_species, -median_price_group) %>% 
+                distinct_all()
             }
             
             if(price_options == "speciesprice") { 
               train_class <- train_class %>% 
-                dplyr::select(-median_price_group)
+                dplyr::select(-median_price_group) %>% 
+                distinct_all()
               
               train_reg <- train_reg %>% 
-                dplyr::select(-median_price_group)
+                dplyr::select(-median_price_group) %>% 
+                distinct_all()
               
               final_test <- final_test %>% 
-                dplyr::select(-median_price_group)              
+                dplyr::select(-median_price_group) %>% 
+                distinct_all()            
             }
             
             if(price_options == "groupprice") { 
               train_class <- train_class %>% 
-                dplyr::select(-median_price_species)
+                dplyr::select(-median_price_species) %>% 
+                distinct_all()
               
               train_reg <- train_reg %>% 
-                dplyr::select(-median_price_species)
+                dplyr::select(-median_price_species) %>% 
+                distinct_all()
               
               final_test <- final_test %>% 
-                dplyr::select(-median_price_species)              
+                dplyr::select(-median_price_species) %>% 
+                distinct_all()              
             }
             
             # Start Recipes

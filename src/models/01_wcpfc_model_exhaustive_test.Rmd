@@ -42,7 +42,7 @@ source("../functions/func-train_test_split.R")
 
 ```{r include=FALSE}
 # Read in data... 
-all_dat <- read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_all.csv")
+all_dat <- read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_all.csv") 
 
 save_loc <- "../../data/model-data/outputs/wcpfc-only-model/"
 ```
