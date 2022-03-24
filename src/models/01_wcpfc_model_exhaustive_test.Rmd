@@ -51,7 +51,7 @@ save_loc <- "../../data/model-data/outputs/wcpfc-only-model/"
 # Run through models 
 run_wcpfc_models_effort(data = all_dat, save_loc = save_loc)
 
-# The best model uses GFW effort
+# The best model uses self-reported effort by flag + year 
 # Run through different options for price, environmentals, and transformations of the dependent variable
 run_wcpfc_models_others(data = all_dat, save_loc = save_loc)
 ```
