@@ -23,21 +23,6 @@ library(rgdal)
 all_data <- read.csv("../../data/rfmo-observer-data/outputs/all_data.csv")  %>%  # for non-wcpfc data (we already cleaned wcpfc)
   filter(rfmo != "WCPFC")
 
-cleaned_wcpfc <- read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_all.csv") %>% 
-    filter(gear == "longline" & 
-             catch_units == "count" & 
-             effort_units == "hooks") %>% 
-    mutate_if(is_character, as.factor) %>% 
-    arrange(year, latitude, longitude) %>%
-  filter(target_sources == "self-reported catch and effort by flag + year") %>%
-  select(-colnames(. %>% # remove columns where target effort or catch sums to 0
-                              dplyr::select_if(grepl("target_effort|target_catch", colnames(.))) %>% 
-                              dplyr::select_if(colSums(.) == 0))) %>% 
-    filter(!is.na(target_effort)) %>% 
-  mutate(rfmo = "WCPFC") %>% 
-  rename(gear_group = gear) %>% 
-  select(rfmo, year, latitude, longitude, species_sciname, catch, catch_units, gear_group, effort_units, spatial_notes, species_commonname, species_group, colnames(.)[grepl("target_effort", colnames(.)) & grepl("longline", colnames(.))])
-
 # Species grouping
 species_groups <- read_xlsx("../../data/species-information/species_groups.xlsx", sheet = "species_list") %>% 
   filter(group %in% c("tunas", "tuna-like species", "sharks and rays")) %>% 
@@ -74,27 +59,20 @@ for(rfmos in unique(all_data$rfmo)) {
              catch_units %in% c("metric tonnes", "count") & 
            was_generated == "no" &
            year <= 2018)
-
-  # if(rfmos == "WCPFC") { 
-  #   temp <- temp %>% 
-  #     filter(sources %in% c("bycatch and effort from observers",
-  #                           "self-reported catch and effort by flag + year")) %>% 
-  #     mutate(aggregation_period = "yearly")
-  # } else { 
-      temp <- temp %>%
-        select(rfmo, year, country, latitude, longitude, gear_group, time_period, effort, effort_units, spatial_notes, 
-               species_commonname, species_sciname, catch, catch_units) %>% 
-        distinct_all() %>% 
-        group_by(rfmo, year, country, latitude, longitude, gear_group, time_period, effort_units,
-                 spatial_notes, species_commonname, species_sciname, catch_units) %>% 
-        summarise(catch = sum(catch, na.rm = T), 
-                  effort = sum(effort, na.rm = T)) %>% 
-        ungroup() %>% 
-        mutate(was_generated = "yes", 
-               aggregation_period = time_period, 
-               time_period = "yearly") %>% 
-        filter(aggregation_period == "monthly")
-  # }
+  
+  temp <- temp %>%
+    select(rfmo, year, country, latitude, longitude, gear_group, time_period, effort, effort_units, spatial_notes, 
+           species_commonname, species_sciname, catch, catch_units) %>% 
+    distinct_all() %>% 
+    group_by(rfmo, year, country, latitude, longitude, gear_group, time_period, effort_units,
+             spatial_notes, species_commonname, species_sciname, catch_units) %>% 
+    summarise(catch = sum(catch, na.rm = T), 
+              effort = sum(effort, na.rm = T)) %>% 
+    ungroup() %>% 
+    mutate(was_generated = "yes", 
+           aggregation_period = time_period, 
+           time_period = "yearly") %>% 
+    filter(aggregation_period == "monthly")
   
   short_data <- short_data %>% 
     bind_rows(temp)
@@ -235,10 +213,6 @@ short_data <- short_data %>%
   relocate(year, .after = rfmo) %>% 
   filter(species_sciname != "empty") %>% 
   left_join(., names %>% select(-species_colnames))
-
-short_data <- short_data %>% 
-  bind_rows(cleaned_wcpfc) 
-  
 ```
 
 # Combine the data
@@ -258,7 +232,7 @@ combined_data <- short_data %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_hooks_incl_wcpfc.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_hooks.csv",
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -277,7 +251,7 @@ combined_data <- short_data %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_kwh_incl_wcpfc.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_kwh.csv",
           row.names = FALSE)
 ```
 
@@ -328,7 +302,7 @@ combined_data <- short_data2 %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_hooks_incl_wcpfc.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_hooks.csv",
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -347,7 +321,7 @@ combined_data <- short_data2 %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_kwh_incl_wcpfc.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_kwh.csv",
           row.names = FALSE)
 ```
 
@@ -419,7 +393,7 @@ combined_data <- short_data %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count_hooks_incl_wcpfc.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count_hooks.csv",
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -438,7 +412,7 @@ combined_data <- short_data %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count_kwh_incl_wcpfc.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count_kwh.csv",
           row.names = FALSE)
 ```
 
@@ -488,7 +462,7 @@ combined_data <- short_data %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count_hooks_incl_wcpfc.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count_hooks.csv",
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -507,6 +481,6 @@ combined_data <- short_data %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count_kwh_incl_wcpfc.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count_kwh.csv",
           row.names = FALSE)
 ```
