@@ -46,20 +46,48 @@ save_loc = "../../data/model-data/outputs/all-rfmo-models/"
 ```{r include=FALSE}
 # Read in data... 
 # 5x5 data - count only
-count_5x5_obs <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_hooks.csv") 
-count_5x5_gfw <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_kwh.csv") 
+count_5x5_obs <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_hooks.csv") %>% 
+  bind_rows(read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_all.csv") %>% # add wcpfc data (previously cleaned)
+              filter(gear == "longline" & 
+              catch_units == "count" & 
+              effort_units == "hooks") %>% 
+              mutate_if(is_character, as.factor) %>% 
+              arrange(year, latitude, longitude) %>%
+              filter(target_sources == "self-reported catch and effort by flag + year") %>%
+              mutate(rfmo = "WCPFC") %>% 
+              rename(gear_group = gear) %>% 
+              select(rfmo, year, latitude, longitude, species_sciname, catch, catch_units, gear_group, effort_units, 
+                     spatial_notes, species_commonname, species_group, 
+                     colnames(.)[grepl("target_effort", colnames(.)) & grepl("longline", colnames(.))])) %>% 
+  mutate_at(vars(target_effort:bycatch_total_effort_Indonesia_longline, 
+                 target_effort_Cook.Islands_longline:target_effort_Samoa_longline),
+            replace_na, 0)
+count_5x5_gfw <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_kwh.csv") %>%
+  bind_rows(read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_all.csv") %>% # add wcpfc data (previously cleaned)
+              filter(gear == "longline" & 
+              catch_units == "count" & 
+              effort_units == "hooks") %>% 
+              mutate_if(is_character, as.factor) %>% 
+              arrange(year, latitude, longitude) %>%
+              filter(target_sources == "self-reported catch and effort by flag + year") %>%
+              mutate(rfmo = "WCPFC") %>% 
+              rename(gear_group = gear) %>% 
+              select(rfmo, year, latitude, longitude, species_sciname, catch, catch_units, gear_group, effort_units, 
+                     spatial_notes, species_commonname, species_group, total_fishing_kwh))
 
-# 5x5 data - mt and count
+# 5x5 data - mt and count (no wcpfc data because all data are count)
 mt_5x5_obs <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_hooks.csv") 
 mt_5x5_gfw <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_kwh.csv") 
 
 # 1x1 data - count only
 count_1x1_obs <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count_hooks.csv") %>% 
-  bind_rows(read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_1x1_hooks.csv"))
+  bind_rows(read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_1x1_hooks.csv")) %>% # add wcpfc data (previously cleaned)
+  mutate_at(vars(target_effort:bycatch_total_effort_Indonesia_longline, target_effort_Cook.Islands_longline:target_effort_Samoa_longline),
+            replace_na, 0)
 count_1x1_gfw <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count_kwh.csv") %>% 
-  bind_rows(read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_1x1_kwh.csv"))
+  bind_rows(read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_1x1_kwh.csv")) # add wcpfc data (previously cleaned)
 
-# 1x1 data - mt and count
+# 1x1 data - mt and count (no wcpfc data because all data are count)
 mt_1x1_obs <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count_hooks.csv")
 mt_1x1_gfw <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count_kwh.csv") 
 ```

@@ -34,8 +34,9 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
     
     for(effort_source in c("effort reported with target catch (flag)", "effort reported with bycatch (flag)", "gfw effort")) { 
       
+      prep_ll <- data.frame() 
       
-      if(effort_source == "effort repored with target catch (flag)") {
+      if(effort_source == "effort reported with target catch (flag)") {
         
         # Subset by RFMO
         prep_ll <- data_effort %>% 
@@ -46,10 +47,10 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
         prep_ll <- prep_ll %>% 
             dplyr::select(-colnames(prep_ll %>% # remove columns where target effort sums to 0
                                       dplyr::select_if(grepl("target_effort", colnames(.))) %>% 
-                                      dplyr::select_if(colSums(.) == 0))) 
+                                      dplyr::select_if(colSums(., na.rm = T) == 0))) 
       }
       
-      if(effort_source == "effort repored with bycatchcatch (flag)") {
+      if(effort_source == "effort reported with bycatch (flag)") {
         
         # Subset by RFMO
         prep_ll <- data_effort %>% 
@@ -60,7 +61,11 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
         prep_ll <- prep_ll %>% 
           dplyr::select(-colnames(prep_ll %>% # remove columns where bycatch associated effort sums to 0
                                     dplyr::select_if(grepl("bycatch_total_effort", colnames(.))) %>% 
-                                    dplyr::select_if(colSums(.) == 0)))
+                                    dplyr::select_if(colSums(., na.rm = T) == 0)))
+        
+        if(length(colnames(prep_ll)[grepl("bycatch_total_effort", colnames(prep_ll))]) == 0) { 
+          prep_ll <- data.frame()
+        }
       }
       if(effort_source == "gfw effort") { 
         # Subset by RFMO
@@ -138,14 +143,12 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
           train_class <- train_data_class_orig %>%  
             dplyr::select(pres_abs, sdm, species_commonname, mean_sst, mean_chla, 
                           colnames(train_data_class_orig)[grepl("target_effort_", colnames(train_data_class_orig))]) %>% 
-            distinct_all() %>% 
-            dplyr::select(-species_commonname)
+            distinct_all() 
           
           train_reg <- train_data_reg_orig %>%  
             dplyr::select(catch, sdm, species_commonname, mean_sst, mean_chla, 
                           colnames(train_data_reg_orig)[grepl("target_effort_", colnames(train_data_reg_orig))]) %>% 
-            distinct_all() %>% 
-            dplyr::select(-species_commonname)
+            distinct_all() 
           
           final_test <- test_data_class_orig %>% 
             dplyr::select(pres_abs, catch, sdm, species_commonname, mean_sst, mean_chla, 
@@ -157,14 +160,12 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
           train_class <- train_data_class_orig %>%  
             dplyr::select(pres_abs, sdm, species_commonname, mean_sst, mean_chla, 
                           colnames(train_data_class_orig)[grepl("bycatch_total_effort_", colnames(train_data_class_orig))]) %>% 
-            distinct_all() %>% 
-            dplyr::select(-species_commonname)
+            distinct_all() 
           
           train_reg <- train_data_reg_orig %>%  
             dplyr::select(catch, sdm, species_commonname, mean_sst, mean_chla, 
                           colnames(train_data_reg_orig)[grepl("bycatch_total_effort_", colnames(train_data_reg_orig))]) %>% 
-            distinct_all() %>% 
-            dplyr::select(-species_commonname)
+            distinct_all() 
           
           final_test <- test_data_class_orig %>% 
             dplyr::select(pres_abs, catch, sdm, species_commonname, mean_sst, mean_chla, 

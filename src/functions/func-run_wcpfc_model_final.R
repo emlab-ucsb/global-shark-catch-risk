@@ -25,7 +25,7 @@ run_wcpfc_model_final <- function(data, save_loc){
   prep_ll <- prep_ll %>% 
     dplyr::select(-colnames(prep_ll %>% # remove columns where target effort or catch sums to 0
                               dplyr::select_if(grepl("target_effort|target_catch", colnames(.))) %>% 
-                              dplyr::select_if(colSums(.) == 0))) %>% 
+                              dplyr::select_if(colSums(., na.rm = T) == 0))) %>% 
     filter(!is.na(target_effort))
   
   # Add spatial groups
@@ -227,7 +227,7 @@ run_wcpfc_model_final <- function(data, save_loc){
                         "full_predict" = full_predict, 
                         "full_metrcis" = full_metrics)
      
-     saveRDS(output_fit, paste0(save_loc, "_wcpfc_final_untuned_model.rds"))
+     saveRDS(output_fit, paste0(save_loc, "wcpfc_untuned_model.rds"))
      
      write.csv(full_predict, paste0(save_loc, "wcpfc_full_predict.csv"), row.names = FALSE)
   } 
