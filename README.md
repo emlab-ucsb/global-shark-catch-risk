@@ -1,5 +1,5 @@
 # mpa-bycatch-publication
-Publication-ready version of MPA bycatch repo
+Publication-ready version of MPA bycatch repo. 
 
 ## File Structure
 
@@ -32,7 +32,294 @@ Publication-ready version of MPA bycatch repo
          |__iucn_sid_103055306_wgs.csv
          |__iucn_sid_11200_wgs.csv
          |__iucn_sid_116857982_wgs.csv
-         |__ ...
+         |__iucn_sid_124554059_wgs.csv
+         |__iucn_sid_130393378_wgs.csv
+         |__iucn_sid_130394197_wgs.csv
+         |__iucn_sid_141744346_wgs.csv
+         |__iucn_sid_144136822_wgs.csv
+         |__iucn_sid_144141186_wgs.csv
+         |__iucn_sid_152781341_wgs.csv
+         |__iucn_sid_161307554_wgs.csv
+         |__iucn_sid_161308360_wgs.csv
+         |__iucn_sid_161325_wgs.csv
+         |__iucn_sid_161333_wgs.csv
+         |__iucn_sid_161334_wgs.csv
+         |__iucn_sid_161351_wgs.csv
+         |__iucn_sid_161355_wgs.csv
+         |__iucn_sid_161364_wgs.csv
+         |__iucn_sid_161367_wgs.csv
+         |__iucn_sid_161368_wgs.csv
+         |__iucn_sid_161376_wgs.csv
+         |__iucn_sid_161378_wgs.csv
+         |__iucn_sid_161395_wgs.csv
+         |__iucn_sid_161398_wgs.csv
+         |__iucn_sid_161406_wgs.csv
+         |__iucn_sid_161426_wgs.csv
+         |__iucn_sid_161434_wgs.csv
+         |__iucn_sid_161437_wgs.csv
+         |__iucn_sid_161449_wgs.csv
+         |__iucn_sid_161451_wgs.csv
+         |__iucn_sid_161455_wgs.csv
+         |__iucn_sid_161456_wgs.csv
+         |__iucn_sid_161468_wgs.csv
+         |__iucn_sid_161473_wgs.csv
+         |__iucn_sid_161480_wgs.csv
+         |__iucn_sid_161484_wgs.csv
+         |__iucn_sid_161485_wgs.csv
+         |__iucn_sid_161488_wgs.csv
+         |__iucn_sid_161497_wgs.csv
+         |__iucn_sid_161501_wgs.csv
+         |__iucn_sid_161506_wgs.csv
+         |__iucn_sid_161507_wgs.csv
+         |__iucn_sid_161515_wgs.csv
+         |__iucn_sid_161518_wgs.csv
+         |__iucn_sid_161524_wgs.csv
+         |__iucn_sid_161525_wgs.csv
+         |__iucn_sid_161526_wgs.csv
+         |__iucn_sid_161531_wgs.csv
+         |__iucn_sid_161539_wgs.csv
+         |__iucn_sid_161543_wgs.csv
+         |__iucn_sid_161558_wgs.csv
+         |__iucn_sid_161563_wgs.csv
+         |__iucn_sid_161564_wgs.csv
+         |__iucn_sid_161567_wgs.csv
+         |__iucn_sid_161571_wgs.csv
+         |__iucn_sid_161581_wgs.csv
+         |__iucn_sid_161591_wgs.csv
+         |__iucn_sid_161597_wgs.csv
+         |__iucn_sid_161606_wgs.csv
+         |__iucn_sid_161625_wgs.csv
+         |__iucn_sid_161633_wgs.csv
+         |__iucn_sid_161634_wgs.csv
+         |__iucn_sid_161639_wgs.csv
+         |__iucn_sid_161640_wgs.csv
+         |__iucn_sid_161644_wgs.csv
+         |__iucn_sid_161648_wgs.csv
+         |__iucn_sid_161650_wgs.csv
+         |__iucn_sid_161651_wgs.csv
+         |__iucn_sid_161652_wgs.csv
+         |__iucn_sid_161662_wgs.csv
+         |__iucn_sid_161664_wgs.csv
+         |__iucn_sid_161667_wgs.csv
+         |__iucn_sid_161675_wgs.csv
+         |__iucn_sid_161679_wgs.csv
+         |__iucn_sid_161680_wgs.csv
+         |__iucn_sid_161695_wgs.csv
+         |__iucn_sid_161696_wgs.csv
+         |__iucn_sid_161705_wgs.csv
+         |__iucn_sid_161707_wgs.csv
+         |__iucn_sid_161709_wgs.csv
+         |__iucn_sid_161714_wgs.csv
+         |__iucn_sid_161715_wgs.csv
+         |__iucn_sid_161720_wgs.csv
+         |__iucn_sid_161733_wgs.csv
+         |__iucn_sid_161736_wgs.csv
+         |__iucn_sid_162207827_wgs.csv
+         |__iucn_sid_169232956_wgs.csv
+         |__iucn_sid_169234201_wgs.csv
+         |__iucn_sid_169473392_wgs.csv
+         |__iucn_sid_169760690_wgs.csv
+         |__iucn_sid_171728748_wgs.csv
+         |__iucn_sid_181361_wgs.csv
+         |__iucn_sid_19488_wgs.csv
+         |__iucn_sid_195422_wgs.csv
+         |__iucn_sid_195426_wgs.csv
+         |__iucn_sid_195439_wgs.csv
+         |__iucn_sid_197087_wgs.csv
+         |__iucn_sid_3851_wgs.csv
+         |__iucn_sid_3852_wgs.csv
+         |__iucn_sid_3853_wgs.csv
+         |__iucn_sid_3854_wgs.csv
+         |__iucn_sid_3855_wgs.csv
+         |__iucn_sid_39324_wgs.csv
+         |__iucn_sid_39328_wgs.csv
+         |__iucn_sid_39329_wgs.csv
+         |__iucn_sid_39331_wgs.csv
+         |__iucn_sid_39332_wgs.csv
+         |__iucn_sid_39333_wgs.csv
+         |__iucn_sid_39334_wgs.csv
+         |__iucn_sid_39335_wgs.csv
+         |__iucn_sid_39336_wgs.csv
+         |__iucn_sid_39337_wgs.csv
+         |__iucn_sid_39338_wgs.csv
+         |__iucn_sid_39339_wgs.csv
+         |__iucn_sid_39341_wgs.csv
+         |__iucn_sid_39342_wgs.csv
+         |__iucn_sid_39345_wgs.csv
+         |__iucn_sid_39346_wgs.csv
+         |__iucn_sid_39347_wgs.csv
+         |__iucn_sid_39348_wgs.csv
+         |__iucn_sid_39349_wgs.csv
+         |__iucn_sid_39350_wgs.csv
+         |__iucn_sid_39351_wgs.csv
+         |__iucn_sid_39352_wgs.csv
+         |__iucn_sid_39353_wgs.csv
+         |__iucn_sid_39354_wgs.csv
+         |__iucn_sid_39355_wgs.csv
+         |__iucn_sid_39356_wgs.csv
+         |__iucn_sid_39357_wgs.csv
+         |__iucn_sid_39358_wgs.csv
+         |__iucn_sid_39359_wgs.csv
+         |__iucn_sid_39360_wgs.csv
+         |__iucn_sid_39361_wgs.csv
+         |__iucn_sid_39362_wgs.csv
+         |__iucn_sid_39363_wgs.csv
+         |__iucn_sid_39365_wgs.csv
+         |__iucn_sid_39366_wgs.csv
+         |__iucn_sid_39367_wgs.csv
+         |__iucn_sid_39368_wgs.csv
+         |__iucn_sid_39369_wgs.csv
+         |__iucn_sid_39370_wgs.csv
+         |__iucn_sid_39371_wgs.csv
+         |__iucn_sid_39372_wgs.csv
+         |__iucn_sid_39374_wgs.csv
+         |__iucn_sid_39375_wgs.csv
+         |__iucn_sid_39378_wgs.csv
+         |__iucn_sid_39379_wgs.csv
+         |__iucn_sid_39380_wgs.csv
+         |__iucn_sid_39381_wgs.csv
+         |__iucn_sid_39382_wgs.csv
+         |__iucn_sid_39384_wgs.csv
+         |__iucn_sid_39385_wgs.csv
+         |__iucn_sid_39386_wgs.csv
+         |__iucn_sid_39387_wgs.csv
+         |__iucn_sid_39388_wgs.csv
+         |__iucn_sid_40797_wgs.csv
+         |__iucn_sid_41718_wgs.csv
+         |__iucn_sid_41719_wgs.csv
+         |__iucn_sid_41720_wgs.csv
+         |__iucn_sid_41722_wgs.csv
+         |__iucn_sid_41723_wgs.csv
+         |__iucn_sid_41724_wgs.csv
+         |__iucn_sid_41725_wgs.csv
+         |__iucn_sid_41727_wgs.csv
+         |__iucn_sid_41728_wgs.csv
+         |__iucn_sid_41729_wgs.csv
+         |__iucn_sid_41730_wgs.csv
+         |__iucn_sid_41731_wgs.csv
+         |__iucn_sid_41732_wgs.csv
+         |__iucn_sid_41733_wgs.csv
+         |__iucn_sid_41736_wgs.csv
+         |__iucn_sid_41737_wgs.csv
+         |__iucn_sid_41738_wgs.csv
+         |__iucn_sid_41739_wgs.csv
+         |__iucn_sid_41741_wgs.csv
+         |__iucn_sid_41753_wgs.csv
+         |__iucn_sid_41791_wgs.csv
+         |__iucn_sid_41792_wgs.csv
+         |__iucn_sid_41794_wgs.csv
+         |__iucn_sid_41810_wgs.csv
+         |__iucn_sid_41811_wgs.csv
+         |__iucn_sid_41812_wgs.csv
+         |__iucn_sid_41814_wgs.csv
+         |__iucn_sid_41816_wgs.csv
+         |__iucn_sid_41818_wgs.csv
+         |__iucn_sid_41819_wgs.csv
+         |__iucn_sid_41820_wgs.csv
+         |__iucn_sid_41822_wgs.csv
+         |__iucn_sid_41823_wgs.csv
+         |__iucn_sid_41824_wgs.csv
+         |__iucn_sid_41825_wgs.csv
+         |__iucn_sid_41829_wgs.csv
+         |__iucn_sid_41831_wgs.csv
+         |__iucn_sid_41835_wgs.csv
+         |__iucn_sid_41836_wgs.csv
+         |__iucn_sid_41837_wgs.csv
+         |__iucn_sid_41838_wgs.csv
+         |__iucn_sid_41839_wgs.csv
+         |__iucn_sid_41841_wgs.csv
+         |__iucn_sid_41842_wgs.csv
+         |__iucn_sid_41843_wgs.csv
+         |__iucn_sid_41844_wgs.csv
+         |__iucn_sid_41845_wgs.csv
+         |__iucn_sid_41846_wgs.csv
+         |__iucn_sid_41850_wgs.csv
+         |__iucn_sid_41851_wgs.csv
+         |__iucn_sid_41852_wgs.csv
+         |__iucn_sid_41862_wgs.csv
+         |__iucn_sid_41863_wgs.csv
+         |__iucn_sid_41864_wgs.csv
+         |__iucn_sid_41870_wgs.csv
+         |__iucn_sid_41872_wgs.csv
+         |__iucn_sid_41873_wgs.csv
+         |__iucn_sid_41874_wgs.csv
+         |__iucn_sid_41875_wgs.csv
+         |__iucn_sid_41876_wgs.csv
+         |__iucn_sid_42700_wgs.csv
+         |__iucn_sid_42701_wgs.csv
+         |__iucn_sid_42703_wgs.csv
+         |__iucn_sid_42704_wgs.csv
+         |__iucn_sid_42706_wgs.csv
+         |__iucn_sid_42707_wgs.csv
+         |__iucn_sid_42709_wgs.csv
+         |__iucn_sid_42710_wgs.csv
+         |__iucn_sid_42711_wgs.csv
+         |__iucn_sid_42712_wgs.csv
+         |__iucn_sid_42713_wgs.csv
+         |__iucn_sid_42716_wgs.csv
+         |__iucn_sid_42717_wgs.csv
+         |__iucn_sid_42720_wgs.csv
+         |__iucn_sid_42728_wgs.csv
+         |__iucn_sid_42729_wgs.csv
+         |__iucn_sid_4292_wgs.csv
+         |__iucn_sid_44170_wgs.csv
+         |__iucn_sid_44207_wgs.csv
+         |__iucn_sid_44209_wgs.csv
+         |__iucn_sid_44216_wgs.csv
+         |__iucn_sid_44217_wgs.csv
+         |__iucn_sid_44221_wgs.csv
+         |__iucn_sid_44222_wgs.csv
+         |__iucn_sid_44223_wgs.csv
+         |__iucn_sid_44225_wgs.csv
+         |__iucn_sid_44565_wgs.csv
+         |__iucn_sid_44566_wgs.csv
+         |__iucn_sid_44571_wgs.csv
+         |__iucn_sid_44573_wgs.csv
+         |__iucn_sid_44578_wgs.csv
+         |__iucn_sid_44579_wgs.csv
+         |__iucn_sid_44580_wgs.csv
+         |__iucn_sid_44581_wgs.csv
+         |__iucn_sid_44585_wgs.csv
+         |__iucn_sid_44586_wgs.csv
+         |__iucn_sid_44587_wgs.csv
+         |__iucn_sid_44591_wgs.csv
+         |__iucn_sid_44599_wgs.csv
+         |__iucn_sid_44602_wgs.csv
+         |__iucn_sid_44606_wgs.csv
+         |__iucn_sid_44611_wgs.csv
+         |__iucn_sid_44612_wgs.csv
+         |__iucn_sid_44613_wgs.csv
+         |__iucn_sid_44614_wgs.csv
+         |__iucn_sid_44617_wgs.csv
+         |__iucn_sid_44657_wgs.csv
+         |__iucn_sid_44666_wgs.csv
+         |__iucn_sid_44996_wgs.csv
+         |__iucn_sid_60201_wgs.csv
+         |__iucn_sid_60202_wgs.csv
+         |__iucn_sid_60203_wgs.csv
+         |__iucn_sid_60204_wgs.csv
+         |__iucn_sid_60205_wgs.csv
+         |__iucn_sid_60206_wgs.csv
+         |__iucn_sid_60218_wgs.csv
+         |__iucn_sid_60219_wgs.csv
+         |__iucn_sid_60225_wgs.csv
+         |__iucn_sid_60227_wgs.csv
+         |__iucn_sid_60231_wgs.csv
+         |__iucn_sid_60232_wgs.csv
+         |__iucn_sid_60233_wgs.csv
+         |__iucn_sid_60234_wgs.csv
+         |__iucn_sid_60235_wgs.csv
+         |__iucn_sid_60247_wgs.csv
+         |__iucn_sid_61400_wgs.csv
+         |__iucn_sid_61407_wgs.csv
+         |__iucn_sid_61417_wgs.csv
+         |__iucn_sid_61418_wgs.csv
+         |__iucn_sid_63128_wgs.csv
+         |__iucn_sid_63129_wgs.csv
+         |__iucn_sid_63130_wgs.csv
+         |__iucn_sid_63149_wgs.csv
+         |__iucn_sid_63165_wgs.csv
+         |__iucn_sid_70680197_wgs.csv
       |__outputs
          |__global_combined_iucn_sdm_1x1.csv
          |__global_combined_iucn_sdm_5x5.csv
@@ -41,8 +328,17 @@ Publication-ready version of MPA bycatch repo
    |__model-data
       |__inputs
          |__all-rfmo-models
-            |__global_ll_data_1x1.csv
+            |__global_ll_data_1x1_count_hooks.csv
+            |__global_ll_data_1x1_count_kwh.csv
+            |__global_ll_data_1x1_mt_to_count_hooks.csv
+            |__global_ll_data_1x1_mt_to_count_kwh.csv
+            |__global_ll_data_5x5_count_hooks.csv
+            |__global_ll_data_5x5_count_kwh.csv
+            |__global_ll_data_5x5_mt_to_count_hooks.csv
+            |__global_ll_data_5x5_mt_to_count_kwh.csv
          |__wcpfc-only-model
+            |__wcpfc_1x1_hooks.csv
+            |__wcpfc_1x1_kwh.csv
             |__wcpfc_all.csv
             |__wcpfc_flagquarter_with_gfw.csv
             |__wcpfc_flagquarter.csv
@@ -53,7 +349,13 @@ Publication-ready version of MPA bycatch repo
             |__wcpfc_monthly.csv
       |__outputs
          |__all-rfmo-models
+            |__1x1_count_all_rfmos_effort_results.csv
+            |__1x1_mt_to_count_all_rfmos_effort_results.csv
+            |__5x5_count_all_rfmos_effort_results.csv
+            |__5x5_mt_to_count_all_rfmos_effort_results.csv
          |__wcpfc-only-model
+            |__wcpfc_final_untuned_model.rds
+            |__wcpfc_full_predict.csv
             |__wcpfc_models_effort_results.csv
             |__wcpfc_models_others_results.csv
    |__rfmo-observer-data
@@ -263,7 +565,7 @@ Publication-ready version of MPA bycatch repo
       |__species_list_for_sdms.csv
       |__species_list.csv
       |__spp_list_fishing_threat.csv
-      |__spp_weight_comparison.csv
+      |__spp_weight_count_conversion.csv
 -- figures
 -- mpa-bycatch-publication.Rproj
 -- README.md
@@ -276,18 +578,24 @@ Publication-ready version of MPA bycatch repo
       |__01_rfmo_cleaning_wcpfc.Rmd
       |__02_combine_all_rfmo_data.Rmd
       |__03_species_list_for_sdms.Rmd
+      |__04_generate_grids.nb.html
       |__04_generate_grids.Rmd
       |__05_wcpfc_model_data_cleaning_collation.nb.html
       |__05_wcpfc_model_data_cleaning_collation.Rmd
       |__06_all_rfmo_model_data_cleaning_collation.nb.html
+      |__06_all_rfmo_model_data_cleaning_collation.pdf
       |__06_all_rfmo_model_data_cleaning_collation.Rmd
    |__functions
+      |__func-all_rfmo_effort_models.R
+      |__func-all_rfmo_initial_models.R
       |__func-raster_blaster.R
+      |__func-run_wcpfc_model_final.R
       |__func-run_wcpfc_models_effort.R
       |__func-run_wcpfc_models_others.R
       |__func-train_all_models.R
       |__func-train_test_split.R
    |__get_repo_structure.R
+   |__header.tex
    |__models
       |__01_wcpfc_model_exhaustive_test.nb.html
       |__01_wcpfc_model_exhaustive_test.Rmd
