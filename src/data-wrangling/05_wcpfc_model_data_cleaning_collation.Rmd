@@ -26,17 +26,25 @@ species_groups <- read_xlsx("../../data/species-information/species_groups.xlsx"
 # SDM data
 sdms <- read.csv("../../data/iucn-sdm-data/outputs/global_combined_iucn_sdm_5x5.csv") %>% 
   distinct_all()
+sdms_1x1 <- read.csv("../../data/iucn-sdm-data/outputs/global_combined_iucn_sdm_1x1.csv") %>% 
+  distinct_all()
 
 # SST data
 sst_wcpfc <- read.csv("../../data/sea-surface-temperature/outputs/binned_global_sst_5x5.csv") %>% 
+  distinct_all()
+sst_wcpfc_1x1 <- read.csv("../../data/sea-surface-temperature/outputs/binned_global_sst_1x1.csv") %>% 
   distinct_all()
 
 # Chlorophyll-A data
 chla_wcpfc <- read.csv("../../data/chlorophyll-a/outputs/binned_global_chla_5x5.csv") %>% 
   distinct_all()
+chla_wcpfc_1x1 <- read.csv("../../data/chlorophyll-a/outputs/binned_global_chla_1x1.csv") %>% 
+  distinct_all()
 
 # Sea surface height
 ssh_wcpfc <- read.csv("../../data/sea-surface-height/outputs/binned_global_ssh_5x5.csv") %>% 
+  distinct_all()
+ssh_wcpfc_1x1 <- read.csv("../../data/sea-surface-height/outputs/binned_global_ssh_1x1.csv") %>% 
   distinct_all()
 
 # Ex-vessel price data
@@ -60,6 +68,7 @@ prices <- prices %>%
 
 # GFW data
 gfw_wcpfc <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_5x5.csv")
+gfw_wcpfc_1x1 <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_1x1.csv")
 
 # Save path
 save_path = "../../data/model-data/inputs/wcpfc-only-model/"
@@ -280,6 +289,82 @@ all_dat <- all_dat %>%
          sources = "bycatch and effort from observers") %>% 
   left_join(., update_species_groups) # add back in
 ```
+
+```{r rescale-rfmo-data}
+# Rescale to 1x1 degree - for later
+locations_y <- all_dat %>%
+  select(latitude) %>%
+  distinct_all() %>%
+  mutate(latitude_lag0 = latitude,
+         latitude_lag1 = latitude-1,
+         latitude_lag2 = latitude-2,
+         latitude_plus1 = latitude+1,
+         latitude_plus2 = latitude+2) %>%
+  pivot_longer(latitude_lag0:latitude_plus2, values_to = "latitude_rescaled") %>%
+  select(-name)
+
+locations_x <- all_dat %>%
+  select(longitude) %>%
+  distinct_all() %>%
+  mutate(longitude_lag0 = longitude,
+         longitude_lag1 = longitude-1,
+         longitude_lag2 = longitude-2,
+         longitude_plus1 = longitude+1,
+         longitude_plus2 = longitude+2) %>%
+  pivot_longer(longitude_lag0:longitude_plus2, values_to = "longitude_rescaled") %>%
+  select(-name)
+
+# New dataset
+all_dat_1x1 <- all_dat %>%
+  left_join(locations_y) %>%
+  left_join(locations_x) %>%
+  mutate(longitude_rescaled = ifelse(is.na(longitude_rescaled), longitude, longitude_rescaled),
+         latitude_rescaled = ifelse(is.na(latitude_rescaled), latitude, latitude_rescaled),
+         catch = catch/25) %>%
+  mutate_at(vars(effort, target_effort:`target_catch_YELLOWFIN TUNA_tonnes_Kiribati_purseseine other`), function(x){ x/25}) %>% # rescale all to be at 1x1
+  rename(latitude_orig = latitude,
+         longitude_orig = longitude,
+         latitude = latitude_rescaled,
+         longitude = longitude_rescaled) %>%
+  mutate(spatial_notes = "center of 1x1 cell") %>%
+  select(colnames(all_dat)) 
+
+all_dat_1x1_comb <- all_dat_1x1 %>% 
+  filter(effort_units == "hooks") %>% 
+  mutate(year = as.integer(year)) %>% 
+  filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>% 
+  filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
+  left_join(sdms_1x1 %>% distinct_all()) %>% 
+  left_join(sst_wcpfc_1x1 %>% distinct_all()) %>% 
+  left_join(chla_wcpfc_1x1 %>% distinct_all()) %>% 
+  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
+  filter(!is.na(sdm)) %>% 
+  mutate(rfmo = "WCPFC") %>% 
+  rename(gear_group = gear) %>% 
+  select(rfmo, year, latitude, longitude, species_sciname, catch, catch_units, gear_group, colnames(.)[grepl("target_effort", colnames(.)) & grepl("longline", colnames(.))], species_commonname, species_group, sdm, mean_sst, median_sst, min_sst, max_sst, se_sst, cv_sst, 
+         mean_chla, median_chla, min_chla, max_chla, sd_chla, se_chla, cv_chla)
+
+write.csv(all_dat_1x1_comb, paste0(save_path, "wcpfc_1x1_hooks.csv"), row.names = F)
+
+all_dat_1x1_comb <- all_dat_1x1 %>% 
+  filter(effort_units == "hooks") %>%
+  rename(gear_group = gear) %>% 
+  mutate(year = as.integer(year)) %>% 
+  filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>% 
+  filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data 
+  left_join(gfw_data_1x1 %>% distinct_all()) %>% 
+  left_join(sdms_1x1 %>% distinct_all()) %>% 
+  left_join(sst_wcpfc_1x1 %>% distinct_all()) %>% 
+  left_join(chla_wcpfc_1x1 %>% distinct_all()) %>% 
+  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
+  filter(!is.na(sdm)) %>% 
+  mutate(rfmo = "WCPFC") %>% 
+  select(rfmo, year, latitude, longitude, species_sciname, catch, catch_units, gear_group, total_fishing_kwh, species_commonname, species_group, sdm, mean_sst, median_sst, min_sst, max_sst, se_sst, cv_sst, 
+         mean_chla, median_chla, min_chla, max_chla, sd_chla, se_chla, cv_chla)
+
+write.csv(all_dat_1x1_comb, paste0(save_path, "wcpfc_1x1_kwh.csv"), row.names = F)
+```
+
 
 
 ```{r message=FALSE, warning=FALSE}

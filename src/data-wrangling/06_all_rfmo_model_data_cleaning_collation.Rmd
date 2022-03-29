@@ -33,7 +33,10 @@ cleaned_wcpfc <- read.csv("../../data/model-data/inputs/wcpfc-only-model/wcpfc_a
   select(-colnames(. %>% # remove columns where target effort or catch sums to 0
                               dplyr::select_if(grepl("target_effort|target_catch", colnames(.))) %>% 
                               dplyr::select_if(colSums(.) == 0))) %>% 
-    filter(!is.na(target_effort))
+    filter(!is.na(target_effort)) %>% 
+  mutate(rfmo = "WCPFC") %>% 
+  rename(gear_group = gear) %>% 
+  select(rfmo, year, latitude, longitude, species_sciname, catch, catch_units, gear_group, effort_units, spatial_notes, species_commonname, species_group, colnames(.)[grepl("target_effort", colnames(.)) & grepl("longline", colnames(.))])
 
 # Species grouping
 species_groups <- read_xlsx("../../data/species-information/species_groups.xlsx", sheet = "species_list") %>% 
@@ -41,39 +44,20 @@ species_groups <- read_xlsx("../../data/species-information/species_groups.xlsx"
   mutate(scientific_name = str_to_upper(scientific_name))
 
 # SDM data
-all_sdm <- read.csv("../../data/iucn-sdm-data/outputs/global_combined_iucn_sdm_1x1.csv")
+all_sdm_1x1 <- read.csv("../../data/iucn-sdm-data/outputs/global_combined_iucn_sdm_1x1.csv")
 all_sdm_5x5 <- read.csv("../../data/iucn-sdm-data/outputs/global_combined_iucn_sdm_5x5.csv")
 
 # SST data
-sst_data <- read.csv("../../data/sea-surface-temperature/outputs/binned_global_sst_1x1.csv")
+sst_data_1x1 <- read.csv("../../data/sea-surface-temperature/outputs/binned_global_sst_1x1.csv")
 sst_data_5x5 <- read.csv("../../data/sea-surface-temperature/outputs/binned_global_sst_5x5.csv")
 
 # Chlorophyll-A data
-chla_data <- read.csv("../../data/chlorophyll-a/outputs/binned_global_chla_1x1.csv")
+chla_data_1x1 <- read.csv("../../data/chlorophyll-a/outputs/binned_global_chla_1x1.csv")
 chla_data_5x5 <- read.csv("../../data/chlorophyll-a/outputs/binned_global_chla_5x5.csv")
 
 # GFW data
-gfw_data <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_1x1.csv")
+gfw_data_1x1 <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_1x1.csv")
 gfw_data_5x5 <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_5x5.csv")
-
-# Group price data
-# Ex-vessel price data
-prices <- read.csv("../../data/ex-vessel-prices/exvessel_price_database_1976_2017.csv")
-
-prices <- prices %>% 
-  mutate(ASFIS_species = str_to_upper(ASFIS_species), 
-         scientific_name = str_to_upper(scientific_name), 
-         ASFIS_species = case_when(ASFIS_species == "INDO-PACIF. BOTTLENOSE DOLPHIN" ~  "INDO-PACIFIC BOTTLENOSE DOLPHIN", 
-                                   ASFIS_species == "SHORTFIN MAKO" ~ "SHORTFIN MAKO SHARK", 
-                                   ASFIS_species == "ALBACORE" ~ "ALBACORE TUNA", 
-                                   TRUE ~ ASFIS_species), 
-         ISSCAAP_group = case_when(ISSCAAP_group == "Sharks, rays, chimaeras" ~ "sharks and rays", 
-                                   ISSCAAP_group == "Miscellaneous aquatic mammals" ~ "marine mammals", 
-                                   ISSCAAP_group == "Turtles" ~ "turtles", 
-                                   TRUE ~ paste(ISSCAAP_group))) %>% 
-  rename(year = Year, 
-         species_commonname = ASFIS_species, 
-         species_group = ISSCAAP_group)
 ```
 
 ```{r message=FALSE, warning=FALSE}
@@ -251,6 +235,9 @@ short_data <- short_data %>%
   relocate(year, .after = rfmo) %>% 
   filter(species_sciname != "empty") %>% 
   left_join(., names %>% select(-species_colnames))
+
+short_data <- short_data %>% 
+  bind_rows(cleaned_wcpfc) 
   
 ```
 
@@ -271,7 +258,7 @@ combined_data <- short_data %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_hooks.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_hooks_incl_wcpfc.csv",
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -290,7 +277,7 @@ combined_data <- short_data %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_kwh.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_count_kwh_incl_wcpfc.csv",
           row.names = FALSE)
 ```
 
@@ -341,7 +328,7 @@ combined_data <- short_data2 %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_hooks.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_hooks_incl_wcpfc.csv",
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -360,7 +347,7 @@ combined_data <- short_data2 %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_kwh.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_kwh_incl_wcpfc.csv",
           row.names = FALSE)
 ```
 
@@ -425,15 +412,14 @@ combined_data <- short_data %>%
   mutate(year = as.integer(year)) %>% 
   filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>% 
   filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_5x5 %>% distinct_all()) %>% 
-  #left_join(gfw_data_5x5 %>% distinct_all()) %>% 
-  left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all()) %>% 
+  left_join(all_sdm_1x1 %>% distinct_all()) %>% 
+  left_join(sst_data_1x1 %>% distinct_all()) %>% 
+  left_join(chla_data_1x1 %>% distinct_all()) %>% 
   filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count_hooks.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count_hooks_incl_wcpfc.csv",
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -444,15 +430,15 @@ combined_data <- short_data %>%
   mutate(year = as.integer(year)) %>% 
   filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>% 
   filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_5x5 %>% distinct_all()) %>% 
-  left_join(gfw_data_5x5 %>% distinct_all()) %>% 
-  left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all()) %>% 
+  left_join(all_sdm_1x1 %>% distinct_all()) %>% 
+  left_join(gfw_data_1x1 %>% distinct_all()) %>% 
+  left_join(sst_data_1x1 %>% distinct_all()) %>% 
+  left_join(chla_data_1x1 %>% distinct_all()) %>% 
   filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count_kwh.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_count_kwh_incl_wcpfc.csv",
           row.names = FALSE)
 ```
 
@@ -495,15 +481,14 @@ combined_data <- short_data %>%
   mutate(year = as.integer(year)) %>% 
   filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>% 
   filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_5x5 %>% distinct_all()) %>% 
-  #left_join(gfw_data_5x5 %>% distinct_all()) %>% 
-  left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all()) %>% 
+  left_join(all_sdm_1x1 %>% distinct_all()) %>%  
+  left_join(sst_data_1x1 %>% distinct_all()) %>% 
+  left_join(chla_data_1x1 %>% distinct_all()) %>% 
   filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count_hooks.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count_hooks_incl_wcpfc.csv",
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -514,14 +499,14 @@ combined_data <- short_data %>%
   mutate(year = as.integer(year)) %>% 
   filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>% 
   filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_5x5 %>% distinct_all()) %>% 
-  left_join(gfw_data_5x5 %>% distinct_all()) %>% 
-  left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all()) %>% 
+  left_join(all_sdm_1x1 %>% distinct_all()) %>% 
+  left_join(gfw_data_1x1 %>% distinct_all()) %>% 
+  left_join(sst_data_1x1 %>% distinct_all()) %>% 
+  left_join(chla_data_1x1 %>% distinct_all()) %>% 
   filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
   filter(!is.na(sdm))
 
 write.csv(combined_data,
-          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count_kwh.csv",
+          "../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count_kwh_incl_wcpfc.csv",
           row.names = FALSE)
 ```

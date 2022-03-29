@@ -6,11 +6,11 @@
 #' @param save_loc output file loc to save r2
 #' 
 
-all_rfmo_initial_models <- function(data_gfw, data_effort, save_loc){
+all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
   
   # Fix data
   data_gfw <- data_gfw %>% 
-    filter(gear == "longline") %>% 
+    filter(gear_group == "longline") %>% 
     mutate_if(is_character, as.factor) %>% 
     arrange(year, latitude, longitude) %>% 
     fill(mean_sst:cv_chla, .direction = "downup") %>% 
@@ -19,7 +19,7 @@ all_rfmo_initial_models <- function(data_gfw, data_effort, save_loc){
            zone = paste(latitude, longitude, sep = "|"))  
   
   data_effort <- data_effort %>%
-    filter(gear == "longline") %>% 
+    filter(gear_group == "longline") %>% 
     mutate_if(is_character, as.factor) %>% 
     arrange(year, latitude, longitude) %>% 
     fill(mean_sst:cv_chla, .direction = "downup") %>% 
@@ -30,9 +30,9 @@ all_rfmo_initial_models <- function(data_gfw, data_effort, save_loc){
   # Save final metrics output
   final_metrics_total <- NULL
   
-  for(rfmos in unique(data_gfw$rfmo, data_effort$rfmo)) { 
+  for(rfmos in unique(c(data_gfw$rfmo, data_effort$rfmo))) { 
     
-    for(effort_source in c("effort repored with target catch (flag)", "effort reported with bycatch (flag)", "gfw effort")) { 
+    for(effort_source in c("effort reported with target catch (flag)", "effort reported with bycatch (flag)", "gfw effort")) { 
       
       
       if(effort_source == "effort repored with target catch (flag)") {
@@ -40,7 +40,7 @@ all_rfmo_initial_models <- function(data_gfw, data_effort, save_loc){
         # Subset by RFMO
         prep_ll <- data_effort %>% 
           filter(rfmo == rfmos) %>% 
-          dplyr::select_if(!grepl("bycatch_total_effort|total_fishing_kwh", colnames(.)))
+          dplyr::select_if(!grepl("bycatch_total_effort", colnames(.)))
           
         # Remove columns where all target effort sums to 0
         prep_ll <- prep_ll %>% 
@@ -54,7 +54,7 @@ all_rfmo_initial_models <- function(data_gfw, data_effort, save_loc){
         # Subset by RFMO
         prep_ll <- data_effort %>% 
           filter(rfmo == rfmos) %>% 
-          dplyr::select_if(!grepl("target_effort|total_fishing_kwh", colnames(.)))
+          dplyr::select_if(!grepl("target_effort", colnames(.)))
         
         # Remove columns where all bycatch associated effort sums to 0
         prep_ll <- prep_ll %>% 
@@ -62,17 +62,14 @@ all_rfmo_initial_models <- function(data_gfw, data_effort, save_loc){
                                     dplyr::select_if(grepl("bycatch_total_effort", colnames(.))) %>% 
                                     dplyr::select_if(colSums(.) == 0)))
       }
-      if(effort_source == "gfw") { 
+      if(effort_source == "gfw effort") { 
         # Subset by RFMO
-        prep_ll <- data_effort %>% 
+        prep_ll <- data_gfw %>% 
           filter(rfmo == rfmos) %>% 
           filter(!is.na(total_fishing_kwh))
         }
-    }
     
-    if(nrow(prep_ll) == 0) { 
-      next 
-    }
+    if(nrow(prep_ll) > 0) { 
     
     # Add spatial groups
     unique_pts <- prep_ll %>% 
@@ -133,9 +130,9 @@ all_rfmo_initial_models <- function(data_gfw, data_effort, save_loc){
       # 3) effort reported by gfw
     
       model_runs <- data.frame(model = c("model 1", "model 2", "model 3"), 
-                               parameters = c("effort repored with target catch (flag)", "effort reported with bycatch (flag)", "gfw effort"))
+                               parameters = c("effort reported with target catch (flag)", "effort reported with bycatch (flag)", "gfw effort"))
       
-      for(models in models_runs$model) { 
+      models = model_runs$model[which(model_runs$parameters == effort_source)]
         
         if(models == "model 1") { # effort reported with target catch (flag)
           train_class <- train_data_class_orig %>%  
@@ -182,11 +179,11 @@ all_rfmo_initial_models <- function(data_gfw, data_effort, save_loc){
             distinct_all() 
           
           train_reg <- train_data_reg_orig %>%  
-            dplyr::select(catch, target_effort, sdm, species_commonname, mean_sst, mean_chla, total_fishing_kwh) %>% 
+            dplyr::select(catch, sdm, species_commonname, mean_sst, mean_chla, total_fishing_kwh) %>% 
             distinct_all()
           
           final_test <- test_data_class_orig %>% 
-            dplyr::select(pres_abs, catch, target_effort, sdm, species_commonname, mean_sst, 
+            dplyr::select(pres_abs, catch, sdm, species_commonname, mean_sst, 
                           mean_chla, total_fishing_kwh, latitude, longitude, year) %>% 
             distinct_all()
           
@@ -290,8 +287,11 @@ all_rfmo_initial_models <- function(data_gfw, data_effort, save_loc){
         
         final_metrics_total <- final_metrics_total %>% 
           bind_rows(final_metrics)
-      }
+    } 
+    }
     }
   }
   write.csv(final_metrics_total, paste0(save_loc, "all_rfmos_effort_results.csv"), row.names = FALSE)
+  
+  return(final_metrics_total)
 } 

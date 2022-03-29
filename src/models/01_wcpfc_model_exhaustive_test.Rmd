@@ -37,6 +37,7 @@ options(scipen = 1000000)
 # Get functions
 source("../functions/func-run_wcpfc_models_effort.R")
 source("../functions/func-run_wcpfc_models_others.R")
+source("../functions/func-run_wcpfc_model_final.R")
 source("../functions/func-train_test_split.R")
 ```
 
@@ -54,4 +55,7 @@ run_wcpfc_models_effort(data = all_dat, save_loc = save_loc)
 # The best model uses self-reported effort by flag + year 
 # Run through different options for price, environmentals, and transformations of the dependent variable
 run_wcpfc_models_others(data = all_dat, save_loc = save_loc)
+
+# The best model uses mean sst, mean chl-a, no ssh data, no price data, and no catch transformation
+run_wcpfc_model_final(data = all_dat, save_loc = save_loc)
 ```
