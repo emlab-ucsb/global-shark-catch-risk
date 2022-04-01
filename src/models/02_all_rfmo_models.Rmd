@@ -35,7 +35,7 @@ library(vroom)
 options(scipen = 1000000)
 
 # Get functions
-source("../functions/func-all_rfmo_initial_models.R")
+source("../functions/func-all_rfmo_models.R")
 source("../functions/func-all_rfmo_effort_models.R")
 source("../functions/func-train_all_models.R")
 source("../functions/func-train_test_split.R")
@@ -75,6 +75,10 @@ count_5x5_gfw <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_l
               select(rfmo, year, latitude, longitude, species_sciname, catch, catch_units, gear_group, effort_units, 
                      spatial_notes, species_commonname, species_group, total_fishing_kwh))
 
+data = count_5x5_gfw
+effort_source = "gfw effort"
+rfmos = "WCPFC"
+
 # 5x5 data - mt and count (no wcpfc data because all data are count)
 mt_5x5_obs <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_hooks.csv") 
 mt_5x5_gfw <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_5x5_mt_to_count_kwh.csv") 
@@ -92,7 +96,7 @@ mt_1x1_obs <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_d
 mt_1x1_gfw <- read.csv("../../data/model-data/inputs/all-rfmo-models/global_ll_data_1x1_mt_to_count_kwh.csv") 
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 # Run effort scenarios... 
 # 5x5 data - count only
 results_5x5_count <- all_rfmo_effort_models(data_gfw = count_5x5_gfw, data_effort = count_5x5_obs, save_loc = paste0(save_loc, "5x5_count_"))
@@ -125,6 +129,19 @@ all_model_results %>%
 ```
 
 ```{r}
-# The best models 
+# Run the best performing model and return a full prediction for that RFMO
+# IOTC
+all_rfmo_models(data = count_1x1_obs, rfmos = "IOTC", effort_source = "effort reported with bycatch (flag)", save_loc = save_loc)
+
+# ICCAT
+all_rfmo_models(data = count_1x1_obs, rfmo = "ICCAT", effort_source = "effort reported with target catch (flag)", save_loc = save_loc)
+
+# IATTC
+all_rfmo_models(data = mt_1x1_obs, rfmo = "IATTC", effort_source = "effort reported with bycatch (flag)", save_loc = save_loc)
+
+# WCPFC
+all_rfmo_models(data = count_5x5_obs, rfmo = "WCPFC", effort_source = "effort reported with target catch (flag)", save_loc = save_loc)
+
+t <- readRDS(file.path(save_loc, "IOTC_ll_final_model.rds"))
 ```
 
