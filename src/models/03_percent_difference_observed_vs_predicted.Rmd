@@ -1,0 +1,69 @@
+---
+title: "Observed vs Predicted"
+author: "Echelle Burns"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_notebook
+---
+
+Comparison between observed and predicted catch for different RFMOs and different models. Note that the following figures only include data from testing datasets (a subset of the full dataset)
+
+```{r setup, include=FALSE}
+# General
+library(raster)
+library(sf)
+library(fasterize)
+library(scales)
+library(knitr)
+library(RColorBrewer)
+library(readxl)
+library(googledrive)
+library(cowplot)
+library(tidyverse)
+library(sp)
+library(rgdal)
+library(geosphere)
+library(paletteer)
+
+input_loc = "data/model-data/outputs/all-rfmo-models/"
+
+```
+
+```{r}
+# Load data
+results <- read.csv(paste0(input_loc, "5x5_count_all_rfmos_effort_test_data.csv")) %>% 
+  mutate(spatial_resolution = "5x5", 
+         catch_units = "count only") %>% 
+  bind_rows(read.csv(paste0(input_loc, "5x5_mt_to_count_all_rfmos_effort_test_data.csv")) %>% 
+              mutate(spatial_resolution = "5x5", 
+                     catch_units = "mt converted to count and count")) %>% 
+  bind_rows(read.csv(paste0(input_loc, "1x1_count_all_rfmos_effort_test_data.csv")) %>% 
+              mutate(spatial_resolution = "1x1", 
+                     catch_units = "count only")) %>% 
+  bind_rows(read.csv(paste0(input_loc, "1x1_mt_to_count_all_rfmos_effort_test_data.csv")) %>% 
+              mutate(spatial_resolution = "1x1", 
+                     catch_units = "mt converted to count and count")) 
+
+results <- results %>% 
+  mutate(effort_source = gsub("bycatch [(]flag[)]", "bycatch (flag if available)", effort_source))
+
+# Calculate percent difference
+results_perc_difference <- results %>% 
+  mutate(perc_difference = 100*((abs(catch - .final_pred))/((catch + .final_pred)/2))) %>% 
+  group_by(rfmo, effort_source, spatial_resolution, catch_units) %>% 
+  summarise(mean_perc_difference = mean(perc_difference, na.rm = T), 
+            median_perc_difference = median(perc_difference, na.rm = T), 
+            sd_perc_difference = sd(perc_difference, na.rm = T), 
+            n = n()) %>% 
+  ungroup()
+
+write.csv(results_perc_difference, paste0(input_loc, "percent_differences_all_models.csv"), row.names = F)
+
+results_perc_difference_chosen_models <- results_perc_difference %>% 
+  filter((rfmo == "IOTC" & spatial_resolution == "5x5" & catch_units == "count only" & effort_source == "effort reported with bycatch (flag if available)") |
+           (rfmo == "ICCAT" & spatial_resolution == "1x1" & catch_units == "count only" & effort_source == "effort reported with target catch (flag)") | 
+           (rfmo == "IATTC" & spatial_resolution == "1x1" & catch_units == "mt converted to count and count" & effort_source == "effort reported with target catch (flag)") | 
+           (rfmo == "WCPFC" & spatial_resolution == "5x5" & catch_units == "count only" & effort_source == "effort reported with bycatch (flag if available)"))
+
+write.csv(results_perc_difference_chosen_models, paste0(input_loc, "percent_differences_chosen_models.csv"), row.names = F)
+```
+

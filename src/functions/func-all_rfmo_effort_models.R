@@ -29,6 +29,7 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
   
   # Save final metrics output
   final_metrics_total <- NULL
+  final_test_predict <- NULL
   
   for(rfmos in unique(c(data_gfw$rfmo, data_effort$rfmo))) { 
     
@@ -152,7 +153,8 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
           
           final_test <- test_data_class_orig %>% 
             dplyr::select(pres_abs, catch, sdm, species_commonname, mean_sst, mean_chla, 
-                          colnames(train_data_class_orig)[grepl("target_effort_", colnames(train_data_class_orig))]) %>% 
+                          colnames(train_data_class_orig)[grepl("target_effort_", colnames(train_data_class_orig))], 
+                          latitude, longitude, year) %>% 
             distinct_all() 
         }
         
@@ -169,7 +171,8 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
           
           final_test <- test_data_class_orig %>% 
             dplyr::select(pres_abs, catch, sdm, species_commonname, mean_sst, mean_chla, 
-                          colnames(train_data_class_orig)[grepl("bycatch_total_effort_", colnames(train_data_class_orig))]) %>% 
+                          colnames(train_data_class_orig)[grepl("bycatch_total_effort_", colnames(train_data_class_orig))],
+                          latitude, longitude, year) %>% 
             distinct_all() 
           
         }
@@ -288,11 +291,18 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
         
         final_metrics_total <- final_metrics_total %>% 
           bind_rows(final_metrics)
+        
+        final_test_predict <- final_test_predict %>% 
+          bind_rows(final_predict %>% 
+                      mutate(rfmo = rfmos, 
+                             effort_source = effort_source))
     } 
     }
     }
   }
   write.csv(final_metrics_total, paste0(save_loc, "all_rfmos_effort_results.csv"), row.names = FALSE)
+  
+  write.csv(final_test_predict, paste0(save_loc, "all_rfmos_effort_test_data.csv"), row.names = FALSE)
   
   return(final_metrics_total)
 } 

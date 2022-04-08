@@ -37,6 +37,7 @@ options(scipen = 1000000)
 # Get functions
 source("../functions/func-all_rfmo_models.R")
 source("../functions/func-all_rfmo_effort_models.R")
+source("../functions/func-all_rfmo_selector_models.R")
 source("../functions/func-train_all_models.R")
 source("../functions/func-train_test_split.R")
 
@@ -125,15 +126,19 @@ for(file in list_files) {
 ```{r eval=FALSE, include=FALSE}
 # Run effort scenarios... 
 # 5x5 data - count only
+# results_5x5_count <- all_rfmo_selector_models(data_gfw = count_5x5_gfw, data_effort = count_5x5_obs, save_loc = paste0(save_loc, "5x5_count_selector_"))
 results_5x5_count <- all_rfmo_effort_models(data_gfw = count_5x5_gfw, data_effort = count_5x5_obs, save_loc = paste0(save_loc, "5x5_count_"))
 
 # 5x5 data - mt and count
+# results_5x5_mt <- all_rfmo_selector_models(data_gfw = mt_5x5_gfw, data_effort = mt_5x5_obs, save_loc = paste0(save_loc, "5x5_mt_to_count_selector_"))
 results_5x5_mt <- all_rfmo_effort_models(data_gfw = mt_5x5_gfw, data_effort = mt_5x5_obs, save_loc = paste0(save_loc, "5x5_mt_to_count_"))
 
 # 1x1 data - count only
+# results_1x1_count <- all_rfmo_selector_models(data_gfw = count_1x1_gfw, data_effort = count_1x1_obs, save_loc = paste0(save_loc, "1x1_count_selector_"))
 results_1x1_count <- all_rfmo_effort_models(data_gfw = count_1x1_gfw, data_effort = count_1x1_obs, save_loc = paste0(save_loc, "1x1_count_"))
 
 # 1x1 data - mt and count
+# results_1x1_mt <- all_rfmo_selector_models(data_gfw = mt_1x1_gfw, data_effort = mt_1x1_obs, save_loc = paste0(save_loc, "1x1_mt_to_count_selector_"))
 results_1x1_mt <- all_rfmo_effort_models(data_gfw = mt_1x1_gfw, data_effort = mt_1x1_obs, save_loc = paste0(save_loc, "1x1_mt_to_count_"))
 ```
 
@@ -157,15 +162,15 @@ all_model_results %>%
 ```{r}
 # Run the best performing model and return a full prediction for that RFMO
 # IOTC
-all_rfmo_models(data = count_1x1_obs, rfmos = "IOTC", effort_source = "effort reported with bycatch (flag)", save_loc = save_loc)
+all_rfmo_models(data = count_5x5_obs, rfmos = "IOTC", effort_source = "effort reported with bycatch (flag)", save_loc = save_loc)
 
 # ICCAT
-all_rfmo_models(data = count_1x1_obs, rfmo = "ICCAT", effort_source = "effort reported with target catch (flag)", save_loc = save_loc)
+all_rfmo_models(data = count_1x1_obs, rfmos = "ICCAT", effort_source = "effort reported with target catch (flag)", save_loc = save_loc)
 
 # IATTC
-all_rfmo_models(data = mt_1x1_obs, rfmo = "IATTC", effort_source = "effort reported with bycatch (flag)", save_loc = save_loc)
+all_rfmo_models(data = mt_1x1_obs, rfmos = "IATTC", effort_source = "effort reported with target catch (flag)", save_loc = save_loc)
 
 # WCPFC
-all_rfmo_models(data = count_5x5_obs, rfmo = "WCPFC", effort_source = "effort reported with target catch (flag)", save_loc = save_loc)
+all_rfmo_models(data = count_5x5_obs, rfmos = "WCPFC", effort_source = "effort reported with bycatch (flag)", save_loc = save_loc)
 ```
 
