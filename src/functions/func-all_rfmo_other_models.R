@@ -1,4 +1,4 @@
-## Run rfmospecific model scenario - Environmentals and Other Options
+## Run rfmo specific model scenario - Environmentals and Other Options
 
 #' Function that runs a wide variety of model scenarios for the WCPFC region
 #' @param data dataframe of catch values
@@ -6,7 +6,7 @@
 #' @param rfmos which rfmo to choose
 #' @param effort_source which effort source to choose
 
-run_all_rfmo_models_others <- function(data, save_loc, rfmos, effort_source){
+all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
   
   # Save final metrics output
   final_metrics_total <- NULL

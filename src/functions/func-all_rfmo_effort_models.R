@@ -13,8 +13,6 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
     filter(gear_group == "longline") %>% 
     mutate_if(is_character, as.factor) %>% 
     arrange(year, latitude, longitude) %>% 
-    fill(mean_sst:cv_chla, .direction = "downup") %>% 
-    fill(sdm, .direction = "downup") %>% 
     mutate(pres_abs = factor(ifelse(catch > 0, "present", "absent")),
            zone = paste(latitude, longitude, sep = "|"))  
   
@@ -22,8 +20,6 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
     filter(gear_group == "longline") %>% 
     mutate_if(is_character, as.factor) %>% 
     arrange(year, latitude, longitude) %>% 
-    fill(mean_sst:cv_chla, .direction = "downup") %>% 
-    fill(sdm, .direction = "downup") %>% 
     mutate(pres_abs = factor(ifelse(catch > 0, "present", "absent")),
            zone = paste(latitude, longitude, sep = "|"))  
   
@@ -142,12 +138,12 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
         
         if(models == "model 1") { # effort reported with target catch (flag)
           train_class <- train_data_class_orig %>%  
-            dplyr::select(pres_abs, sdm, species_commonname, mean_sst, mean_chla, 
+            dplyr::select(pres_abs, sdm, species_commonname, mean_sst, mean_chla, latitude, longitude,
                           colnames(train_data_class_orig)[grepl("target_effort_", colnames(train_data_class_orig))]) %>% 
             distinct_all() 
           
           train_reg <- train_data_reg_orig %>%  
-            dplyr::select(catch, sdm, species_commonname, mean_sst, mean_chla, 
+            dplyr::select(catch, sdm, species_commonname, mean_sst, mean_chla, latitude, longitude,
                           colnames(train_data_reg_orig)[grepl("target_effort_", colnames(train_data_reg_orig))]) %>% 
             distinct_all() 
           
@@ -160,12 +156,12 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
         
         if(models == "model 2") { # effort reported with bycatch (flag)
           train_class <- train_data_class_orig %>%  
-            dplyr::select(pres_abs, sdm, species_commonname, mean_sst, mean_chla, 
+            dplyr::select(pres_abs, sdm, species_commonname, mean_sst, mean_chla, latitude, longitude,
                           colnames(train_data_class_orig)[grepl("bycatch_total_effort_", colnames(train_data_class_orig))]) %>% 
             distinct_all() 
           
           train_reg <- train_data_reg_orig %>%  
-            dplyr::select(catch, sdm, species_commonname, mean_sst, mean_chla, 
+            dplyr::select(catch, sdm, species_commonname, mean_sst, mean_chla, latitude, longitude,
                           colnames(train_data_reg_orig)[grepl("bycatch_total_effort_", colnames(train_data_reg_orig))]) %>% 
             distinct_all() 
           
@@ -179,11 +175,11 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
         
         if(models == "model 3") { # gfw_effort
           train_class <- train_data_class_orig %>%  
-            dplyr::select(pres_abs, sdm, species_commonname, mean_sst, mean_chla, total_fishing_kwh) %>% 
+            dplyr::select(pres_abs, sdm, species_commonname, mean_sst, mean_chla,latitude, longitude, total_fishing_kwh) %>% 
             distinct_all() 
           
           train_reg <- train_data_reg_orig %>%  
-            dplyr::select(catch, sdm, species_commonname, mean_sst, mean_chla, total_fishing_kwh) %>% 
+            dplyr::select(catch, sdm, species_commonname, mean_sst, mean_chla, latitude, longitude, total_fishing_kwh) %>% 
             distinct_all()
           
           final_test <- test_data_class_orig %>% 
@@ -193,20 +189,24 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
           
         }
         # Start Recipes
-        class_recipe <- recipe(pres_abs ~ ., data = train_class) %>%
-          themis::step_upsample(pres_abs, over_ratio = 1) %>% 
-          step_center(all_numeric(), -all_outcomes()) %>% 
-          step_scale(all_numeric(), -all_outcomes()) %>%
-          step_unknown(all_nominal(), -all_outcomes()) %>%
-          step_dummy(all_nominal(), -all_outcomes()) %>% 
-          step_zv(all_predictors())
-        
-        reg_recipe <- recipe(catch ~ ., data = train_reg) %>% 
-          step_center(all_numeric(), -all_outcomes()) %>% 
-          step_scale(all_numeric(), -all_outcomes()) %>%
-          step_unknown(all_nominal(), -all_outcomes()) %>%
-          step_dummy(all_nominal(), -all_outcomes()) %>% 
-          step_zv(all_predictors())
+      class_recipe <- recipe(pres_abs ~ ., data = train_class) %>%
+        themis::step_upsample(pres_abs, over_ratio = 1) %>% 
+        step_center(all_numeric(), -all_outcomes(), - latitude, - longitude) %>% 
+        step_scale(all_numeric(), -all_outcomes(), - latitude, - longitude) %>%
+        step_unknown(all_nominal(), -all_outcomes()) %>%
+        step_zv(all_predictors(), - latitude, - longitude) %>%
+        step_impute_knn(all_numeric(), -all_outcomes(), neighbors = 3, impute_with = imp_vars(latitude, longitude)) %>%
+        update_role(latitude, longitude, new_role = "none") %>% 
+        step_dummy(all_nominal(), -all_outcomes())
+      
+      reg_recipe <- recipe(catch ~ ., data = train_reg) %>%
+        step_center(all_numeric(), -all_outcomes(), - latitude, - longitude) %>% 
+        step_scale(all_numeric(), -all_outcomes(), - latitude, - longitude) %>%
+        step_unknown(all_nominal(), -all_outcomes()) %>%
+        step_zv(all_predictors(), - latitude, - longitude) %>%
+        step_impute_knn(all_numeric(), -all_outcomes(), neighbors = 3, impute_with = imp_vars(latitude, longitude)) %>%
+        update_role(latitude, longitude, new_role = "none") %>% 
+        step_dummy(all_nominal(), -all_outcomes()) 
         
         ###
         # Classification Model

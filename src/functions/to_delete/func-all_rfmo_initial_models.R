@@ -6,11 +6,7 @@
 #' 
 
 all_rfmo_initial_models <- function(data, save_loc){
-  
-  # Save final metrics output
-  final_metrics_total <- NULL
-  
-  for(rfmos in unique(data$rfmo)) { 
+
     
     # Prep data
     prep_ll <- data %>% 
@@ -122,28 +118,57 @@ all_rfmo_initial_models <- function(data, save_loc){
       ###
       # Classification Model
       ###
+      set.seed(1234)
       
-      class_model_tune <- rand_forest(trees = 100) %>% 
-        set_engine("ranger") %>% 
+      class_folds <- vfold_cv(train_class)
+      
+      class_model_tune <- rand_forest(trees = 500, 
+                                      mtry = tune(), 
+                                      min_n = tune()) %>% 
+        set_engine("ranger", num.threads = 8) %>% 
         set_mode("classification")
       
-      # Set Workflow
-      class_wflow_tune <- 
-        workflow() %>% 
-        add_model(class_model_tune) %>% 
-        add_recipe(class_recipe)
+      class_grid <- grid_regular(
+        min_n(range = c(10, 30)),
+        mtry(range = c(2, 8)),
+        levels = 5
+      )
       
-      class_fit <- class_wflow_tune %>% 
+      # Run tuning
+      cluster <- parallel::makePSOCKcluster(8)
+      doParallel::registerDoParallel(cluster)
+      
+      set.seed(1234)
+      
+      tune_res_rf_class <-  class_wflow_tune %>% 
+        finetune::tune_race_anova(resamples = class_folds, grid = class_grid)
+      
+      best_tune_class <- tune_res_rf_class %>% 
+        tune::select_best(metric = "roc_auc")
+      
+      class_tuned <- class_wflow_tune %>% 
+        finalize_workflow(best_tune_class) %>% 
         fit(data = train_class)
       
       ###
       # Regression Model
       ###
       
-      reg_model_tune <- rand_forest(trees = 100) %>% 
-        set_engine("ranger") %>% 
+      set.seed(1234)
+      reg_folds <- vfold_cv(train_reg)
+      
+      reg_model_tune <- rand_forest(trees = 1000, 
+                                    mtry = tune(), # tune the hyperparameters 
+                                    min_n = tune()) %>% 
+        set_engine("ranger", num.threads = 8) %>% 
         set_mode("regression") %>% 
         translate()
+      
+      reg_grid <- grid_regular(
+        min_n(range = c(10, 30)),
+        mtry(range = c(2, 8)),
+        levels = 5
+      )
 
       # Set Workflow
       reg_wflow_tune <- 
@@ -151,36 +176,42 @@ all_rfmo_initial_models <- function(data, save_loc){
         add_model(reg_model_tune) %>% 
         add_recipe(reg_recipe)
       
-      reg_fit <- reg_wflow_tune %>% 
+      cluster <- parallel::makePSOCKcluster(8)
+      doParallel::registerDoParallel(cluster)
+      
+      set.seed(1235)
+      tune_res_rf_reg <- reg_wflow_tune %>% 
+        finetune::tune_race_anova(resamples = reg_folds, grid = reg_grid)
+      
+      best_tune_reg <- tune_res_rf_reg %>% 
+        tune::select_best(metric = "rsq")
+      
+      reg_tuned <- reg_wflow_tune %>% 
+        finalize_workflow(best_tune_reg) %>% 
         fit(data = train_reg)
       
       # Predict Final Testing
-      final_class <- predict(class_fit, final_test) %>% 
+      final_testing_class <- predict(class_tuned, final_test) %>% 
         mutate(.pred_class = ifelse(.pred_class == "absent", 0, 1)) %>% 
         bind_cols(final_test)
       
-      final_reg <- predict(reg_fit, final_test) %>% 
+      final_testing_reg <- predict(reg_tuned, final_test) %>% 
         bind_cols(final_test)
       
-      final_predict <- final_class %>% 
-        left_join(final_reg) %>% 
+      test_predict <- final_testing_class %>% 
+        left_join(final_testing_reg) %>% 
         mutate(.final_pred = .pred_class*.pred) 
       
-      final_metrics <- metrics(truth = catch, estimate = .final_pred, data = final_predict)
-      
-      final_metrics <- final_metrics %>% 
-        dplyr::select(-.estimator) 
-      
       # Save outputs
-      final_metrics <- metrics(truth = catch, estimate = .final_pred, data = final_predict)
+      test_metrics <- metrics(truth = catch, estimate = .final_pred, data = test_predict)
       
-      final_metrics <- final_metrics %>% 
+      test_metrics <- test_metrics %>% 
         dplyr::select(-.estimator) %>% 
         mutate(rfmo = rfmos) %>% 
         pivot_wider(names_from = .metric, values_from = .estimate)
       
-      final_metrics_total <- final_metrics_total %>% 
-        bind_rows(final_metrics)
+      test_metrics_total <- test_metrics_total %>% 
+        bind_rows(test_metrics)
       
       # Predict on full dataset
       prep_pred <- prep_ll %>% 
@@ -201,22 +232,30 @@ all_rfmo_initial_models <- function(data, save_loc){
       pred_reg <- predict(reg_fit, prep_pred) %>% 
         bind_cols(prep_pred)
       
-      full_predict <- pred_class %>% 
+      final_predict <- pred_class %>% 
         left_join(pred_reg) %>% 
         mutate(.final_pred = .pred_class*.pred)
       
-      output_fit <- list("class_fit", class_fit, 
-                         "reg_fit" = reg_fit, 
+      # Save outputs
+      final_metrics <- metrics(truth = catch, estimate = .final_pred, data = final_predict)
+      
+      final_metrics <- final_metrics %>% 
+        dplyr::select(-.estimator) %>% 
+        mutate(rfmo = rfmos) %>% 
+        pivot_wider(names_from = .metric, values_from = .estimate)
+      
+      output_fit <- list("class_tuned", class_tuned, 
+                         "reg_tunted" = reg_tuned, 
                          "class_predict" = final_class, 
                          "reg_predict" = final_reg, 
-                         "final_predict" = final_predict, 
-                         "full_predict" = full_predict,
-                         "metrics" = final_metrics)
+                         "test_predict" = test_predict, 
+                         "test_metrics" = test_metrics,
+                         "final_predict" = final_predict,
+                         "final_metrics" = final_metrics)
       
-      saveRDS(output_fit, paste0(save_loc, rfmos, "_untuned_trained_model.rds"))
+      saveRDS(output_fit, paste0(save_loc, rfmos, "_tuned_model.rds"))
+      write.csv(full_predict, paste0(save_loc, rfmos, "ll_final_predict.csv"), na.rm = T)
     
     }
   }
-  write.csv(final_metrics_total, paste0(save_loc, "all_rfmos_results.csv"), row.names = FALSE)
-  
 } 

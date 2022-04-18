@@ -8,9 +8,10 @@ output:
 classoption: landscape
 ---
 
-Comparison between observed and predicted catch for different RFMOs and different models. Note that the following figures only include data from testing datasets (a subset of the full dataset). 
+Comparison between observed and predicted catch for different RFMOs and different models. Note that the following figures only include data from testing datasets (a subset of the full dataset). There were several models that were run, but we include here the most comprehensive base models for different combinations of spatial resolution, catch units, and effort units. Additional models that are *not* included in the figures below are comprehensive tests that include or remove features such as: sea surface height, species ex-vessel price by year, shark ex-vessel price by year, coefficient of variation of environmental predictors (sea surface temperature, sea surface height, chlorophyll-a), log transformation of the response variable.
 
-Chosen model results are based on the best performing models (in terms of R^2^) that were run prior to the week of April 4, 2022 and are subject to change as models are improved. 
+The chosen models were based on the best performing models in terms of R^2^ using all combinations of models run (including the comprehensive tests mentioned above). The hyperparameters of the best performing models were tuned and their results from the testing dataset were included in the figures below as "Tuned Model". 
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -39,34 +40,53 @@ results <- read.csv(paste0(input_loc, "5x5_count_all_rfmos_effort_test_data.csv"
                      catch_units = "count only")) %>% 
   bind_rows(read.csv(paste0(input_loc, "1x1_mt_to_count_all_rfmos_effort_test_data.csv")) %>% 
               mutate(spatial_resolution = "1x1", 
-                     catch_units = "mt converted to count and count")) 
+                     catch_units = "mt converted to count and count")) %>% 
+  bind_rows(readRDS(paste0(input_loc, "IOTC_tuned_model.rds"))$test_predict %>% 
+              mutate(spatial_resolution = "5x5", 
+                    catch_units = "count only", 
+                    effort_source = "effort reported with bycatch (flag)", 
+                    model = "Tuned Model")) %>% 
+  bind_rows(readRDS(paste0(input_loc, "ICCAT_tuned_model.rds"))$test_predict %>%
+              mutate(spatial_resolution = "1x1", 
+                    catch_units = "count only", 
+                    effort_source = "effort reported with target catch (flag)", 
+                    model = "Tuned Model")) %>% 
+  bind_rows(readRDS(paste0(input_loc, "IATTC_tuned_model.rds"))$test_predict %>% 
+              mutate(spatial_resolution = "1x1", 
+                    catch_units = "mt converted to count and count", 
+                    effort_source = "effort reported with target catch (flag)", 
+                    model = "Tuned Model")) %>% 
+  bind_rows(readRDS(paste0(input_loc, "WCPFC_tuned_model.rds"))$test_predict %>% 
+              mutate(spatial_resolution = "5x5", 
+                    catch_units = "count only", 
+                    effort_source = "effort reported with bycatch (flag)", 
+                    model = "Tuned Model")) 
 
 results <- results %>% 
-  mutate(effort_source = gsub("bycatch [(]flag[)]", "bycatch (flag if available)", effort_source))
+  mutate(effort_source = gsub("bycatch [(]flag[)]", "bycatch (flag if available)", effort_source), 
+         model = ifelse(is.na(model), "Other Models Run", model))
 
 # Calculate percent difference
 results_perc_difference <- results %>% 
   mutate(perc_difference = 100*(((.final_pred - catch)/catch)+1), 
          perc_difference = ifelse(.final_pred == catch & .final_pred == 0, 100, perc_difference)) %>%
   filter(!is.infinite(perc_difference)) %>% 
-  group_by(rfmo, effort_source, spatial_resolution, catch_units) %>% 
+  group_by(rfmo, effort_source, spatial_resolution, catch_units, model) %>% 
   summarise(mean_perc_difference = mean(perc_difference, na.rm = T), 
             median_perc_difference = median(perc_difference, na.rm = T), 
             sd_perc_difference = sd(perc_difference, na.rm = T), 
             n = n()) %>% 
   ungroup()
 
-# write.csv(results_perc_difference, paste0(input_loc, "percent_differences_all_models.csv"), row.names = F)
-
 results_perc_difference_latlon <- results %>% 
-  group_by(rfmo, effort_source, spatial_resolution, catch_units, latitude, longitude) %>% 
+  group_by(rfmo, effort_source, spatial_resolution, catch_units, latitude, longitude, model) %>% 
   summarise(sum_final_pred = sum(.final_pred), 
             sum_catch = sum(catch)) %>% 
   ungroup() %>% 
   mutate(perc_difference = 100*(((sum_final_pred - sum_catch)/sum_catch)+1),
          perc_difference = ifelse(sum_final_pred == sum_catch & sum_final_pred == 0, 100, perc_difference)) %>%
   filter(!is.infinite(perc_difference)) %>% 
-  group_by(rfmo, effort_source, spatial_resolution, catch_units) %>% 
+  group_by(rfmo, effort_source, spatial_resolution, catch_units, model) %>% 
   summarise(mean_perc_difference = mean(perc_difference, na.rm = T), 
             median_perc_difference = median(perc_difference, na.rm = T), 
             sd_perc_difference = sd(perc_difference, na.rm = T), 
@@ -75,21 +95,12 @@ results_perc_difference_latlon <- results %>%
   
 
 results_perc_difference_total <- results %>% 
-  group_by(rfmo, effort_source, spatial_resolution, catch_units) %>% 
+  group_by(rfmo, effort_source, spatial_resolution, catch_units, model) %>% 
   summarise(sum_final_pred = sum(.final_pred), 
             sum_catch = sum(catch)) %>% 
   ungroup() %>% 
   mutate(perc_difference = 100*(((sum_final_pred - sum_catch)/sum_catch)+1))  %>%
   filter(!is.infinite(perc_difference)) 
-  
-
-results_perc_difference_chosen_models <- results_perc_difference %>% 
-  filter((rfmo == "IOTC" & spatial_resolution == "5x5" & catch_units == "count only" & effort_source == "effort reported with bycatch (flag if available)") |
-           (rfmo == "ICCAT" & spatial_resolution == "1x1" & catch_units == "count only" & effort_source == "effort reported with target catch (flag)") | 
-           (rfmo == "IATTC" & spatial_resolution == "1x1" & catch_units == "mt converted to count and count" & effort_source == "effort reported with target catch (flag)") | 
-           (rfmo == "WCPFC" & spatial_resolution == "5x5" & catch_units == "count only" & effort_source == "effort reported with bycatch (flag if available)"))
-
-write.csv(results_perc_difference_chosen_models, paste0(input_loc, "percent_differences_chosen_models.csv"), row.names = F)
 ```
 
 Percent difference was calculated as: 
@@ -114,21 +125,18 @@ We calculated percent difference for the following scenarios:
 
 # Mean Percent Difference at a Cell-by-Cell and Species-by-Species Scale
 
-```{r}
+```{r fig.height= 3, fig.width = 6, out.width = "11in"}
 ggplot() + 
   geom_point(data = results_perc_difference %>% 
-             mutate(model = paste(effort_source, spatial_resolution, catch_units, sep = " | "), 
+             mutate(model_features = paste(effort_source, spatial_resolution, catch_units, sep = " | "), 
                     color = case_when(mean_perc_difference > 100 ~ "Predicted Catch > Observed Catch", 
                                       mean_perc_difference < 100 ~ "Predicted Catch < Observed Catch", 
                                       mean_perc_difference == 100 ~ "Predicted Catch = Observed Catch"), 
                     color = factor(color, levels = c("Predicted Catch > Observed Catch", 
                                            "Predicted Catch = Observed Catch", 
-                                           "Predicted Catch < Observed Catch")), 
-                    shape = case_when((rfmo == "IOTC" & spatial_resolution == "5x5" & catch_units == "count only" & effort_source == "effort reported with bycatch (flag if available)") | (rfmo == "ICCAT" & spatial_resolution == "1x1" & catch_units == "count only" & effort_source == "effort reported with target catch (flag)") | 
-           (rfmo == "IATTC" & spatial_resolution == "1x1" & catch_units == "mt converted to count and count" & effort_source == "effort reported with target catch (flag)") | 
-           (rfmo == "WCPFC" & spatial_resolution == "5x5" & catch_units == "count only" & effort_source == "effort reported with bycatch (flag if available)") ~ "Selected Model (Subject to Change)", TRUE ~ "Other Models Run")), 
-           mapping = aes(x = mean_perc_difference, y = model, color = color,
-                         shape = shape)) + 
+                                           "Predicted Catch < Observed Catch"))), 
+           mapping = aes(x = mean_perc_difference, y = model_features, color = color,
+                         shape = model, size = model)) + 
   scale_color_manual(name = "Direction of Percent Difference", values = c("Predicted Catch > Observed Catch" = "darkred", 
                                            "Predicted Catch = Observed Catch" = "black", 
                                            "Predicted Catch < Observed Catch" = "dodgerblue4"),
@@ -137,10 +145,11 @@ ggplot() +
                                            "Predicted Catch < Observed Catch"), 
                      drop = FALSE, 
                      guide = guide_legend(ncol = 1)) + 
-  scale_shape_manual(name = "Model Selection", values = c("Selected Model (Subject to Change)" = 17, 
+  scale_shape_manual(name = "Model Selection", values = c("Tuned Model" = 17, 
                                            "Other Models Run" = 16), 
-                     breaks = c("Selected Model (Subject to Change)", "Other Models Run"), 
+                     breaks = c("Tuned Model", "Other Models Run"), 
                      guide = guide_legend(ncol = 1)) + 
+  scale_size_manual(name = "", values = c("Tuned Model" = 2, "Other Models Run" = 1), guide = FALSE) + 
   facet_wrap(vars(rfmo)) + 
   geom_vline(xintercept = 100) + 
   xlab("Mean Percent Difference") + 
@@ -160,18 +169,15 @@ ggsave("cellbycell_sppbyspp_perc_difference.png", width = 14, height = 6, units 
 ```{r fig.height= 3, fig.width = 6, out.width = "11in"}
 ggplot() + 
   geom_point(data = results_perc_difference_latlon %>% 
-             mutate(model = paste(effort_source, spatial_resolution, catch_units, sep = " | "), 
+             mutate(model_features = paste(effort_source, spatial_resolution, catch_units, sep = " | "), 
                     color = case_when(mean_perc_difference > 100 ~ "Predicted Catch > Observed Catch", 
                                       mean_perc_difference < 100 ~ "Predicted Catch < Observed Catch", 
                                       mean_perc_difference == 100 ~ "Predicted Catch = Observed Catch"), 
                     color = factor(color, levels = c("Predicted Catch > Observed Catch", 
                                            "Predicted Catch = Observed Catch", 
-                                           "Predicted Catch < Observed Catch")), 
-                    shape = case_when((rfmo == "IOTC" & spatial_resolution == "5x5" & catch_units == "count only" & effort_source == "effort reported with bycatch (flag if available)") | (rfmo == "ICCAT" & spatial_resolution == "1x1" & catch_units == "count only" & effort_source == "effort reported with target catch (flag)") | 
-           (rfmo == "IATTC" & spatial_resolution == "1x1" & catch_units == "mt converted to count and count" & effort_source == "effort reported with target catch (flag)") | 
-           (rfmo == "WCPFC" & spatial_resolution == "5x5" & catch_units == "count only" & effort_source == "effort reported with bycatch (flag if available)") ~ "Selected Model (Subject to Change)", TRUE ~ "Other Models Run")), 
-           mapping = aes(x = mean_perc_difference, y = model, color = color,
-                         shape = shape)) + 
+                                           "Predicted Catch < Observed Catch"))), 
+           mapping = aes(x = mean_perc_difference, y = model_features, color = color,
+                         shape = model, size = model)) + 
   scale_color_manual(name = "Direction of Percent Difference", values = c("Predicted Catch > Observed Catch" = "darkred", 
                                            "Predicted Catch = Observed Catch" = "black", 
                                            "Predicted Catch < Observed Catch" = "dodgerblue4"),
@@ -180,15 +186,17 @@ ggplot() +
                                            "Predicted Catch < Observed Catch"), 
                      drop = FALSE, 
                      guide = guide_legend(ncol = 1)) + 
-  scale_shape_manual(name = "Model Selection", values = c("Selected Model (Subject to Change)" = 17, 
+  scale_shape_manual(name = "Model Selection", values = c("Tuned Model" = 17, 
                                            "Other Models Run" = 16), 
-                     breaks = c("Selected Model (Subject to Change)", "Other Models Run"), 
+                     breaks = c("Tuned Model", "Other Models Run"), 
                      guide = guide_legend(ncol = 1)) + 
+  scale_size_manual(name = "", values = c("Tuned Model" = 2, "Other Models Run" = 1), guide = FALSE) + 
   facet_wrap(vars(rfmo)) + 
   geom_vline(xintercept = 100) + 
   xlab("Mean Percent Difference") + 
   ylab("") + 
   ggtitle("Cell-by-Cell Differences") + 
+  theme_minimal() + 
   theme(legend.position = "bottom", 
         axis.text.x = element_text(angle = 45))
 
@@ -202,18 +210,15 @@ ggsave("cellbycell_perc_difference.png", width = 14, height = 6, units = "in", b
 ```{r fig.height= 3, fig.width = 6, out.width = "11in"}
 ggplot() + 
   geom_point(data = results_perc_difference_total %>% 
-             mutate(model = paste(effort_source, spatial_resolution, catch_units, sep = " | "), 
+             mutate(model_features = paste(effort_source, spatial_resolution, catch_units, sep = " | "), 
                     color = case_when(perc_difference > 100 ~ "Predicted Catch > Observed Catch", 
                                       perc_difference < 100 ~ "Predicted Catch < Observed Catch", 
                                       perc_difference == 100 ~ "Predicted Catch = Observed Catch"), 
                     color = factor(color, levels = c("Predicted Catch > Observed Catch", 
                                            "Predicted Catch = Observed Catch", 
-                                           "Predicted Catch < Observed Catch")), 
-                    shape = case_when((rfmo == "IOTC" & spatial_resolution == "5x5" & catch_units == "count only" & effort_source == "effort reported with bycatch (flag if available)") | (rfmo == "ICCAT" & spatial_resolution == "1x1" & catch_units == "count only" & effort_source == "effort reported with target catch (flag)") | 
-           (rfmo == "IATTC" & spatial_resolution == "1x1" & catch_units == "mt converted to count and count" & effort_source == "effort reported with target catch (flag)") | 
-           (rfmo == "WCPFC" & spatial_resolution == "5x5" & catch_units == "count only" & effort_source == "effort reported with bycatch (flag if available)") ~ "Selected Model (Subject to Change)", TRUE ~ "Other Models Run")), 
-           mapping = aes(x = perc_difference, y = model, color = color,
-                         shape = shape)) + 
+                                           "Predicted Catch < Observed Catch"))), 
+           mapping = aes(x = perc_difference, y = model_features, color = color,
+                         shape = model, size = model)) + 
   scale_color_manual(name = "Direction of Percent Difference", values = c("Predicted Catch > Observed Catch" = "darkred", 
                                            "Predicted Catch = Observed Catch" = "black", 
                                            "Predicted Catch < Observed Catch" = "dodgerblue4"),
@@ -222,10 +227,11 @@ ggplot() +
                                            "Predicted Catch < Observed Catch"), 
                      drop = FALSE, 
                      guide = guide_legend(ncol = 1)) + 
-  scale_shape_manual(name = "Model Selection", values = c("Selected Model (Subject to Change)" = 17, 
+  scale_shape_manual(name = "Model Selection", values = c("Tuned Model" = 17, 
                                            "Other Models Run" = 16), 
-                     breaks = c("Selected Model (Subject to Change)", "Other Models Run"), 
+                     breaks = c("Tuned Model", "Other Models Run"), 
                      guide = guide_legend(ncol = 1)) + 
+  scale_size_manual(name = "", values = c("Tuned Model" = 2, "Other Models Run" = 1), guide = FALSE) + 
   facet_wrap(vars(rfmo)) + 
   geom_vline(xintercept = 100) + 
   xlab("Percent Difference") + 
