@@ -211,7 +211,7 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
         ###
         # Classification Model
         ###
-        ntrees = 100 
+        ntrees = 500 
         
         class_model <- rand_forest(trees = ntrees) %>% 
           set_engine("ranger", 
