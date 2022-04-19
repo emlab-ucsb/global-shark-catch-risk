@@ -25,7 +25,7 @@ species_list <- read.csv("../../data/species-information/species_list_for_sdms.c
 ### 
 # Set Values
 ###
-spatial_scale <- 5 # adjust depending on the scale we're aiming for (5x5 cell or 1x1 cell)
+spatial_scale <- 1 # adjust depending on the scale we're aiming for (5x5 cell or 1x1 cell)
 ```
 
 # IUCN SDMs

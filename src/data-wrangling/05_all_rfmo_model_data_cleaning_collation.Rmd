@@ -382,8 +382,7 @@ combined_data <- short_data2 %>%
   #left_join(gfw_data_5x5 %>% distinct_all()) %>% 
   left_join(sst_data_5x5 %>% distinct_all()) %>% 
   left_join(chla_data_5x5 %>% distinct_all()) %>% 
-  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
-  filter(!is.na(sdm))
+  left_join(ssh_data_5x5 %>% distinct_all())
 
 write.csv(combined_data,
           paste0("../../data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_mt_to_count_hooks.csv"),
@@ -400,9 +399,8 @@ combined_data <- short_data2 %>%
   left_join(all_sdm_5x5 %>% distinct_all()) %>% 
   left_join(gfw_data_5x5 %>% distinct_all()) %>% 
   left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all()) %>% 
-  filter(!is.na(mean_chla) | !is.na(mean_sst)) %>%
-  filter(!is.na(sdm))
+  left_join(chla_data_5x5 %>% distinct_all())  %>% 
+  left_join(ssh_data_5x5 %>% distinct_all())
 
 write.csv(combined_data,
           paste0("../../data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_mt_to_count_kwh.csv"),
