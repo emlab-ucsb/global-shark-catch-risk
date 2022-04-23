@@ -28,8 +28,7 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
     prep_ll <- prep_ll %>% 
       dplyr::select(-colnames(prep_ll %>% # remove columns where target effort or catch sums to 0
                                 dplyr::select_if(grepl("target_effort|target_catch", colnames(.))) %>% 
-                                dplyr::select_if(colSums(., na.rm = TRUE) == 0))) %>% 
-      filter(!is.na(target_effort))
+                                dplyr::select_if(colSums(., na.rm = TRUE) == 0))) 
   } 
   
   if(effort_source == "effort reported with bycatch (flag)") { 
@@ -50,8 +49,7 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
   if(effort_source == "gfw effort") { 
     # Subset by RFMO
     prep_ll <- prep_ll %>% 
-      filter(rfmo == rfmos) %>% 
-      filter(!is.na(total_fishing_kwh)) 
+      filter(rfmo == rfmos)  
   }
   
   if(nrow(prep_ll) > 0) {

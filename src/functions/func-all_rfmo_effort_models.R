@@ -67,8 +67,7 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
       if(effort_source == "gfw effort") { 
         # Subset by RFMO
         prep_ll <- data_gfw %>% 
-          filter(rfmo == rfmos) %>% 
-          filter(!is.na(total_fishing_kwh))
+          filter(rfmo == rfmos)
         }
     
     if(nrow(prep_ll) > 0) { 

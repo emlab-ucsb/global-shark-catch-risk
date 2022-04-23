@@ -35,9 +35,7 @@ library(vroom)
 options(scipen = 1000000)
 
 # Get functions
-#source("../functions/func-all_rfmo_models.R")
 source("../functions/func-all_rfmo_effort_models.R")
-#source("../functions/func-all_rfmo_selector_models.R")
 source("../functions/func-all_rfmo_other_models.R")
 source("../functions/func-all_rfmo_tuned_models.R")
 source("../functions/func-train_all_models.R")
@@ -172,7 +170,7 @@ all_rfmo_other_models(data = count_1x1_obs, rfmos = "ICCAT", effort_source = "ef
                            save_loc = save_loc)
 
 # IOTC - 5x5 with count only, effort reported with bycatch by flag
-all_rfmo_other_models(data = count_5x5_obs, rfmos = "IOTC", effort_source = "effort reported with bycatch (flag)", 
+all_rfmo_other_models(data = mt_5x5_obs, rfmos = "IOTC", effort_source = "effort reported with target catch (flag)", 
                            save_loc = save_loc)
 # WCPFC - 5x5 with count only, effort reported with bycatch (no flag available)
 all_rfmo_other_models(data = count_5x5_obs, rfmos = "WCPFC", effort_source = "effort reported with bycatch (flag)", 

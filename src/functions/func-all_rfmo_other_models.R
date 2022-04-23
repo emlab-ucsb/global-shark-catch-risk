@@ -29,8 +29,7 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
     prep_ll <- prep_ll %>% 
     dplyr::select(-colnames(prep_ll %>% # remove columns where target effort or catch sums to 0
                               dplyr::select_if(grepl("target_effort|target_catch", colnames(.))) %>% 
-                              dplyr::select_if(colSums(., na.rm = TRUE) == 0))) %>% 
-    filter(!is.na(target_effort))
+                              dplyr::select_if(colSums(., na.rm = TRUE) == 0)))
   } 
   
   if(effort_source == "effort reported with bycatch (flag)") { 
@@ -51,8 +50,7 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
   if(effort_source == "gfw effort") { 
     # Subset by RFMO
     prep_ll <- prep_ll %>% 
-      filter(rfmo == rfmos) %>% 
-      filter(!is.na(total_fishing_kwh)) 
+      filter(rfmo == rfmos) 
   }
   
   if(nrow(prep_ll) > 0) {
@@ -85,6 +83,17 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
   
   # Clean column names 
   prep_ll <- janitor::clean_names(prep_ll)
+  
+  # Select appropriate colnames
+  if(effort_source == "effort reported with target catch (flag)") { 
+    effort_colnames <- colnames(prep_ll)[grepl("target_effort_", colnames(prep_ll))]
+  } 
+  if(effort_source == "effort reported with bycatch (flag)") { 
+    effort_colnames <- colnames(prep_ll)[grepl("bycatch_total_effort_", colnames(prep_ll))]
+  } 
+  if(effort_source == "gfw effort") { 
+    effort_colnames <- "total_fishing_kwh"
+  }
   
   ### 
   # Run Models
@@ -123,20 +132,17 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
             train_class <- train_data_class_orig %>% 
               dplyr::select(pres_abs, sdm, species_commonname, mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh, 
                             median_price_group, median_price_species, latitude, longitude,
-                            colnames(train_data_class_orig)[grepl("target_effort", colnames(train_data_class_orig)) &
-                                                              grepl("longline", colnames(train_data_class_orig))]) %>% 
+                            effort_colnames) %>% 
               distinct_all()
             
             train_reg <- train_data_reg_orig %>% 
               dplyr::select(catch, sdm, species_commonname, mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh, latitude, longitude,
-                            median_price_group, median_price_species, colnames(train_data_reg_orig)[grepl("target_effort", colnames(train_data_reg_orig)) &
-                                                                                                        grepl("longline", colnames(train_data_reg_orig))]) %>% 
+                            median_price_group, median_price_species, effort_colnames) %>% 
               distinct_all()
             
             final_test <- test_data_class_orig %>% 
               dplyr::select(pres_abs, catch, sdm, species_commonname, mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh, 
-                            median_price_group, median_price_species, 
-                            colnames(train_data_class_orig)[grepl("target_effort", colnames(train_data_class_orig)) & grepl("longline", colnames(train_data_class_orig))], 
+                            median_price_group, median_price_species, effort_colnames,  
                             latitude, longitude, year) %>% 
               distinct_all()
             
