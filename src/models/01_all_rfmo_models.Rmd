@@ -201,8 +201,8 @@ all_model_results <- effort_model_results %>%
   bind_rows(read.csv(paste0(save_loc, "IOTC_models_others_results.csv")) %>%
               mutate(type = "exhaustive search", 
                      rfmo = "IOTC",
-                     option = "5x5, count", 
-                     effort_source = "effort reported with bycatch (flag)") %>% 
+                     option = "5x5, count and mt", 
+                     effort_source = "effort reported with target catch (flag)") %>% 
               rowwise() %>% 
               mutate(specifics = paste0("environmentals = ", environmental_value, ", include ssh = ", 
                                         include_ssh, ", price = ", price, ", catch transformation = ", catch_transformation), 
@@ -228,58 +228,57 @@ all_model_results %>%
 ```{r}
 # Run the best performing model and tune
 # IATTC - 1x1 count and mt | mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh | effort reported with target catch (flag)
-iattc_effort_variables <- paste0(colnames(mt_1x1_obs)[grepl("target_effort_", colnames(mt_1x1_obs))], collapse = "|")
-
-all_rfmo_tuned_models(data = mt_1x1_obs, 
-                rfmos = "IATTC", 
-                effort_source = "effort reported with target catch (flag)", 
-                classification_variables = paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|", 
-                                                  iattc_effort_variables), 
-                regression_variables = paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|", 
-                                                  iattc_effort_variables),
-                save_loc = save_loc)
+# iattc_effort_variables <- paste0(colnames(mt_1x1_obs)[grepl("target_effort_", colnames(mt_1x1_obs))], collapse = "|")
+# 
+# all_rfmo_tuned_models(data = mt_1x1_obs, 
+#                 rfmos = "IATTC", 
+#                 effort_source = "effort reported with target catch (flag)", 
+#                 classification_variables = paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|", 
+#                                                   iattc_effort_variables), 
+#                 regression_variables = paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|", 
+#                                                   iattc_effort_variables),
+#                 save_loc = save_loc)
 
 tuned_iattc <- readRDS(paste0(save_loc, "IATTC_tuned_model.rds"))
 
-# ICCAT - 1x1 count only | mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh | effort reported with target catch (flag)
-iccat_effort_variables <- paste0(colnames(count_1x1_obs)[grepl("target_effort_", colnames(count_1x1_obs))], collapse = "|")
-
-all_rfmo_tuned_models(data = count_1x1_obs, rfmos = "ICCAT", 
-                      effort_source = "effort reported with target catch (flag)", 
-                      classification_variables = 
-                        paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|", 
-                                                        iccat_effort_variables), 
-                      regression_variables = 
-                        paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|",  
-                                                        iccat_effort_variables), 
-                      save_loc = save_loc)
-
+# # ICCAT - 1x1 count only | mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh | effort reported with target catch (flag)
+# iccat_effort_variables <- paste0(colnames(count_1x1_obs)[grepl("target_effort_", colnames(count_1x1_obs))], collapse = "|")
+# 
+# all_rfmo_tuned_models(data = count_1x1_obs, rfmos = "ICCAT", 
+#                       effort_source = "effort reported with target catch (flag)", 
+#                       classification_variables = 
+#                         paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|", 
+#                                                         iccat_effort_variables), 
+#                       regression_variables = 
+#                         paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|",  
+#                                                         iccat_effort_variables), 
+#                       save_loc = save_loc)
+# 
 tuned_iccat <- readRDS(paste0(save_loc, "ICCAT_tuned_model.rds"))
 
-# IOTC - 5x5 count only | mean_sst, mean_cv | effort reported with bycatch (flag)
-iotc_effort_variables <- paste0(colnames(count_5x5_obs)[grepl("bycatch_total_effort_", colnames(count_5x5_obs))], collapse = "|")
-
-all_rfmo_tuned_models(data = count_5x5_obs, rfmos = "IOTC", 
-                      effort_source = "effort reported with bycatch (flag)", 
-                      classification_variables = 
-                        paste0("species_commonname|sdm|mean_sst|mean_chla|",
-                               iotc_effort_variables), 
-                      regression_variables =
-                        paste0("species_commonname|sdm|mean_sst|mean_chla|",
-                               iotc_effort_variables)
-                      , save_loc = save_loc)
-
+# # IOTC - 5x5 count and mt| mean_sst, mean_chla, cv_sst, cv_chla, median_price_group | effort reported with target catch (flag)
+# iotc_effort_variables <- paste0(colnames(mt_5x5_obs)[grepl("target_effort_", colnames(mt_5x5_obs))], collapse = "|")
+# 
+# all_rfmo_tuned_models(data = mt_5x5_obs, rfmos = "IOTC", 
+#                       effort_source = "effort reported with target catch (flag)", 
+#                       classification_variables = 
+#                         paste0("species_commonname|sdm|mean_sst|mean_chla|cv_sst|cv_chla|median_price_group|",
+#                                iotc_effort_variables), 
+#                       regression_variables =
+#                         paste0("species_commonname|sdm|mean_sst|mean_chla|cv_sst|cv_chla|median_price_group|",
+#                                iotc_effort_variables), save_loc = save_loc)
+# 
 tuned_iotc <- readRDS(paste0(save_loc, "IOTC_tuned_model.rds"))
-
-
-# WCPFC - 5x5 count only | mean_sst, mean_cv | effort reported with bycatch (flag) [note that bycatch effort by flag is not reported for wcpfc]
-all_rfmo_tuned_models(data = count_5x5_obs, 
-                rfmos = "WCPFC", 
-                effort_source = "effort reported with bycatch (flag)", 
-                classification_variables = "species_commonname|sdm|mean_sst|mean_chla|bycatch_total_effort", 
-                regression_variables = "species_commonname|sdm|mean_sst|mean_chla|bycatch_total_effort", 
-                save_loc = save_loc)
-
+# 
+# 
+# # WCPFC - 5x5 count only | mean_sst, mean_cv, mean_ssh | effort reported with bycatch (flag) [note that bycatch effort by flag is not reported for wcpfc]
+# all_rfmo_tuned_models(data = count_5x5_obs, 
+#                 rfmos = "WCPFC", 
+#                 effort_source = "effort reported with bycatch (flag)", 
+#                 classification_variables = "species_commonname|sdm|mean_sst|mean_chla|mean_ssh|bycatch_total_effort", 
+#                 regression_variables = "species_commonname|sdm|mean_sst|mean_chla|mean_ssh|bycatch_total_effort", 
+#                 save_loc = save_loc)
+# 
 tuned_wcpfc <- readRDS(paste0(save_loc, "WCPFC_tuned_model.rds"))
 ```
 
@@ -290,7 +289,7 @@ all_model_results %>%
   group_by(rfmo) %>% 
   slice_max(., n = 1, rsq) %>% 
   dplyr::select(rfmo, rsq) %>% 
-  rename(untrained_rsq = rsq) %>% 
+  rename(untrained_rsq = rsq) %>%  
   left_join(bind_rows(tuned_iattc$test_metrics, tuned_iccat$test_metrics, 
                       tuned_iotc$test_metrics, tuned_wcpfc$test_metrics) %>% 
               select(rfmo, rsq) %>% 
