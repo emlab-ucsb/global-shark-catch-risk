@@ -5,9 +5,13 @@
 #' @param save_loc output file loc to save r2
 #' @param rfmos which rfmo to choose
 #' @param effort_source which effort source to choose
+#' @param mtry_class the original model's mtry for classification
+#' @param mtry_reg the original model's mtry for regression
+#' @param min_n_class the original model's min_n for classification
+#' @param min_n_reg the original model's min_n for classification
 
 
-all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classification_variables, regression_variables){
+all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classification_variables, regression_variables, mtry_class, mtry_reg, min_n_class, min_n_reg){
 
   # Filter to only include relevant data
   prep_ll <- data %>% 
@@ -26,8 +30,8 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
       dplyr::select_if(!grepl("bycatch_total_effort", colnames(.)))
     
     prep_ll <- prep_ll %>% 
-      dplyr::select(-colnames(prep_ll %>% # remove columns where target effort or catch sums to 0
-                                dplyr::select_if(grepl("target_effort|target_catch", colnames(.))) %>% 
+      dplyr::select(-colnames(prep_ll %>% # remove columns where target effort  sums to 0
+                                dplyr::select_if(grepl("target_effort", colnames(.))) %>% 
                                 dplyr::select_if(colSums(., na.rm = TRUE) == 0))) 
   } 
   
@@ -145,13 +149,12 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
      # Classification Model
      ###
     set.seed(1234)
-    
     class_folds <- vfold_cv(train_class)
     
     class_model_tune <- rand_forest(trees = 500, 
                                     mtry = tune(), 
                                     min_n = tune()) %>% 
-      set_engine("ranger", num.threads = 8) %>% 
+      set_engine("ranger", num.threads = 8, seed = 1234) %>% 
       set_mode("classification")
     
     # Set Workflow
@@ -165,7 +168,6 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
     doParallel::registerDoParallel(cluster)
     
     set.seed(1234)
-    
     # Preliminary grid search
     tune_res_rf_class <-  class_wflow_tune %>% 
       finetune::tune_race_anova(resamples = class_folds, grid = 20)
@@ -183,11 +185,24 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
     
     # Grid search again
     set.seed(1234)
-    
     tune_res_rf_class <-  class_wflow_tune %>% 
       finetune::tune_race_anova(resamples = class_folds, grid = class_grid)
     
     # Find the best option again
+    best_tune_class <- tune_res_rf_class %>% 
+      tune::select_best(metric = "roc_auc")
+    
+    # Test it using the default options... 
+    class_grid_final <- tibble::tibble(
+      "mtry" = c(mtry_class, best_tune_class$mtry), 
+      "min_n" = c(min_n_class, best_tune_class$min_n))
+    
+    # Final search
+    set.seed(1234)
+    tune_res_rf_class <-  class_wflow_tune %>% 
+      tune::tune_grid(resamples = class_folds, grid = class_grid_final)
+    
+    # Final option
     best_tune_class <- tune_res_rf_class %>% 
       tune::select_best(metric = "roc_auc")
     
@@ -205,7 +220,7 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
     reg_model_tune <- rand_forest(trees = 500, 
                                   mtry = tune(), # tune the hyperparameters 
                                   min_n = tune()) %>% 
-      set_engine("ranger", num.threads = 8) %>% 
+      set_engine("ranger", num.threads = 8, seed = 1234) %>% 
       set_mode("regression") %>% 
       translate()
     
@@ -218,7 +233,7 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
     cluster <- parallel::makePSOCKcluster(8)
     doParallel::registerDoParallel(cluster)
     
-    set.seed(1235)
+    set.seed(1234)
     # Preliminary grid search
     tune_res_rf_reg <-  reg_wflow_tune %>% 
       finetune::tune_race_anova(resamples = reg_folds, grid = 20)
@@ -235,11 +250,25 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
     )
     
     # Grid search again
-    set.seed(1235)
+    set.seed(1234)
     tune_res_rf_reg <-  reg_wflow_tune %>% 
       finetune::tune_race_anova(resamples = reg_folds, grid = reg_grid)
     
     # Find the best option again
+    best_tune_reg <- tune_res_rf_reg %>% 
+      tune::select_best(metric = "rsq")
+    
+    # Test it using the default options... 
+    reg_grid_final <- tibble::tibble(
+      "mtry" = c(mtry_reg, best_tune_reg$mtry), 
+      "min_n" = c(min_n_reg, best_tune_reg$min_n))
+    
+    # Final search
+    set.seed(1234)
+    tune_res_rf_reg <-  reg_wflow_tune %>% 
+      tune::tune_grid(resamples = reg_folds, grid = reg_grid_final)
+    
+    # Final option
     best_tune_reg <- tune_res_rf_reg %>% 
       tune::select_best(metric = "rsq")
     
@@ -270,7 +299,7 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
     # Predict on full dataset
     prep_pred <- prep_ll %>% select(-effort_units) %>% 
       group_by(latitude, longitude) %>% 
-      mutate_at(colnames(.)[grepl("sst|chla|ssh|effort", colnames(.))], mean, na.rm = T) %>% 
+      mutate_at(colnames(.)[grepl("sst|chla|ssh|effort|kwh", colnames(.))], mean, na.rm = T) %>% 
       ungroup() %>% 
       dplyr::select(pres_abs, catch, 
                     matches(paste0(classification_variables, 
@@ -296,7 +325,7 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
       mutate(rfmo = rfmos) %>% 
       pivot_wider(names_from = .metric, values_from = .estimate)
     
-    output_fit <- list("class_tuned", class_tuned, 
+    output_fit <- list("class_tuned" = class_tuned, 
                        "reg_tuned" = reg_tuned, 
                        "test_predict" = test_predict, 
                        "test_metrics" = test_metrics,

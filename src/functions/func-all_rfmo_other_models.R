@@ -27,8 +27,8 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
       dplyr::select_if(!grepl("bycatch_total_effort", colnames(.)))
     
     prep_ll <- prep_ll %>% 
-    dplyr::select(-colnames(prep_ll %>% # remove columns where target effort or catch sums to 0
-                              dplyr::select_if(grepl("target_effort|target_catch", colnames(.))) %>% 
+    dplyr::select(-colnames(prep_ll %>% # remove columns where target effort sums to 0
+                              dplyr::select_if(grepl("target_effort_", colnames(.))) %>% 
                               dplyr::select_if(colSums(., na.rm = TRUE) == 0)))
   } 
   
@@ -39,7 +39,7 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
     
     prep_ll <- prep_ll %>% 
       dplyr::select(-colnames(prep_ll %>% # remove columns where bycatch associated effort sums to 0
-                                dplyr::select_if(grepl("bycatch_total_effort", colnames(.))) %>% 
+                                dplyr::select_if(grepl("bycatch_total_effort_", colnames(.))) %>% 
                                 dplyr::select_if(colSums(., na.rm = T) == 0)))
     
     if(length(colnames(prep_ll)[grepl("bycatch_total_effort", colnames(prep_ll))]) == 0) { 
@@ -262,7 +262,7 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
             
             class_model <- rand_forest(trees = ntrees) %>% 
               set_engine("ranger", 
-                         importance = "impurity") %>% 
+                         importance = "impurity", seed = 1234) %>% 
               set_mode("classification") %>% 
               translate()
             
@@ -276,6 +276,10 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
             class_fit <- class_wflow %>% 
               fit(data = train_class)
             
+            # Save mtry and min_n for tuning
+            class_mtry <- class_fit$fit$fit$fit$mtry
+            class_min_n <- class_fit$fit$fit$fit$min.node.size
+            
             # Return feature importance
             importance_class <- class_fit %>% 
               extract_fit_parsnip() %>% 
@@ -286,7 +290,7 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
             ###
             reg_model <- rand_forest(trees = ntrees) %>% 
               set_engine("ranger", 
-                         importance = "impurity") %>% 
+                         importance = "impurity", seed = 1234) %>% 
               set_mode("regression") %>% 
               translate()
             
@@ -299,6 +303,10 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
             # Fit Model
             reg_fit <- reg_wflow %>% 
               fit(data = train_reg)
+            
+            # Save mtry and min_n for tuning
+            reg_mtry <- reg_fit$fit$fit$fit$mtry
+            reg_min_n <- reg_fit$fit$fit$fit$min.node.size
             
             # Return feature importance
             importance_reg <- reg_fit %>% 
@@ -334,7 +342,11 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
               mutate(environmental_value = enviro_options,
                      include_ssh = ssh_options, 
                      price = price_options,
-                     catch_transformation = catch_options) %>% 
+                     catch_transformation = catch_options, 
+                     mtry_class = class_mtry, 
+                     min_n_class = class_min_n, 
+                     mtry_reg = reg_mtry, 
+                     min_n_reg = reg_min_n) %>% 
               pivot_wider(names_from = .metric, values_from = .estimate)
             
             final_metrics_total <- final_metrics_total %>% 

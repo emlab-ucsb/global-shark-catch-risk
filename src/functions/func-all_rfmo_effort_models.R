@@ -214,7 +214,7 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
         
         class_model <- rand_forest(trees = ntrees) %>% 
           set_engine("ranger", 
-                     importance = "impurity") %>% 
+                     importance = "impurity", seed = 1234) %>% 
           set_mode("classification") %>% 
           translate()
         
@@ -238,7 +238,7 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
         ###
         reg_model <- rand_forest(trees = ntrees) %>% 
           set_engine("ranger", 
-                     importance = "impurity") %>% 
+                     importance = "impurity", seed = 1234) %>% 
           set_mode("regression") %>% 
           translate()
         
