@@ -299,9 +299,9 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
     }
     }
   }
-  write.csv(final_metrics_total, paste0(save_loc, "all_rfmos_effort_results.csv"), row.names = FALSE)
+  write.csv(final_metrics_total, paste0(save_loc, "all_rfmos_ll_effort_results.csv"), row.names = FALSE)
   
-  write.csv(final_test_predict, paste0(save_loc, "all_rfmos_effort_test_data.csv"), row.names = FALSE)
+  write.csv(final_test_predict, paste0(save_loc, "all_rfmos_ll_effort_test_data.csv"), row.names = FALSE)
   
   return(final_metrics_total)
 } 

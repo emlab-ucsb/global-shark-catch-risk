@@ -357,5 +357,5 @@ all_rfmo_other_models <- function(data, save_loc, rfmos, effort_source){
     }
   }
   } 
-  write.csv(final_metrics_total, paste0(save_loc, paste0(rfmos,"_models_others_results.csv")), row.names = FALSE)
+  write.csv(final_metrics_total, paste0(save_loc, paste0(rfmos,"_ll_models_others_results.csv")), row.names = FALSE)
 } 

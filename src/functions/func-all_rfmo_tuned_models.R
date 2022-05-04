@@ -332,7 +332,7 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
                        "final_predict" = final_predict,
                        "final_metrics" = final_metrics)
     
-    saveRDS(output_fit, paste0(save_loc, rfmos, "_tuned_model.rds"))
+    saveRDS(output_fit, paste0(save_loc, rfmos, "_ll_tuned_model.rds"))
     write.csv(final_predict, paste0(save_loc, rfmos, "_ll_final_predict.csv"), row.names = F)
     
     return(test_metrics)

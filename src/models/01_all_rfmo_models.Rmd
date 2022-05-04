@@ -292,11 +292,11 @@ all_model_results %>%
   group_by(rfmo) %>% 
   slice_max(., n = 1, rsq) %>% 
   dplyr::select(rfmo, rsq) %>% 
-  rename(untrained_rsq = rsq) %>%  
+  rename(untuned_rsq = rsq) %>%  
   left_join(bind_rows(tuned_iattc$test_metrics, tuned_iccat$test_metrics, 
                       tuned_iotc$test_metrics, tuned_wcpfc$test_metrics) %>% 
               select(rfmo, rsq) %>% 
-              rename(trained_rsq = rsq))
+              rename(tuned_rsq = rsq))
 ```
 
 ```{r}
@@ -366,9 +366,9 @@ untuned_wcpfc <- readRDS(paste0(save_loc, "WCPFC_ps_untuned_model.rds"))
 bind_rows(untuned_iattc$test_metrics, untuned_iccat$test_metrics, 
                       untuned_iotc$test_metrics, untuned_wcpfc$test_metrics) %>% 
   select(rfmo, rsq) %>% 
-  rename(untrained_rsq = rsq) %>%
+  rename(untuned_rsq = rsq) %>%
   left_join(bind_rows(tuned_iattc$test_metrics, tuned_iccat$test_metrics, 
                       tuned_iotc$test_metrics, tuned_wcpfc$test_metrics) %>% 
               select(rfmo, rsq) %>% 
-              rename(trained_rsq = rsq))
+              rename(tuned_rsq = rsq))
 ```
