@@ -23,8 +23,9 @@ knitr::opts_chunk$set(
 )
 # Load libraries
 library(tidyverse)
+library(here)
 
-input_loc = "../../data/model-data/outputs/all-rfmo-models/"
+input_loc <- file.path(here::here(), "data/model-data/outputs/all-rfmo-models/")
 ```
 
 ```{r}
@@ -159,10 +160,10 @@ ggplot() +
   theme(legend.position = "bottom", 
         axis.text.x = element_text(angle = 45))
 
-ggsave("cellbycell_sppbyspp_perc_difference.png", width = 14, height = 6, units = "in", bg = "white")
+ggsave(file.path(here::here(), "figures/intermediates/cellbycell_sppbyspp_perc_difference.png"), width = 14, height = 6, units = "in", bg = "white")
 ```
 
-![](cellbycell_sppbyspp_perc_difference.png)
+![](../../figures/intermediates/cellbycell_sppbyspp_perc_difference.png)
 
 # Mean Percent Difference at a Cell-by-Cell Scale
 
@@ -200,10 +201,10 @@ ggplot() +
   theme(legend.position = "bottom", 
         axis.text.x = element_text(angle = 45))
 
-ggsave("cellbycell_perc_difference.png", width = 14, height = 6, units = "in", bg = "white")
+ggsave(file.path(here::here(), "figures/intermediates/cellbycell_perc_difference.png"), width = 14, height = 6, units = "in", bg = "white")
 ```
 
-![](cellbycell_perc_difference.png)
+![](../../figures/intermediates/cellbycell_perc_difference.png)
 
 # Mean Percent Difference
 
@@ -241,9 +242,9 @@ ggplot() +
   theme(legend.position = "bottom", 
         axis.text.x = element_text(angle = 45))
 
-ggsave("total_perc_difference.png", width = 14, height = 6, units = "in", bg = "white")
+ggsave(file.path(here::here(), "figures/intermediates/total_perc_difference.png"), width = 14, height = 6, units = "in", bg = "white")
 ```
 
-![](total_perc_difference.png)
+![](../../figures/intermediates/total_perc_difference.png)
 
 

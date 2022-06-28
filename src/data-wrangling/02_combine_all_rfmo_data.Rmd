@@ -7,12 +7,13 @@ This script combines all cleaned RFMO catch datasets.
 
 ```{r, include=FALSE}
 library(tidyverse)
+library(here)
 ```
 
 
 ```{r, echo=TRUE}
 # List files to choose from
-file_path <- "../../data/rfmo-observer-data/outputs/"
+file_path <- file.path(here::here(), "data/rfmo-observer-data/outputs/")
 
 list_files <- list.files(file_path, pattern="csv")
 list_files <- list_files[!grepl("all_data", list_files)]

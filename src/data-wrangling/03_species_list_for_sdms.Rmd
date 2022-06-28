@@ -10,20 +10,17 @@ This notebook grabs the unique species in the RFMO observer-reported data so tha
 library(tidyverse)
 library(readxl)
 library(rfishbase) # just for nei species
-
-# Load source files 
-source("../start_project.R") ## remove when publishing
+library(here)
 
 ###
 # Load data
 ###
 
 # rfmo data
-# all_data <- read.csv(file.path(project_data_path, "rfmo-review", "edited", "all_data.csv")) # remove when publishing
-all_data <- read.csv("../../data/rfmo-observer-data/outputs/all_data.csv")
+all_data <- read.csv(file.path(here::here(), "data/rfmo-observer-data/outputs/all_data.csv"))
 
 # Species groupings
-species_groups <- read_xlsx("../../data/species-information/species_groups.xlsx", sheet = "species_list") %>% 
+species_groups <- read_xlsx(file.path(here::here(),"data/species-information/species_groups.xlsx", sheet = "species_list")) %>% 
   filter(group %in% c("tunas", "tuna-like species", "sharks and rays")) %>% 
   mutate(scientific_name = str_to_upper(scientific_name))
 ```
@@ -151,7 +148,7 @@ species_list <- species_list %>%
                                              "CARCHARHINUS FALCIFORMIS/CARCHARHINUS LIMBATUS"),
                        "value" = c("Carcharhinus falciformis", "Carcharhinus limbatus")))
 
-species_threatened_fishing <- read.csv("../../data/species-information/spp_list_fishing_threat.csv")
+species_threatened_fishing <- read.csv(file.path(here::here(), "data/species-information/spp_list_fishing_threat.csv"))
 
 species_list_for_sdms <- short_data %>%
   filter(species_group %in% c("sharks and rays", "tunas", "tuna-like species")) %>%
@@ -167,5 +164,5 @@ species_list_for_sdms <- short_data %>%
            species_group == "sharks and rays" & threatened == "yes") %>%
   select(-threatened)
 
-write.csv(species_list_for_sdms, "../../data/species-information/species_list_for_sdms.csv", row.names = F)
+write.csv(species_list_for_sdms, file.path(here::here(), "data/species-information/species_list_for_sdms.csv"), row.names = F)
 ```

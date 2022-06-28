@@ -32,10 +32,11 @@ knitr::opts_chunk$set(
 )
 # Libraries
 library(tidyverse)
+library(here)
 
 # Load data
 # 1x1 data - count only
-list_files<- c(list.files("../../data/model-data/inputs/all-rfmo-models/", pattern = "1x1_mt_to_count_hooks.csv", full.names = T), "../../data/model-data/inputs/all-rfmo-models/WCPFC_ll_data_1x1_count_hooks.csv")
+list_files<- c(list.files(file.path(here::here(), "data/model-data/inputs/all-rfmo-models/", pattern = "1x1_mt_to_count_hooks.csv"), full.names = T), file.path(here::here(), "data/model-data/inputs/all-rfmo-models/WCPFC_ll_data_1x1_count_hooks.csv"))
 
 count_1x1_obs <- NULL 
 
@@ -44,8 +45,8 @@ for(file in list_files) {
   count_1x1_obs <- bind_rows(count_1x1_obs, temp)
 } 
 
-list_files <- c(list.files("../../data/model-data/inputs/all-rfmo-models/", pattern = "1x1_mt_to_count_kwh.csv", full.names = T), 
-                "../../data/model-data/inputs/all-rfmo-models/WCPFC_ll_data_1x1_count_kwh.csv")
+list_files <- c(list.files(file.path(here::here(), "data/model-data/inputs/all-rfmo-models/", pattern = "1x1_mt_to_count_kwh.csv"), full.names = T), 
+                file.path(here::here(), "data/model-data/inputs/all-rfmo-models/WCPFC_ll_data_1x1_count_kwh.csv"))
 
 count_1x1_gfw <- NULL
 

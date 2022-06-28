@@ -16,40 +16,40 @@ library(readxl)
 library(googledrive)
 library(sf)
 library(rgdal)
+library(here)
 ```
 
 ```{r include=FALSE}
 # Load Data
-all_data <- read.csv("../../data/rfmo-observer-data/outputs/all_data.csv") %>% 
-  filter(rfmo != "CCSBT" & rfmo != "NAFO") # doesn't have appropriate spatial bycatch data
+all_data <- read.csv(file.path(here::here(), "data/rfmo-observer-data/outputs/all_data.csv"))
 
 # Species grouping
-species_groups <- read_xlsx("../../data/species-information/species_groups.xlsx", sheet = "species_list") %>% 
+species_groups <- read_xlsx(file.path(here::here(), "data/species-information/species_groups.xlsx", sheet = "species_list")) %>% 
   filter(group %in% c("tunas", "tuna-like species", "sharks and rays")) %>% 
   mutate(scientific_name = str_to_upper(scientific_name))
 
 # SDM data
-all_sdm_1x1 <- read.csv("../../data/iucn-sdm-data/outputs/global_combined_iucn_sdm_1x1.csv")
-all_sdm_5x5 <- read.csv("../../data/iucn-sdm-data/outputs/global_combined_iucn_sdm_5x5.csv")
+all_sdm_1x1 <- read.csv(file.path(here::here(), "data/iucn-sdm-data/outputs/global_combined_iucn_sdm_1x1.csv"))
+all_sdm_5x5 <- read.csv(file.path(here::here(), "data/iucn-sdm-data/outputs/global_combined_iucn_sdm_5x5.csv"))
 
 # SST data
-sst_data_1x1 <- read.csv("../../data/sea-surface-temperature/outputs/binned_global_sst_1x1.csv")
-sst_data_5x5 <- read.csv("../../data/sea-surface-temperature/outputs/binned_global_sst_5x5.csv")
+sst_data_1x1 <- read.csv(file.path(here::here(), "data/sea-surface-temperature/outputs/binned_global_sst_1x1.csv"))
+sst_data_5x5 <- read.csv(file.path(here::here(), "data/sea-surface-temperature/outputs/binned_global_sst_5x5.csv"))
 
 # SSH data
-ssh_data_1x1 <- read.csv("../../data/sea-surface-height/outputs/binned_global_ssh_1x1.csv")
-ssh_data_5x5 <- read.csv("../../data/sea-surface-height/outputs/binned_global_ssh_5x5.csv")
+ssh_data_1x1 <- read.csv(file.path(here::here(), "data/sea-surface-height/outputs/binned_global_ssh_1x1.csv"))
+ssh_data_5x5 <- read.csv(file.path(here::here(), "data/sea-surface-height/outputs/binned_global_ssh_5x5.csv"))
 
 # Chlorophyll-A data
-chla_data_1x1 <- read.csv("../../data/chlorophyll-a/outputs/binned_global_chla_1x1.csv")
-chla_data_5x5 <- read.csv("../../data/chlorophyll-a/outputs/binned_global_chla_5x5.csv")
+chla_data_1x1 <- read.csv(file.path(here::here(), "data/chlorophyll-a/outputs/binned_global_chla_1x1.csv"))
+chla_data_5x5 <- read.csv(file.path(here::here(), "data/chlorophyll-a/outputs/binned_global_chla_5x5.csv"))
 
 # GFW data
-gfw_data_1x1 <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_1x1.csv")
-gfw_data_5x5 <- read.csv("../../data/global-fishing-watch/outputs/binned_global_gfw_5x5.csv")
+gfw_data_1x1 <- read.csv(file.path(here::here(), "data/global-fishing-watch/outputs/binned_global_gfw_1x1.csv"))
+gfw_data_5x5 <- read.csv(file.path(here::here(), "data/global-fishing-watch/outputs/binned_global_gfw_5x5.csv"))
 
 # Ex-vessel price data
-prices <- read.csv("../../data/ex-vessel-prices/exvessel_price_database_1976_2017.csv") %>% 
+prices <- read.csv(file.path(here::here(), "data/ex-vessel-prices/exvessel_price_database_1976_2017.csv")) %>% 
   distinct_all()
 
 # Fix the prices data
@@ -319,7 +319,8 @@ combined_data <- short_data %>%
   left_join(ssh_data_5x5 %>% distinct_all())
 
 write.csv(combined_data,
-          paste0("../../data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_count_hooks.csv"),
+          file.path(here::here(), 
+          paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_count_hooks.csv")),
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -337,12 +338,13 @@ combined_data <- short_data %>%
   left_join(ssh_data_5x5 %>% distinct_all())
 
 write.csv(combined_data,
-          paste0("../../data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_count_kwh.csv"),
+          file.path(here::here(),
+          paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_count_kwh.csv")),
           row.names = FALSE)
 
 if(length(unique(short_data$catch_units)) > 1) { 
 # Update mt to count
-mt_count <- read.csv("../../data/species-information/spp_weight_count_conversion.csv") %>%
+mt_count <- read.csv(file.path(here::here(), "data/species-information/spp_weight_count_conversion.csv")) %>%
   mutate(scientific_name = str_to_upper(scientific_name))
 
 # Add sharks nei to the mix
@@ -385,7 +387,8 @@ combined_data <- short_data2 %>%
   left_join(ssh_data_5x5 %>% distinct_all())
 
 write.csv(combined_data,
-          paste0("../../data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_mt_to_count_hooks.csv"),
+          file.path(here::here(),
+          paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_mt_to_count_hooks.csv")),
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -403,7 +406,8 @@ combined_data <- short_data2 %>%
   left_join(ssh_data_5x5 %>% distinct_all())
 
 write.csv(combined_data,
-          paste0("../../data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_mt_to_count_kwh.csv"),
+          file.path(here::here(), 
+          paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_mt_to_count_kwh.csv")),
           row.names = FALSE)
 } 
 
@@ -474,7 +478,8 @@ combined_data <- short_data %>%
   left_join(ssh_data_1x1 %>% distinct_all())
 
 write.csv(combined_data,
-          paste0("../../data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_count_hooks.csv"),
+          file.path(here::here(), 
+          paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_count_hooks.csv")),
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -492,7 +497,8 @@ combined_data <- short_data %>%
   left_join(ssh_data_1x1 %>% distinct_all())
 
 write.csv(combined_data,
-          paste0("../../data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_count_kwh.csv"),
+          file.path(here::here(), 
+          paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_count_kwh.csv")),
           row.names = FALSE)
 
 if(length(unique(short_data$catch_units)) > 1) { 
@@ -529,7 +535,8 @@ combined_data <- short_data %>%
   left_join(ssh_data_1x1 %>% distinct_all())
 
 write.csv(combined_data,
-          paste0("../../data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_mt_to_count_hooks.csv"),
+          file.path(here::here(), 
+          paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_mt_to_count_hooks.csv")),
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
@@ -547,7 +554,8 @@ combined_data <- short_data %>%
   left_join(ssh_data_1x1 %>% distinct_all())
 
 write.csv(combined_data,
-          paste0("../../data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_mt_to_count_kwh.csv"),
+          file.path(here::here(), 
+          paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_mt_to_count_kwh.csv")),
           row.names = FALSE)
 } 
 } 
