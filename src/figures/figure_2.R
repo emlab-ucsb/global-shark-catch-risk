@@ -3,11 +3,21 @@
 # area
 
 # Some important notes: 
-# 1) WCPFC does not contain 2018 data for target catch. It looks like we knew this already though. 
+# 1) Data we are using are 1x1 resolution (with 5x5 resolution evenly redistributed to 1x1 cells)
+#    and count for bycatch catch units and metric tonnes for target catch units. All effort is
+#    hooks from total target effort
+# 2) WCPFC does not contain 2018 data for target catch. It looks like we knew this already though. 
 #    Trying to re-download and add the data back would likely require us to re-run everything
-# 2) Areas that are selected are those that are greater than or equal to the 90th quantile for 
+# 3) Areas that are selected are those that are greater than or equal to the 90th quantile for 
 #    mean annual catch of each species in each RFMO. Each RFMO should be represented in the
 #    output map.
+# 4) Some RFMOs report their data at different spatial resolutions (1x1 degrees with degrees
+#    centered around whole numbers [e.g., 150] vs centered around half numbers [e.g., 150.5]).
+#    To combat this, we first rasterized data in groups using "like" spatial resolutions. We 
+#    then re-sampled to a common, arbitrarily chosen CRS using nearest neighbor methods. This
+#    method reduced artefacts of slight 0.5 degree shifts among RFMO reporting. If RFMO reporting
+#    areas overlapped, we took the mean of groupings across overlapping regions.
+
 
 # Load libraries
 library(tidyverse)

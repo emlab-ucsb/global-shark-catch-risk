@@ -2,7 +2,9 @@
 
 # Some important notes: 
 # 1) We use the mean annual catch, effort, CPUE for each RFMO.
-# 2) In each RFMO, we grouped things based on quantiles from 0-1 using 0.1 increments. We added
+# 2) Data we are using are 1x1 resolution (with 5x5 resolution evenly redistributed to 1x1 cells)
+#    and count for catch units
+# 3) In each RFMO, we grouped things based on quantiles from 0-1 using 0.1 increments. We added
 #    -0.1 to the beginning of each grouping so that we could include 0 values (instead of them
 #    being treated as NA in the final grouping). We kept the unique values for the quantiles for
 #    each metric. If the RFMO and metric had the full number of available quantiles (11), we 
@@ -12,7 +14,7 @@
 #    the (13 - number of unique quantiles) and the maxium was 11. For example, if the RFMO
 #    had only 8 unique quantiles, we would begin group counts at (13-8) = 5 and end at 11 so 
 #    that 7 groups of data had "names". 
-# 3) Some RFMOs report their data at different spatial resolutions (1x1 degrees with degrees
+# 4) Some RFMOs report their data at different spatial resolutions (1x1 degrees with degrees
 #    centered around whole numbers [e.g., 150] vs centered around half numbers [e.g., 150.5]).
 #    To combat this, we first rasterized data in groups using "like" spatial resolutions. We 
 #    then re-sampled to a common, arbitrarily chosen CRS using nearest neighbor methods. This
