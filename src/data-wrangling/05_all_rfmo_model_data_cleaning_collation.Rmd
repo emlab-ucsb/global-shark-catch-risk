@@ -24,7 +24,7 @@ library(here)
 all_data <- read.csv(file.path(here::here(), "data/rfmo-observer-data/outputs/all_data.csv"))
 
 # Species grouping
-species_groups <- read_xlsx(file.path(here::here(), "data/species-information/species_groups.xlsx", sheet = "species_list")) %>% 
+species_groups <- read_xlsx(file.path(here::here(), "data/species-information/species_groups.xlsx"), sheet = "species_list") %>% 
   filter(group %in% c("tunas", "tuna-like species", "sharks and rays")) %>% 
   mutate(scientific_name = str_to_upper(scientific_name))
 
@@ -264,8 +264,10 @@ bycatch_effort_pivot <- bycatch_effort_pivot %>%
 
 colnames(bycatch_effort_pivot)[9:ncol(bycatch_effort_pivot)] <- paste0("bycatch_total_effort_",colnames(bycatch_effort_pivot)[9:ncol(bycatch_effort_pivot)], "_longline")
 
-short_data <- short_data %>%
-  filter(species_group == "sharks and rays") %>%
+# quick gather to include tuna species as well
+short_data_inc_tuna <- short_data
+
+short_data_inc_tuna <- short_data_inc_tuna %>% 
   group_by(rfmo, year, latitude, longitude, gear_group, effort_units, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>% 
   summarise(catch = sum(catch, na.rm = T)) %>% 
   ungroup() %>% 
@@ -277,13 +279,13 @@ short_data <- short_data %>%
   mutate_at(vars(target_effort:colnames(bycatch_effort_pivot)[length(colnames(bycatch_effort_pivot))]), replace_na, 0)
 
 # Get nanes to add back later
-names <- short_data %>%
+names <- short_data_inc_tuna %>%
   dplyr::select(species_commonname, species_sciname, species_group, species_resolution, catch_units) %>%
   distinct_all() %>% 
   mutate(species_colnames = paste(species_sciname, catch_units, sep = "_"))
 
 # Pad with zeros...
-short_data <- short_data %>%
+short_data_inc_tuna <- short_data_inc_tuna %>%
   dplyr::select(-species_commonname, - species_group, - species_resolution) %>%
   pivot_wider(names_from = c("species_sciname", "catch_units"),
               values_from = catch,
@@ -298,43 +300,152 @@ short_data <- short_data %>%
   filter(species_sciname != "empty") %>% 
   left_join(., names %>% select(-species_colnames))
 
-short_data <- short_data %>% 
+short_data_inc_tuna <- short_data_inc_tuna %>% 
   left_join(spp_prices, by = c("year")) %>% 
   left_join(spp_prices_ind, by = c("year", "species_sciname" = "scientific_name"))
 
-short_data <- short_data %>% 
+short_data_inc_tuna <- short_data_inc_tuna %>% 
   distinct_all()
 
-# Combine the data 
+# Rescale to 1x1 degree 
+locations_y <- short_data_inc_tuna %>%
+  filter(spatial_notes == "center of 5x5 cell") %>%
+  select(latitude) %>%
+  distinct_all() %>%
+  mutate(latitude_lag0 = latitude,
+         latitude_lag1 = latitude-1,
+         latitude_lag2 = latitude-2,
+         latitude_plus1 = latitude+1,
+         latitude_plus2 = latitude+2) %>%
+  pivot_longer(latitude_lag0:latitude_plus2, values_to = "latitude_rescaled") %>%
+  select(-name)
+
+locations_x <- short_data_inc_tuna %>%
+  filter(spatial_notes == "center of 5x5 cell") %>%
+  select(longitude) %>%
+  distinct_all() %>%
+  mutate(longitude_lag0 = longitude,
+         longitude_lag1 = longitude-1,
+         longitude_lag2 = longitude-2,
+         longitude_plus1 = longitude+1,
+         longitude_plus2 = longitude+2) %>%
+  pivot_longer(longitude_lag0:longitude_plus2, values_to = "longitude_rescaled") %>%
+  select(-name)
+
+# New dataset
+short_data_inc_tuna_5x5 <- short_data_inc_tuna %>%
+  filter(spatial_notes == "center of 5x5 cell") %>%
+  left_join(locations_y) %>%
+  left_join(locations_x) %>%
+  mutate(longitude_rescaled = ifelse(is.na(longitude_rescaled), longitude, longitude_rescaled),
+         latitude_rescaled = ifelse(is.na(latitude_rescaled), latitude, latitude_rescaled),
+         catch = catch/25) %>%
+  mutate_at(vars(target_effort:colnames(bycatch_effort_pivot)[length(colnames(bycatch_effort_pivot))]), function(x){ x/25}) %>% # rescale all to be at 1x1
+  rename(latitude_orig = latitude,
+         longitude_orig = longitude,
+         latitude = latitude_rescaled,
+         longitude = longitude_rescaled) %>%
+  mutate(spatial_notes = "center of 1x1 cell") %>%
+  select(colnames(short_data_inc_tuna)) %>% 
+  group_by_at(c(colnames(short_data_inc_tuna)[!grepl("target_effort|bycatch_total_effort|catch", colnames(short_data_inc_tuna))], "catch_units")) %>% 
+  summarise_all(sum) %>% 
+  ungroup()
+
+short_data_inc_tuna <- short_data_inc_tuna %>%
+  filter(spatial_notes != "center of 5x5 cell") %>%
+  bind_rows(short_data_inc_tuna_5x5) %>%
+  group_by_at(c(colnames(short_data_inc_tuna)[!grepl("target_effort|bycatch_total_effort|catch", colnames(short_data_inc_tuna))], "catch_units")) %>% 
+  summarise_all(sum) %>% 
+  ungroup()
+
+short_data_inc_tuna <- short_data_inc_tuna %>% 
+  distinct_all()
+
+# Combine the data
 # Using just the self-reported effort by hooks (so can only use catch by hooks)
-combined_data <- short_data %>%
+combined_data <- short_data_inc_tuna %>%
   filter(effort_units == "hooks") %>% 
   mutate(year = as.integer(year)) %>% 
-  filter(spatial_notes == "center of 5x5 cell" & catch_units == "count") %>% 
-  filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_5x5 %>% distinct_all()) %>% 
-  #left_join(gfw_data_5x5 %>% distinct_all()) %>% 
-  left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all()) %>% 
-  left_join(ssh_data_5x5 %>% distinct_all())
+  filter(spatial_notes == "center of 1x1 cell") %>% 
+  filter(year >= 2012 & year <= 2018) # lower limit for GFW data
 
 write.csv(combined_data,
           file.path(here::here(), 
+          paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_tuna_hooks.csv")),
+          row.names = FALSE)
+### end break for including tuna
+
+short_data <- short_data %>%
+  filter(species_group == "sharks and rays") %>%
+  group_by(rfmo, year, latitude, longitude, gear_group, effort_units, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>%
+  summarise(catch = sum(catch, na.rm = T)) %>%
+  ungroup() %>%
+  full_join(., target_effort_pivot %>%
+              mutate_at(vars(target_effort:colnames(target_effort_pivot)[length(colnames(target_effort_pivot))]), round)) %>%
+  full_join(., bycatch_effort_pivot %>%
+              mutate_at(vars(bycatch_total_effort:colnames(bycatch_effort_pivot)[length(colnames(bycatch_effort_pivot))]), round)) %>%
+  mutate(species_sciname = ifelse(is.na(species_sciname), "empty", species_sciname)) %>%
+  mutate_at(vars(target_effort:colnames(bycatch_effort_pivot)[length(colnames(bycatch_effort_pivot))]), replace_na, 0)
+
+# Get nanes to add back later
+names <- short_data %>%
+  dplyr::select(species_commonname, species_sciname, species_group, species_resolution, catch_units) %>%
+  distinct_all() %>%
+  mutate(species_colnames = paste(species_sciname, catch_units, sep = "_"))
+
+# Pad with zeros...
+short_data <- short_data %>%
+  dplyr::select(-species_commonname, - species_group, - species_resolution) %>%
+  pivot_wider(names_from = c("species_sciname", "catch_units"),
+              values_from = catch,
+              values_fill = 0) %>%
+  pivot_longer(cols = names$species_colnames,
+               names_to = c("species_sciname",  "catch_units"),
+               names_sep = "_",
+               values_to = "catch") %>%
+  relocate(species_sciname, .after = longitude) %>%
+  relocate(c('catch', 'catch_units'), .after = species_sciname) %>%
+  relocate(year, .after = rfmo) %>%
+  filter(species_sciname != "empty") %>%
+  left_join(., names %>% select(-species_colnames))
+
+short_data <- short_data %>%
+  left_join(spp_prices, by = c("year")) %>%
+  left_join(spp_prices_ind, by = c("year", "species_sciname" = "scientific_name"))
+
+short_data <- short_data %>%
+  distinct_all()
+
+# Combine the data
+# Using just the self-reported effort by hooks (so can only use catch by hooks)
+combined_data <- short_data %>%
+  filter(effort_units == "hooks") %>%
+  mutate(year = as.integer(year)) %>%
+  filter(spatial_notes == "center of 5x5 cell" & catch_units == "count") %>%
+  filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
+  left_join(all_sdm_5x5 %>% distinct_all()) %>%
+  #left_join(gfw_data_5x5 %>% distinct_all()) %>%
+  left_join(sst_data_5x5 %>% distinct_all()) %>%
+  left_join(chla_data_5x5 %>% distinct_all()) %>%
+  left_join(ssh_data_5x5 %>% distinct_all())
+
+write.csv(combined_data,
+          file.path(here::here(),
           paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_count_hooks.csv")),
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
 combined_data <- short_data %>%
-  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>% 
-  summarise(catch = sum(catch, na.rm = T)) %>% 
-  ungroup() %>% 
-  mutate(year = as.integer(year)) %>% 
-  filter(spatial_notes == "center of 5x5 cell" & catch_units == "count") %>% 
+  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>%
+  summarise(catch = sum(catch, na.rm = T)) %>%
+  ungroup() %>%
+  mutate(year = as.integer(year)) %>%
+  filter(spatial_notes == "center of 5x5 cell" & catch_units == "count") %>%
   filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_5x5 %>% distinct_all()) %>% 
-  left_join(gfw_data_5x5 %>% distinct_all()) %>% 
-  left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all()) %>% 
+  left_join(all_sdm_5x5 %>% distinct_all()) %>%
+  left_join(gfw_data_5x5 %>% distinct_all()) %>%
+  left_join(sst_data_5x5 %>% distinct_all()) %>%
+  left_join(chla_data_5x5 %>% distinct_all()) %>%
   left_join(ssh_data_5x5 %>% distinct_all())
 
 write.csv(combined_data,
@@ -342,7 +453,7 @@ write.csv(combined_data,
           paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_count_kwh.csv")),
           row.names = FALSE)
 
-if(length(unique(short_data$catch_units)) > 1) { 
+if(length(unique(short_data$catch_units)) > 1) {
 # Update mt to count
 mt_count <- read.csv(file.path(here::here(), "data/species-information/spp_weight_count_conversion.csv")) %>%
   mutate(scientific_name = str_to_upper(scientific_name))
@@ -369,21 +480,21 @@ short_data2 <- short_data %>%
   summarise(catch = sum(catch, na.rm = T)) %>%
   ungroup()
 
-short_data2 <- short_data2 %>% 
+short_data2 <- short_data2 %>%
   distinct_all()
 
-# Combine the data 
+# Combine the data
 
 # Using just the self-reported effort by hooks (so can only use catch by hooks)
 combined_data <- short_data2 %>%
-  filter(effort_units == "hooks") %>% 
-  mutate(year = as.integer(year)) %>% 
-  filter(spatial_notes == "center of 5x5 cell" & catch_units == "count") %>% 
+  filter(effort_units == "hooks") %>%
+  mutate(year = as.integer(year)) %>%
+  filter(spatial_notes == "center of 5x5 cell" & catch_units == "count") %>%
   filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_5x5 %>% distinct_all()) %>% 
-  #left_join(gfw_data_5x5 %>% distinct_all()) %>% 
-  left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all()) %>% 
+  left_join(all_sdm_5x5 %>% distinct_all()) %>%
+  #left_join(gfw_data_5x5 %>% distinct_all()) %>%
+  left_join(sst_data_5x5 %>% distinct_all()) %>%
+  left_join(chla_data_5x5 %>% distinct_all()) %>%
   left_join(ssh_data_5x5 %>% distinct_all())
 
 write.csv(combined_data,
@@ -393,25 +504,25 @@ write.csv(combined_data,
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
 combined_data <- short_data2 %>%
-  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>% 
-  summarise(catch = sum(catch, na.rm = T)) %>% 
-  ungroup() %>% 
-  mutate(year = as.integer(year)) %>% 
-  filter(spatial_notes == "center of 5x5 cell" & catch_units == "count") %>% 
+  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>%
+  summarise(catch = sum(catch, na.rm = T)) %>%
+  ungroup() %>%
+  mutate(year = as.integer(year)) %>%
+  filter(spatial_notes == "center of 5x5 cell" & catch_units == "count") %>%
   filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_5x5 %>% distinct_all()) %>% 
-  left_join(gfw_data_5x5 %>% distinct_all()) %>% 
-  left_join(sst_data_5x5 %>% distinct_all()) %>% 
-  left_join(chla_data_5x5 %>% distinct_all())  %>% 
+  left_join(all_sdm_5x5 %>% distinct_all()) %>%
+  left_join(gfw_data_5x5 %>% distinct_all()) %>%
+  left_join(sst_data_5x5 %>% distinct_all()) %>%
+  left_join(chla_data_5x5 %>% distinct_all())  %>%
   left_join(ssh_data_5x5 %>% distinct_all())
 
 write.csv(combined_data,
-          file.path(here::here(), 
+          file.path(here::here(),
           paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_5x5_mt_to_count_kwh.csv")),
           row.names = FALSE)
-} 
+}
 
-# Rescale to 1x1 degree 
+# Rescale to 1x1 degree
 locations_y <- short_data %>%
   filter(spatial_notes == "center of 5x5 cell") %>%
   select(latitude) %>%
@@ -450,58 +561,58 @@ short_data_5x5 <- short_data %>%
          latitude = latitude_rescaled,
          longitude = longitude_rescaled) %>%
   mutate(spatial_notes = "center of 1x1 cell") %>%
-  select(colnames(short_data)) %>% 
-  group_by_at(c(colnames(short_data)[!grepl("target_effort|bycatch_total_effort|catch", colnames(short_data))], "catch_units")) %>% 
-  summarise_all(sum) %>% 
+  select(colnames(short_data)) %>%
+  group_by_at(c(colnames(short_data)[!grepl("target_effort|bycatch_total_effort|catch", colnames(short_data))], "catch_units")) %>%
+  summarise_all(sum) %>%
   ungroup()
 
 short_data <- short_data %>%
   filter(spatial_notes != "center of 5x5 cell") %>%
   bind_rows(short_data_5x5) %>%
-  group_by_at(c(colnames(short_data)[!grepl("target_effort|bycatch_total_effort|catch", colnames(short_data))], "catch_units")) %>% 
-  summarise_all(sum) %>% 
+  group_by_at(c(colnames(short_data)[!grepl("target_effort|bycatch_total_effort|catch", colnames(short_data))], "catch_units")) %>%
+  summarise_all(sum) %>%
   ungroup()
 
-short_data <- short_data %>% 
+short_data <- short_data %>%
   distinct_all()
 
 # Combine the data
 # Using just the self-reported effort by hooks (so can only use catch by hooks)
 combined_data <- short_data %>%
-  filter(effort_units == "hooks") %>% 
-  mutate(year = as.integer(year)) %>% 
-  filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>% 
+  filter(effort_units == "hooks") %>%
+  mutate(year = as.integer(year)) %>%
+  filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>%
   filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_1x1 %>% distinct_all()) %>% 
-  left_join(sst_data_1x1 %>% distinct_all()) %>% 
-  left_join(chla_data_1x1 %>% distinct_all()) %>% 
+  left_join(all_sdm_1x1 %>% distinct_all()) %>%
+  left_join(sst_data_1x1 %>% distinct_all()) %>%
+  left_join(chla_data_1x1 %>% distinct_all()) %>%
   left_join(ssh_data_1x1 %>% distinct_all())
 
 write.csv(combined_data,
-          file.path(here::here(), 
+          file.path(here::here(),
           paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_count_hooks.csv")),
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
 combined_data <- short_data %>%
-  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>% 
-  summarise(catch = sum(catch, na.rm = T)) %>% 
-  ungroup() %>% 
-  mutate(year = as.integer(year)) %>% 
-  filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>% 
+  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>%
+  summarise(catch = sum(catch, na.rm = T)) %>%
+  ungroup() %>%
+  mutate(year = as.integer(year)) %>%
+  filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>%
   filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_1x1 %>% distinct_all()) %>% 
-  left_join(gfw_data_1x1 %>% distinct_all()) %>% 
-  left_join(sst_data_1x1 %>% distinct_all()) %>% 
-  left_join(chla_data_1x1 %>% distinct_all()) %>% 
+  left_join(all_sdm_1x1 %>% distinct_all()) %>%
+  left_join(gfw_data_1x1 %>% distinct_all()) %>%
+  left_join(sst_data_1x1 %>% distinct_all()) %>%
+  left_join(chla_data_1x1 %>% distinct_all()) %>%
   left_join(ssh_data_1x1 %>% distinct_all())
 
 write.csv(combined_data,
-          file.path(here::here(), 
+          file.path(here::here(),
           paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_count_kwh.csv")),
           row.names = FALSE)
 
-if(length(unique(short_data$catch_units)) > 1) { 
+if(length(unique(short_data$catch_units)) > 1) {
 # Update mt to count
 # Run conversions
 short_data_mt <- short_data %>%
@@ -519,44 +630,44 @@ short_data <- short_data %>%
   summarise(catch = sum(catch, na.rm = T)) %>%
   ungroup()
 
-short_data <- short_data %>% 
+short_data <- short_data %>%
   distinct_all()
 
 # Combine the data
 # Using just the self-reported effort by hooks (so can only use catch by hooks)
 combined_data <- short_data %>%
-  filter(effort_units == "hooks") %>% 
-  mutate(year = as.integer(year)) %>% 
-  filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>% 
+  filter(effort_units == "hooks") %>%
+  mutate(year = as.integer(year)) %>%
+  filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>%
   filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_1x1 %>% distinct_all()) %>%  
-  left_join(sst_data_1x1 %>% distinct_all()) %>% 
-  left_join(chla_data_1x1 %>% distinct_all()) %>% 
+  left_join(all_sdm_1x1 %>% distinct_all()) %>%
+  left_join(sst_data_1x1 %>% distinct_all()) %>%
+  left_join(chla_data_1x1 %>% distinct_all()) %>%
   left_join(ssh_data_1x1 %>% distinct_all())
 
 write.csv(combined_data,
-          file.path(here::here(), 
+          file.path(here::here(),
           paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_mt_to_count_hooks.csv")),
           row.names = FALSE)
 
 # Using just GFW reported effort (so can use all catch reported, regardless of effort)
 combined_data <- short_data %>%
-  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>% 
-  summarise(catch = sum(catch, na.rm = T)) %>% 
-  ungroup() %>% 
-  mutate(year = as.integer(year)) %>% 
-  filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>% 
+  group_by(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, species_commonname, species_sciname, catch_units, species_resolution) %>%
+  summarise(catch = sum(catch, na.rm = T)) %>%
+  ungroup() %>%
+  mutate(year = as.integer(year)) %>%
+  filter(spatial_notes == "center of 1x1 cell" & catch_units == "count") %>%
   filter(year >= 2012 & year <= 2018) %>% # lower limit for GFW data
-  left_join(all_sdm_1x1 %>% distinct_all()) %>% 
-  left_join(gfw_data_1x1 %>% distinct_all()) %>% 
-  left_join(sst_data_1x1 %>% distinct_all()) %>% 
-  left_join(chla_data_1x1 %>% distinct_all()) %>% 
+  left_join(all_sdm_1x1 %>% distinct_all()) %>%
+  left_join(gfw_data_1x1 %>% distinct_all()) %>%
+  left_join(sst_data_1x1 %>% distinct_all()) %>%
+  left_join(chla_data_1x1 %>% distinct_all()) %>%
   left_join(ssh_data_1x1 %>% distinct_all())
 
 write.csv(combined_data,
-          file.path(here::here(), 
+          file.path(here::here(),
           paste0("data/model-data/inputs/all-rfmo-models/", rfmos, "_ll_data_1x1_mt_to_count_kwh.csv")),
           row.names = FALSE)
-} 
+}
 } 
 ```
