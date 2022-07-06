@@ -1,7 +1,27 @@
 # Figure 1. multi-panel figure with A) rfmo catch, B) RFMO cpue and C) rfmo effort
 
+# Some important notes: 
+# 1) We use the mean annual catch, effort, CPUE for each RFMO.
+# 2) In each RFMO, we grouped things based on quantiles from 0-1 using 0.1 increments. We added
+#    -0.1 to the beginning of each grouping so that we could include 0 values (instead of them
+#    being treated as NA in the final grouping). We kept the unique values for the quantiles for
+#    each metric. If the RFMO and metric had the full number of available quantiles (11), we 
+#    assigned each group a value between 1 (smallest values) to 11 (highest values). If the 
+#    RFMOs had quantiles that repeated (0, 0, 0, 0.03, [...]), we just took the unique
+#    increments (0, 0.03, [...]) and adjusted the group assignment so that the minimum was
+#    the (13 - number of unique quantiles) and the maxium was 11. For example, if the RFMO
+#    had only 8 unique quantiles, we would begin group counts at (13-8) = 5 and end at 11 so 
+#    that 7 groups of data had "names". 
+# 3) Some RFMOs report their data at different spatial resolutions (1x1 degrees with degrees
+#    centered around whole numbers [e.g., 150] vs centered around half numbers [e.g., 150.5]).
+#    To combat this, we first rasterized data in groups using "like" spatial resolutions. We 
+#    then re-sampled to a common, arbitrarily chosen CRS using nearest neighbor methods. This
+#    method reduced artefacts of slight 0.5 degree shifts among RFMO reporting. If RFMO reporting
+#    areas overlapped, we took the mean of groupings across overlapping regions.
+
 # Load libraries
 library(tidyverse)
+library(cowplot)
 library(sf)
 library(tmap)
 library(here)
@@ -32,31 +52,44 @@ rfmo_totals <- all_dat %>%
   ungroup() %>% 
   mutate(latitude_temp = latitude, 
          longitude_temp = longitude) %>% 
-  st_as_sf(., coords = c("longitude_temp", "latitude_temp"), crs = 4326)
+  st_as_sf(., coords = c("longitude_temp", "latitude_temp"), crs = 4326) 
 
 # Scale by rfmo
-rfmo_totals_scaled <- rfmo_totals %>% 
-  group_by(rfmo) %>% 
-  mutate(rfmo_max_catch = max(mean_total_catch, na.rm = T), 
-         rfmo_max_bycatch_effort = max(mean_bycatch_effort, na.rm = T),  
-         rfmo_max_cpue = max(mean_cpue, na.rm = T)) %>% 
-  ungroup() %>% 
-  mutate(mean_total_catch_scaled = mean_total_catch/rfmo_max_catch, 
-         mean_bycatch_effort_scaled = mean_bycatch_effort/rfmo_max_bycatch_effort, 
-         mean_cpue_scaled = mean_cpue/rfmo_max_cpue)
-
+rfmo_totals_scaled <- NULL
+for(rfmos in unique(rfmo_totals$rfmo)) { 
+  temp_dat <- rfmo_totals %>% 
+    filter(rfmo == rfmos)
+  
+  quant_breaks_catch <- c(-0.1, unique(as.numeric(quantile(temp_dat$mean_total_catch, probs = seq(0, 1, 0.1), na.rm = T))))
+  quant_breaks_effort <- c(-0.1,unique(as.numeric(quantile(temp_dat$mean_bycatch_effort, probs = seq(0, 1, 0.1), na.rm = T))))
+  quant_breaks_cpue <- c(-0.1, unique(as.numeric(quantile(temp_dat$mean_cpue, probs = seq(0, 1, 0.1), na.rm = T))))
+  
+  temp_dat <- temp_dat %>% 
+    mutate(mean_total_catch_scaled = as.numeric(paste(cut(mean_total_catch, 
+                                         breaks = quant_breaks_catch, 
+                                         labels = c((13-length(quant_breaks_catch)):11)))), 
+           mean_bycatch_effort_scaled = as.numeric(paste(cut(mean_bycatch_effort, 
+                                            breaks = quant_breaks_effort, 
+                                            labels = c((13-length(quant_breaks_effort)):11)))), 
+           mean_cpue_scaled = as.numeric(paste(cut(mean_cpue, 
+                                  breaks = quant_breaks_cpue, 
+                                  labels = c((13-length(quant_breaks_cpue)):11)))))
+  
+  rfmo_totals_scaled <- rfmo_totals_scaled %>% 
+    bind_rows(temp_dat)
+  
+  }
 
 # Rasterize based on the center of each cell (a little annoying)
-
 for(layer in c("mean_total_catch_scaled", "mean_bycatch_effort_scaled", "mean_cpue_scaled")) { 
   rfmo_catch_raster_1 <- rfmo_totals_scaled %>% 
     filter(latitude%%1 == 0 & longitude%%1 == 0) %>% 
-    rasterize(., whole_numbers, field = layer, fun = sum, background = 0)
+    rasterize(., whole_numbers, field = layer, fun = mean, background = NA)
   
   rfmo_catch_raster_2 <- rfmo_totals_scaled %>% 
     filter(latitude%%1 != 0 & longitude%%1 == 0) %>% 
-    rasterize(., whole_numbers_lon, field = layer, fun = sum, background = 0) %>% 
-    resample(., whole_numbers)
+    rasterize(., whole_numbers_lon, field = layer, fun = mean, background = NA) %>% 
+    resample(., whole_numbers, method = "ngb")
   
   # not present in the data
   # rfmo_catch_raster_3 <- rfmo_totals_scaled %>% 
@@ -66,12 +99,11 @@ for(layer in c("mean_total_catch_scaled", "mean_bycatch_effort_scaled", "mean_cp
   
   rfmo_catch_raster_4 <- rfmo_totals_scaled %>% 
     filter(latitude%%1 != 0 & longitude%%1 != 0) %>% 
-    rasterize(., fraction_numbers, field = layer, fun = sum, background = 0) %>% 
-    resample(., whole_numbers)
+    rasterize(., fraction_numbers, field = layer, fun = mean, background = NA) %>% 
+    resample(., whole_numbers, method = "ngb")
   
-  rfmo_catch_raster <- rfmo_catch_raster_1 + rfmo_catch_raster_2 + rfmo_catch_raster_4
-  
-  #rfmo_catch_raster <- raster::projectRaster(rfmo_catch_raster, basemap_raster)
+  rfmo_catch_raster <- calc(stack(rfmo_catch_raster_1, rfmo_catch_raster_2, rfmo_catch_raster_4), 
+                            mean, na.rm = T)
   
   rfmo_catch_raster[rfmo_catch_raster == 0] <- NA
   
@@ -85,35 +117,70 @@ for(layer in c("mean_total_catch_scaled", "mean_bycatch_effort_scaled", "mean_cp
 fig_1a <- ggplot() + 
   geom_tile(mean_total_catch_scaled, 
               mapping = aes(x=x, y=y, fill=layer)) + 
-  scale_fill_distiller("", 
-                       palette = "RdBu", na.value = NA) + 
-  geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)), 
-              mapping = aes(x=x, y=y), fill = "black") + 
+  scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
+                       breaks = c(min(mean_total_catch_scaled$layer, na.rm = T), max(mean_total_catch_scaled$layer, na.rm = T)), 
+                       labels = c("Low", "High"), 
+                       guide = guide_colorbar(title.vjust = 0.8)) + 
+  geom_sf(data = wcpfc_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iotc_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iccat_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iattc_boundary, fill = NA, color = "black") + 
+  geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)),
+              mapping = aes(x=x, y=y), fill = "black") +
   coord_sf() + 
-  custom_theme 
+  custom_theme + 
+  theme(legend.position = "bottom") 
+
+legend <- get_legend(fig_1a)
+
+fig_1a <- fig_1a + 
+  theme(legend.position = "none")
 
 # Figure 1b. cpue
 fig_1b <- ggplot() + 
-  geom_raster(mean_cpue, 
+  geom_raster(mean_cpue_scaled, 
               mapping = aes(x=x, y=y, fill=layer)) + 
   scale_fill_distiller("", 
-                       palette = "RdBu", na.value = NA, 
-                       breaks = c(min(mean_cpue$layer, na.rm = T), max(mean_cpue$layer, na.rm = T)), 
+                       palette = "RdYlBu", na.value = NA, 
+                       breaks = c(min(mean_cpue_scaled$layer, na.rm = T), max(mean_cpue_scaled$layer, na.rm = T)), 
                        labels = c("Low", "High")) + 
+  geom_sf(data = wcpfc_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iotc_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iccat_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iattc_boundary, fill = NA, color = "black") + 
   geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)), 
               mapping = aes(x=x, y=y), fill = "black") + 
   coord_sf() + 
-  custom_theme 
+  custom_theme + 
+  theme(legend.position = "none")
 
-# Figure 1b. cpue
+# Figure 1c. effort
 fig_1c <- ggplot() + 
-  geom_raster(mean_bycatch_effort, 
+  geom_raster(mean_bycatch_effort_scaled, 
               mapping = aes(x=x, y=y, fill=layer)) + 
   scale_fill_distiller("", 
-                       palette = "RdBu", na.value = NA, trans=
-                       breaks = c(min(mean_bycatch_effort$layer, na.rm = T), max(mean_bycatch_effort$layer, na.rm = T)), 
+                       palette = "RdYlBu", na.value = NA,
+                       breaks = c(min(mean_bycatch_effort_scaled$layer, na.rm = T), max(mean_bycatch_effort_scaled$layer, na.rm = T)), 
                        labels = c("Low", "High")) + 
+  geom_sf(data = wcpfc_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iotc_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iccat_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iattc_boundary, fill = NA, color = "black") + 
   geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)), 
             mapping = aes(x=x, y=y), fill = "black") + 
   coord_sf() + 
-  custom_theme 
+  custom_theme + 
+  theme(legend.position = "none")
+
+# Put them all together
+final_plot <- ggdraw() + 
+  draw_plot(fig_1a, 0, 0.1, 0.33, 0.9) + 
+  draw_plot(fig_1b, 0.33, 0.1, 0.33, 0.9) + 
+  draw_plot(fig_1c, 0.66, 0.1, 0.33, 0.9) + 
+  draw_plot(legend, 0, 0, 1, 0.22) + 
+  draw_plot_label(label = c("A", "B", "C"), 
+                  x = c(0, 0.33, 0.66), y = 1, hjust = 0)
+
+# Save
+ggsave(here::here("figures/final/figure_1.png"), final_plot,
+       width = 10, height = 2.5, units = "in", dpi = 600, bg = "white")
