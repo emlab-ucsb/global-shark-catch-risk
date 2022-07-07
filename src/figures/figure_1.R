@@ -86,22 +86,22 @@ for(rfmos in unique(rfmo_totals$rfmo)) {
 for(layer in c("mean_total_catch_scaled", "mean_bycatch_effort_scaled", "mean_cpue_scaled")) { 
   rfmo_catch_raster_1 <- rfmo_totals_scaled %>% 
     filter(latitude%%1 == 0 & longitude%%1 == 0) %>% 
-    rasterize(., whole_numbers, field = "layer", fun = mean, background = NA)
+    rasterize(., whole_numbers, field = layer, fun = mean, background = NA)
   
   rfmo_catch_raster_2 <- rfmo_totals_scaled %>% 
     filter(latitude%%1 != 0 & longitude%%1 == 0) %>% 
-    rasterize(., whole_numbers_lon, field = "layer", fun = mean, background = NA) %>% 
+    rasterize(., whole_numbers_lon, field = layer, fun = mean, background = NA) %>% 
     resample(., whole_numbers, method = "ngb")
   
   # not present in the data
   # rfmo_catch_raster_3 <- rfmo_totals_scaled %>% 
   #   filter(latitude%%1 == 0 & longitude%%1 != 0) %>% 
-  #   rasterize(., whole_numbers_lat, field = "layer", fun = sum) %>% 
+  #   rasterize(., whole_numbers_lat, field = layer, fun = sum) %>% 
   #   resample(., whole_numbers)
   
   rfmo_catch_raster_4 <- rfmo_totals_scaled %>% 
     filter(latitude%%1 != 0 & longitude%%1 != 0) %>% 
-    rasterize(., fraction_numbers, field = "layer", fun = mean, background = NA) %>% 
+    rasterize(., fraction_numbers, field = layer, fun = mean, background = NA) %>% 
     resample(., whole_numbers, method = "ngb")
   
   rfmo_catch_raster <- calc(stack(rfmo_catch_raster_1, rfmo_catch_raster_2, rfmo_catch_raster_4), 
