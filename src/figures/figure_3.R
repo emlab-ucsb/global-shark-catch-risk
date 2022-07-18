@@ -150,10 +150,7 @@ for(layer in c("global", "BLUE SHARK", "SILKY SHARK", "HAMMERHEAD")) {
  
   raster_comb <- calc(raster_stack, mean, na.rm = T)
   
-  raster_comb[raster_comb == 0] <- NA
-  
-  raster_comb <- raster::as.data.frame(raster_comb, xy = TRUE) %>% 
-    mutate(layer = ifelse(layer == 0, NA, layer))
+  raster_comb <- raster::as.data.frame(raster_comb, xy = TRUE) 
   
   assign(str_to_lower(gsub(" ", "_", layer)), raster_comb)
 } 
