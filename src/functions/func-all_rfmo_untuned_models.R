@@ -128,20 +128,20 @@ all_rfmo_untuned_models <- function(data, save_loc, rfmos, effort_source, classi
     set.seed(1234)
     class_recipe <- recipe(pres_abs ~ ., data = train_class) %>%
       themis::step_upsample(pres_abs, over_ratio = 1) %>% 
+      step_zv(all_predictors(), - latitude, - longitude) %>%
       step_center(all_numeric(), -all_outcomes(), - latitude, - longitude) %>% 
       step_scale(all_numeric(), -all_outcomes(), - latitude, - longitude) %>%
       step_unknown(all_nominal(), -all_outcomes()) %>%
-      step_zv(all_predictors(), - latitude, - longitude) %>%
       step_impute_knn(all_numeric(), -all_outcomes(), neighbors = 3, impute_with = imp_vars(latitude, longitude)) %>%
       update_role(latitude, longitude, new_role = "none") %>% 
       step_dummy(all_nominal(), -all_outcomes())
     
     set.seed(1234)
     reg_recipe <- recipe(catch ~ ., data = train_reg) %>%
+      step_zv(all_predictors(), - latitude, - longitude) %>%
       step_center(all_numeric(), -all_outcomes(), - latitude, - longitude) %>% 
       step_scale(all_numeric(), -all_outcomes(), - latitude, - longitude) %>%
       step_unknown(all_nominal(), -all_outcomes()) %>%
-      step_zv(all_predictors(), - latitude, - longitude) %>%
       step_impute_knn(all_numeric(), -all_outcomes(), neighbors = 3, impute_with = imp_vars(latitude, longitude)) %>%
       update_role(latitude, longitude, new_role = "none") %>% 
       step_dummy(all_nominal(), -all_outcomes()) 

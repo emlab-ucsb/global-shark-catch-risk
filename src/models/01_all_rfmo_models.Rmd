@@ -141,16 +141,16 @@ results_1x1_mt <- all_rfmo_effort_models(data_gfw = mt_1x1_gfw, data_effort = mt
 
 ```{r}
 # Check best performing models in terms of effort
-effort_model_results <- read.csv(paste0(save_loc, "5x5_count_all_rfmos_effort_results.csv")) %>%
+effort_model_results <- read.csv(paste0(save_loc, "5x5_count_all_rfmos_ll_effort_results.csv")) %>%
               mutate(type = "regular", 
                      option = "5x5, count only") %>% 
-  bind_rows(read.csv(paste0(save_loc, "5x5_mt_to_count_all_rfmos_effort_results.csv")) %>%
+  bind_rows(read.csv(paste0(save_loc, "5x5_mt_to_count_all_rfmos_ll_effort_results.csv")) %>%
               mutate(type = "regular", 
                      option = "5x5, count and mt")) %>%
-  bind_rows(read.csv(paste0(save_loc, "1x1_count_all_rfmos_effort_results.csv")) %>%
+  bind_rows(read.csv(paste0(save_loc, "1x1_count_all_rfmos_ll_effort_results.csv")) %>%
               mutate(type = "regular", 
                      option = "1x1, count only")) %>% 
-  bind_rows(read.csv(paste0(save_loc, "1x1_mt_to_count_all_rfmos_effort_results.csv")) %>%
+  bind_rows(read.csv(paste0(save_loc, "1x1_mt_to_count_all_rfmos_ll_effort_results.csv")) %>%
               mutate(type = "regular", 
                      option = "1x1, count and mt")) 
 
@@ -164,24 +164,24 @@ effort_model_results %>%
 ```{r}
 # Best performing models in terms of effort
 # IATTC - 1x1 with count and mt, effort reported with target catch by flag
-all_rfmo_other_models(data = mt_1x1_obs, rfmos = "IATTC", effort_source = "effort reported with target catch (flag)", 
-                           save_loc = save_loc)
+# all_rfmo_other_models(data = mt_1x1_obs, rfmos = "IATTC", effort_source = "effort reported with target catch (flag)", 
+#                            save_loc = save_loc)
 # ICCAT - 1x1 with count only, effort reported with target catch by flag
 all_rfmo_other_models(data = count_1x1_obs, rfmos = "ICCAT", effort_source = "effort reported with target catch (flag)", 
                            save_loc = save_loc)
 
-# IOTC - 5x5 with count only, effort reported with bycatch by flag
-all_rfmo_other_models(data = mt_5x5_obs, rfmos = "IOTC", effort_source = "effort reported with target catch (flag)", 
+# IOTC - 5x5 with count and mt, effort reported with bycatch by flag
+all_rfmo_other_models(data = mt_5x5_obs, rfmos = "IOTC", effort_source = "effort reported with bycatch (flag)", 
                            save_loc = save_loc)
-# WCPFC - 5x5 with count only, effort reported with bycatch (no flag available)
-all_rfmo_other_models(data = count_5x5_obs, rfmos = "WCPFC", effort_source = "effort reported with bycatch (flag)", 
+# WCPFC - 1x1 with count only, effort reported with bycatch (no flag available)
+all_rfmo_other_models(data = count_1x1_obs, rfmos = "WCPFC", effort_source = "effort reported with bycatch (flag)", 
                            save_loc = save_loc)
 ```
 
 ```{r}
 # Find best performing models
 all_model_results <- effort_model_results %>% 
-  bind_rows(read.csv(paste0(save_loc, "IATTC_models_others_results.csv")) %>%
+  bind_rows(read.csv(paste0(save_loc, "IATTC_ll_models_others_results.csv")) %>%
               mutate(type = "exhaustive search", 
                      rfmo = "IATTC",
                      option = "1x1, count and mt", 
@@ -190,7 +190,7 @@ all_model_results <- effort_model_results %>%
               mutate(specifics = paste0("environmentals = ", environmental_value, ", include ssh = ", 
                                         include_ssh, ", price = ", price, ", catch transformation = ", catch_transformation), 
                      option = paste0(option, ";", specifics))) %>% 
-  bind_rows(read.csv(paste0(save_loc, "ICCAT_models_others_results.csv")) %>%
+  bind_rows(read.csv(paste0(save_loc, "ICCAT_ll_models_others_results.csv")) %>%
               mutate(type = "exhaustive search", 
                      rfmo = "ICCAT",
                      option = "1x1, count", 
@@ -199,19 +199,19 @@ all_model_results <- effort_model_results %>%
               mutate(specifics = paste0("environmentals = ", environmental_value, ", include ssh = ", 
                                         include_ssh, ", price = ", price, ", catch transformation = ", catch_transformation), 
                      option = paste0(option, ";", specifics))) %>% 
-  bind_rows(read.csv(paste0(save_loc, "IOTC_models_others_results.csv")) %>%
+  bind_rows(read.csv(paste0(save_loc, "IOTC_ll_models_others_results.csv")) %>%
               mutate(type = "exhaustive search", 
                      rfmo = "IOTC",
                      option = "5x5, count and mt", 
-                     effort_source = "effort reported with target catch (flag)") %>% 
+                     effort_source = "effort reported with bycatch (flag)") %>% 
               rowwise() %>% 
               mutate(specifics = paste0("environmentals = ", environmental_value, ", include ssh = ", 
                                         include_ssh, ", price = ", price, ", catch transformation = ", catch_transformation), 
                      option = paste0(option, ";", specifics))) %>% 
-  bind_rows(read.csv(paste0(save_loc, "WCPFC_models_others_results.csv")) %>%
+  bind_rows(read.csv(paste0(save_loc, "WCPFC_ll_models_others_results.csv")) %>%
               mutate(type = "exhaustive search", 
                      rfmo = "WCPFC",
-                     option = "5x5, count", 
+                     option = "1x1, count", 
                      effort_source = "effort reported with bycatch (flag)") %>% 
               rowwise() %>% 
               mutate(specifics = paste0("environmentals = ", environmental_value, ", include ssh = ", 
@@ -227,6 +227,7 @@ all_model_results %>%
 
 
 ```{r}
+### Update this prior to running
 # Run the best performing model and tune
 # IATTC - 1x1 count and mt | mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh | effort reported with target catch (flag)
 # iattc_effort_variables <- paste0(colnames(mt_1x1_obs)[grepl("target_effort_", colnames(mt_1x1_obs))], collapse = "|")
@@ -314,39 +315,39 @@ all_rfmo_untuned_models(data = mt_1x1_obs,
                 save_loc = save_loc,
                 mtry_class = 5, min_n_class = 10, mtry_reg = 5, min_n_reg = 5)
 
-# ICCAT - 1x1 count only | mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh, species price | effort reported with target catch (flag)
+# ICCAT - 1x1 count only | mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh | effort reported with target catch (flag)
 iccat_effort_variables <- paste0(colnames(count_1x1_obs)[grepl("target_effort_", colnames(count_1x1_obs))], collapse = "|")
 
 all_rfmo_untuned_models(data = count_1x1_obs, rfmos = "ICCAT",
                       effort_source = "effort reported with target catch (flag)",
                       classification_variables =
-                        paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|median_price_species|",
+                        paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|",
                                                         iccat_effort_variables),
                       regression_variables =
-                        paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|median_price_species|",
+                        paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|",
                                                         iccat_effort_variables),
                       save_loc = save_loc,
                       mtry_class = 7, min_n_class = 10, mtry_reg = 7, min_n_reg = 5)
 
-# IOTC - 5x5 count and mt| mean_sst, mean_chla, cv_sst, cv_chla | effort reported with target catch (flag)
-iotc_effort_variables <- paste0(colnames(mt_5x5_obs)[grepl("target_effort_", colnames(mt_5x5_obs))], collapse = "|")
+# IOTC - 5x5 count and mt| mean_sst, mean_chla, cv_sst, cv_chla | effort reported with bycatch (flag)
+iotc_effort_variables <- paste0(colnames(mt_5x5_obs)[grepl("bycatch_total_effort_", colnames(mt_5x5_obs))], collapse = "|")
 
 all_rfmo_untuned_models(data = mt_5x5_obs, rfmos = "IOTC",
-                      effort_source = "effort reported with target catch (flag)",
+                      effort_source = "effort reported with bycatch (flag)",
                       classification_variables =
                         paste0("species_commonname|sdm|mean_sst|mean_chla|cv_sst|cv_chla|",
                                iotc_effort_variables),
                       regression_variables =
                         paste0("species_commonname|sdm|mean_sst|mean_chla|cv_sst|cv_chla|",
                                iotc_effort_variables), save_loc = save_loc,
-                      mtry_class = 6, min_n_class = 10, mtry_reg = 6, min_n_reg = 5)
+                      mtry_class = 5, min_n_class = 10, mtry_reg = 5, min_n_reg = 5)
 
-# WCPFC - 5x5 count only | mean_sst, mean_cv, mean_ssh | effort reported with bycatch (flag) [note that bycatch effort by flag is not reported for wcpfc]
-all_rfmo_untuned_models(data = count_5x5_obs,
+# WCPFC - 1x1 count only | mean_sst, mean_cv, mean_ssh, cv_sst, cv_chla, cv_ssh, group price | effort reported with bycatch (flag) [note that bycatch effort by flag is not reported for wcpfc]
+all_rfmo_untuned_models(data = count_1x1_obs,
                 rfmos = "WCPFC",
                 effort_source = "effort reported with bycatch (flag)",
-                classification_variables = "species_commonname|sdm|mean_sst|mean_chla|mean_ssh|bycatch_total_effort",
-                regression_variables = "species_commonname|sdm|mean_sst|mean_chla|mean_ssh|bycatch_total_effort",
+                classification_variables = "species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|median_price_group|bycatch_total_effort",
+                regression_variables = "species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|median_price_group|bycatch_total_effort",
                 save_loc = save_loc,
                 mtry_class = 5, min_n_class = 10, mtry_reg = 5, min_n_reg = 5)
 

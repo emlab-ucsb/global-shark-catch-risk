@@ -416,6 +416,16 @@ short_data <- short_data %>%
 short_data <- short_data %>%
   distinct_all()
 
+# Remove data if 0s were filled for an entire year
+short_data_remove <- short_data %>% 
+  group_by(year, rfmo) %>% 
+  summarise(sum_catch = sum(catch, na.rm = T)) %>% 
+  ungroup() %>% 
+  filter(sum_catch == 0)
+
+short_data <- short_data %>% 
+  filter(!year %in% short_data_remove$year)
+
 # Combine the data
 # Using just the self-reported effort by hooks (so can only use catch by hooks)
 combined_data <- short_data %>%
