@@ -8,12 +8,16 @@ This script combines all cleaned RFMO catch datasets.
 ```{r, include=FALSE}
 library(tidyverse)
 library(here)
+library(rfishbase)
+
+# for grabbing appropriate species names
+source(file.path(here::here(), "src/functions/func-get_names.R"))
 ```
 
 
 ```{r, echo=TRUE}
 # List files to choose from
-file_path <- file.path(here::here(), "data/rfmo-observer-data/outputs/")
+file_path <- file.path(here::here(), "data-updated/rfmo-data/outputs/")
 
 list_files <- list.files(file_path, pattern="csv")
 list_files <- list_files[!grepl("all_data", list_files)]
@@ -82,6 +86,8 @@ dat <- dat %>%
              "RAYS, STINGRAYS, MANTAS NEI", 
            species_commonname == "SHARKS (UNIDENTIFIED)" ~ "SHARKS NEI", 
            species_commonname == "SHARKS VARIOUS NEI" ~ "SHARKS NEI", 
+           species_commonname == "OTHER SHARKS" ~ "SHARKS NEI", 
+           species_commonname == "OTHER TUNA" ~ "TUNAS NEI", 
            species_commonname == "SHARKS, RAYS, SKATES, ETC. NEI" ~ 
              "SHARKS, RAYS, SKATES NEI", 
            species_commonname == "SHORT-BILLED SPEARFISH" ~ "SHORTBILL SPEARFISH", 
@@ -89,6 +95,7 @@ dat <- dat %>%
            species_commonname == "SNAPPER (UNIDENTIFIED)" ~ "SNAPPER NEI", 
            species_commonname == "STIMPSON SURF CLAM" ~ "STIMPSON'S SURF CLAM", 
            species_commonname == "THRESHER" ~ "THRESHER SHARK", 
+           species_commonname == "THRESHER SHARK" ~ "THRESHER SHARKS NEI",
            species_commonname == "TURTLE (UNIDENTIFIED)" ~ "TURTLES NEI",
            species_commonname == "TURTLES" ~ "TURTLES NEI",
            species_commonname == "VARIOUS SHARKS NEI" ~ "SHARKS NEI", 
@@ -122,7 +129,7 @@ dat %>%
 
 ## Unique Species Names
 ```{r, echo=TRUE}
-# Figure out which names are not consistent accross common names
+# Figure out which names are not consistent across common names
 fix_names <- NULL
 for(name in unique(dat$species_commonname)) { 
   temp_dat <- dat %>% 
@@ -145,10 +152,12 @@ dat <- dat %>%
     species_commonname == "SEABIRDS NEI" ~ NA_character_, 
     species_commonname == "OTHER SPECIES" ~ NA_character_, 
     species_commonname == "WHALES NEI" ~ NA_character_, 
-    species_commonname == "MAKO SHARKS" ~ "ISURUS SPP", 
+    species_commonname == "MAKO SHARKS" ~ "ISURUS", 
     species_commonname == "SHARKS NEI" ~ NA_character_, 
-    species_commonname == "THRESHER SHARKS NEI" ~ "ALOPIAS SPP", 
-    species_commonname == "HAMMERHEAD SHARKS NEI" ~	"SPHYRNA SPP",
+    species_commonname == "THRESHER SHARKS NEI" ~ "ALOPIAS", 
+    species_commonname == "HAMMERHEAD SHARKS NEI" ~	"SPHYRNA",
+    species_commonname == "LEATHERBACK TURTLE" ~ "DERMOCHELYS CORIACEA", 
+    species_commonname == "OLIVE RIDLEY TURTLE" ~ "LEPIDOCHELYS OLIVACEA", 
     species_commonname == "TUNAS NEI" ~ "THUNNINI", 
     species_commonname == "ATLANTIC YELLOW-NOSED ALBATROSS" ~ "THALASSARCHE CHLORORHYNCHOS",
     species_commonname == "BLACK-BROWED ALBATROSS" ~ "THALASSARCHE MELANOPHRYS", 
@@ -157,20 +166,30 @@ dat <- dat %>%
     species_commonname == "WHALE SHARK" ~ "RHINCODON TYPUS", 
     species_commonname == "BIGEYE THRESHER SHARK" ~ "ALOPIAS SUPERCILIOSUS", 
     species_commonname == "VELVET DOGFISH" ~ "ZAMEUS SQUAMULOSUS", 
-    species_commonname == "DOGFISH SHARKS NEI" ~ "SQUALUS SPP", 
+    species_commonname == "DOGFISH SHARKS NEI" ~ "SQUALUS", 
     species_commonname == "GREENLAND SHARK" ~ "SOMNIOSUS MICROCEPHALUS",
-    species_commonname == "LANCETFISH NEI" ~ "ALEPISAURUS SPP",
-    species_commonname == "BARRACUDAS NEI" ~ "SPHYRAENA SPP", 
-    species_commonname == "AMBERJACKS NEI" ~  "SERIOLA SPP", 
+    species_commonname == "LANCETFISH NEI" ~ "ALEPISAURUS",
+    species_commonname == "BARRACUDAS NEI" ~ "SPHYRAENA", 
+    species_commonname == "AMBERJACKS NEI" ~  "SERIOLA", 
     species_commonname == "OLIVE RIDLEY TURTLE" ~ "LEPIDOCHELYS OLIVACEA", 
     species_commonname == "LEATHERBACK TURTLE" ~ "DERMOCHELYS CORIACEA", 
     species_commonname == "BILLFISH NEI" ~ "XIPHIOIDEI", 
-    species_commonname == "FRIGATE AND BULLET TUNAS" ~ "AUXIS SPP", 
-    species_commonname == "MARLINS NEI" ~ "MAKAIRA SPP", 
+    species_commonname == "FRIGATE AND BULLET TUNAS" ~ "AUXIS", 
+    species_commonname == "MARLINS NEI" ~ "MAKAIRA", 
     species_commonname == "BROADNOSE SEVENGILL SHARK" ~ "NOTORYNCHUS CEPEDIANUS",
     species_commonname == "GROUNDFISHES NEI" ~ "OSTEICHTHYES",
-    species_commonname == "ALBACORE, YELLOWFIN, BIGEYE TUNA" ~ "THUNNUS SPP", 
+    species_commonname == "ALBACORE, YELLOWFIN, BIGEYE TUNA" ~ "THUNNUS", 
     TRUE ~ species_sciname))      
+
+unique_dat_names <- dat %>% 
+  select(species_commonname, species_sciname) %>% 
+  filter(!is.na(species_sciname)) %>% 
+  distinct_all() 
+
+dat <- dat %>% 
+  rowwise() %>% 
+  mutate(species_sciname = ifelse(is.na(species_sciname), unique_dat_names$species_sciname[which(unique_dat_names$species_commonname == species_commonname)], species_sciname)) %>% 
+  ungroup()
 ```
 
 ## Gear Types
@@ -265,6 +284,9 @@ dat <- dat %>%
 
 # Save 
 ```{r, echo=TRUE}
-write.csv(dat %>% distinct_all(), paste0(file_path, "all_data.csv"), row.names = FALSE)
+write.csv(dat %>%
+            filter(gear_group %in% c("longline", "purse seine")) %>% 
+            distinct_all(), 
+          paste0(file_path, "all_data.csv"), row.names = FALSE)
 ```
 
