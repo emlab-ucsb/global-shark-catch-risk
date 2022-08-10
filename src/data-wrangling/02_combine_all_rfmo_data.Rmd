@@ -8,10 +8,16 @@ This script combines all cleaned RFMO catch datasets.
 ```{r, include=FALSE}
 library(tidyverse)
 library(here)
+library(readxl)
 library(rfishbase)
 
 # for grabbing appropriate species names
 source(file.path(here::here(), "src/functions/func-get_names.R"))
+
+species_groups <- read_xlsx(file.path(here::here(), "data-updated/species-information/species_groups.xlsx"), sheet = "species_list") %>% 
+  mutate(scientific_name = str_to_upper(scientific_name)) %>% 
+  select(scientific_name, group) %>% 
+  distinct_all()
 ```
 
 
@@ -116,6 +122,7 @@ dat <- dat %>%
            species_commonname == "SHY-TYPE ALBATROSSES" ~ "SHY ALBATROSS NEI",
            species_commonname == "WOLFFISHES (CATFISH) NEI" ~ "WOLFFISHES NEI",
            species_commonname == "TRUE TUNAS NEI" ~ "TUNAS NEI",
+           species_commonname == "NORTHERN BLUEFIN TUNA" ~ "LONGTAIL TUNA", #same species
            TRUE ~ species_commonname))
 
 # Show new dataframe
@@ -179,6 +186,7 @@ dat <- dat %>%
     species_commonname == "BROADNOSE SEVENGILL SHARK" ~ "NOTORYNCHUS CEPEDIANUS",
     species_commonname == "GROUNDFISHES NEI" ~ "OSTEICHTHYES",
     species_commonname == "ALBACORE, YELLOWFIN, BIGEYE TUNA" ~ "THUNNUS", 
+    is.na(species_commonname) ~ NA_character_,
     TRUE ~ species_sciname))      
 
 unique_dat_names <- dat %>% 
@@ -190,6 +198,38 @@ dat <- dat %>%
   rowwise() %>% 
   mutate(species_sciname = ifelse(is.na(species_sciname), unique_dat_names$species_sciname[which(unique_dat_names$species_commonname == species_commonname)], species_sciname)) %>% 
   ungroup()
+
+# Find out which species are troublemakers, use the RFMO region to decide which species name
+# is appropriate
+dat %>% 
+  filter(is.na(dat$species_sciname)) %>% 
+  select(species_commonname, sources) %>% 
+  distinct_all()
+
+dat <- dat %>% 
+  mutate(species_sciname = case_when(
+    species_sciname == "TETRAPTURUS AUDAX" ~ "KAJIKIA AUDAX",
+    species_sciname == "MAKAIRA INDICA" ~ "ISTIOMPAX INDICA", 
+    species_sciname == "TETRAPTURUS ALBIDUS" ~ "KAJIKIA ALBIDA",
+    species_sciname == "TETRAPTURUS PFLUEGERI" ~ "TETRAPTURUS PFLUEGERI",
+    species_commonname == "GIANT OCEANIC MANTA RAY" & rfmo == "IOTC" ~ str_to_upper("Mobula birostris"), 
+    species_commonname == "SPINETAIL / GIANT DEVIL RAY" ~ "MOBULA MOBULAR",
+    species_commonname == "DEVIL RAYS NEI" ~  "MOBULIDAE", 
+    species_commonname == "HOUNDSHARKS; SMOOTHHOUNDS NEI" ~ "TRIAKIDAE", 
+    species_commonname == "MACKERELS INDIAN, NEI" ~ "SCOMBRIDAE", 
+    species_commonname == "FRIGATE TUNA AND BULLET TUNA" ~ "AUXIS THAZARD AND AUXIS ROCHEI", 
+    species_commonname == "SPOT-TAIL SHARK" ~ str_to_upper("Carcharhinus sorrah"),
+    species_commonname == "INDO-PACIFIC KING MACKEREL" ~ str_to_upper("Scomberomorus guttatus"),
+    species_commonname == "CHUB MACKEREL" & rfmo == "IOTC" ~ str_to_upper("Rastrelliger kanagurta"), 
+    is.na(species_sciname) ~ species_commonname,
+    TRUE ~ species_sciname))
+
+# Remove species that are not relevant to us (we only want sharks, tunas, and tuna-like species)
+dat <- dat %>% 
+  left_join(species_groups %>% 
+              select(scientific_name, group) %>% 
+              rename(species_group = group), 
+            by = c("species_sciname" = "scientific_name"))
 ```
 
 ## Gear Types
@@ -275,9 +315,9 @@ dat %>%
 dat <- dat %>% 
   mutate(effort_units = as.character(effort_units)) %>% 
   mutate(effort_units = case_when(
-    effort_units %in% c("number of sets", "number of sets ") ~ "sets",
+    effort_units %in% c("number of sets", "number of sets |successful number of sets") ~ "sets",
     grepl("hours fished|hours fishing", effort_units) ~ "fishing hours", 
-    grepl("days fished|days fishing", effort_units) ~ "fishing days", 
+    grepl("days fished|days fishing|successful fishing days", effort_units) ~ "fishing days", 
     grepl("days present on fishing grounds", effort_units) ~ "days at fishing ground", 
     TRUE ~ effort_units))
 ```
@@ -286,6 +326,7 @@ dat <- dat %>%
 ```{r, echo=TRUE}
 write.csv(dat %>%
             filter(gear_group %in% c("longline", "purse seine")) %>% 
+            filter(species_group %in% c("sharks and rays", "tunas", "tuna-like species")) %>% 
             distinct_all(), 
           paste0(file_path, "all_data.csv"), row.names = FALSE)
 ```
