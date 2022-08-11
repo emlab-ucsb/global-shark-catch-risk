@@ -24,9 +24,9 @@ library(here)
 # Housekeeping
 ```{r, echo=TRUE}
 # List files to choose from
-file_path <- file.path(here::here(), "data/rfmo-observer-data/inputs/iccat/")
-save_location <- file.path(here::here(), "data/rfmo-observer-data/intermediates/iccat/")
-outputs_location <- file.path(here::here(), "data/rfmo-observer-data/outputs/")
+file_path <- file.path(here::here(), "data-updated/rfmo-data/inputs/iccat/")
+save_location <- file.path(here::here(), "data-updated/rfmo-data/intermediates/iccat/")
+outputs_location <- file.path(here::here(), "data-updated/rfmo-data/outputs/")
 ```
 
 # Load Catch Data
