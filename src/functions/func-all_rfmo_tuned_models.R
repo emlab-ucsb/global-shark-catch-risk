@@ -18,6 +18,7 @@ all_rfmo_tuned_models <- function(data, save_loc, rfmos, effort_source, classifi
     filter(gear_group == "longline" & 
              catch_units == "count" & 
              effort_units == "hooks") %>% 
+    mutate_if(is.integer, as.numeric) %>% 
     mutate_if(is_character, as.factor) %>% 
     mutate_if(is.integer, as.numeric) %>% 
     arrange(year, latitude, longitude) %>% 
