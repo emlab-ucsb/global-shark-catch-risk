@@ -31,8 +31,30 @@ outputs_location <- file.path(here::here(), "data-updated/rfmo-data/outputs/")
 
 # Load Catch Data
 ```{r, echo=TRUE}
+# MDB files first... 
+# mdb.get is acting weird with the current link, saving to downloads locally
+# mdb_names <- Hmisc::mdb.get(file = "/Users/echelleburns/Downloads/t2ce_20220131web.mdb", tables = TRUE)
+# 
+# for(i in mdb_names) { 
+#   temp_get <- Hmisc::mdb.get(file = "/Users/echelleburns/Downloads/t2ce_20220131web.mdb", 
+#                              tables = i)
+#   assign(i, temp_get)
+# }
+# 
+# mdb_data <- t2ce %>%
+#   # left_join(., Catalogue) %>%
+#   # left_join(., DatasetTypes) %>%
+#   left_join(., Flags %>% dplyr::select(FleetID, FlagName)) %>%
+#   left_join(., TimeStrata %>%
+#               dplyr::select(TimeStrataID, Description) %>%
+#               dplyr::rename(TimePeriodID = TimeStrataID,
+#                      time_period = Description)) 
+# 
+# # Save it
+# write.csv(mdb_data, file.path(file_path, "t2ce_to_csv.csv"), row.names = F)
+
 # Load t2ce web
-file_list <- list.files(file_path, pattern=".csv")
+file_list <- list.files(file_path, pattern="t2ce_to_csv.csv")
 file_list <- file_list[grepl("t2ce", file_list)]
 
 t2ce_web <- NULL
