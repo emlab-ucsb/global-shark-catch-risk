@@ -93,17 +93,13 @@ bycatch_longline <- bycatch_longline %>%
          settype = NA, 
          effort_units = "hooks",
          catch_units = "count",
-         is_targeted = "no",
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          was_generated = "no", 
          quality_code = NA, 
          sources = "bycatch and effort from observers")
 
 # Select relevant columns 
-bycatch_longline <- bycatch_longline[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "observer_coverage", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+bycatch_longline <- bycatch_longline[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Save File
 filename <- "bycatch_longline.csv"
@@ -146,17 +142,13 @@ bycatch_seine <- bycatch_seine %>%
          settype = NA,  
          effort_units = "number of sets",
          catch_units = "count",
-         is_targeted = "no",
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "bycatch and effort from observers")
 
 # Select relevant columns 
-bycatch_seine <- bycatch_seine[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "observer_coverage", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+bycatch_seine <- bycatch_seine[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Save File
 filename <- "bycatch_seine.csv"
@@ -165,13 +157,6 @@ write.csv(bycatch_seine, paste0(save_location, filename), row.names = FALSE)
 # Clean up
 remove(bycatch_seine)
 remove(effort)
-```
-[Back To Top](#top)
-
-# Driftnet
-This dataset is not relevant because it only has data going up to 1990.
-```{r, echo=TRUE}
-remove(DRIFTNET)
 ```
 [Back To Top](#top)
 
@@ -240,17 +225,13 @@ ll_flagyr <- ll_flagyr %>%
          settype = NA,  
          effort = hhooks*100,
          effort_units = "hooks",
-         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "self-reported catch and effort by flag + year")
 
 # Select relevant columns 
-ll_flagyr <- ll_flagyr[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+ll_flagyr <- ll_flagyr[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Save File
 filename <- "longline_flagyear.csv"
@@ -338,17 +319,13 @@ ps_flagyr <- ps_flagyr %>%
          month = NA, 
          time_period = "yearly",
          gear = "purse-seine",
-         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "self-reported catch and effort by flag + year")
 
 # Select relevant columns 
-ps_flagyr <- ps_flagyr[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+ps_flagyr <- ps_flagyr[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Save File
 filename <- "purseseine_flagyear.csv"

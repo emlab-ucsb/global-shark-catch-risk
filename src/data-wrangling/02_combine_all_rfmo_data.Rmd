@@ -25,8 +25,7 @@ species_groups <- read_xlsx(file.path(here::here(), "data-updated/species-inform
 # List files to choose from
 file_path <- file.path(here::here(), "data-updated/rfmo-data/outputs/")
 
-list_files <- list.files(file_path, pattern="csv")
-list_files <- list_files[!grepl("all_data", list_files)]
+list_files <- list.files(file_path, pattern="all.csv")
 
 # Combine files
 dat <- NULL 
@@ -63,6 +62,8 @@ dat <- dat %>%
              "ALBACORE, YELLOWFIN, BIGEYE TUNA", 
            species_commonname == "ALBACORE, YELLOWFIN TUNA AND BIGEYE TUNA" ~ 
              "ALBACORE, YELLOWFIN, BIGEYE TUNA", 
+           species_commonname %in% c("MACKERELS INDIAN, NEI", "TUNA-LIKE FISHES NEI") ~ "MACKERELS NEI",
+           species_commonname == "FRIGATE AND BULLET TUNAS" ~ "FRIGATE TUNA AND BULLET TUNA",
            species_commonname == "ALBACORE" ~ "ALBACORE TUNA",  
            species_commonname == "(NORTHERN) SHORTFIN SQUID" ~ "NORTHERN SHORTFIN SQUID", 
            species_commonname == "ATLANT. YELLOW-NOSED ALBATROSS" ~ 
@@ -120,9 +121,12 @@ dat <- dat %>%
            species_commonname == "OTHER" ~ "OTHER SPECIES",
            species_commonname == "SEABIRDS" ~ "SEABIRDS NEI", 
            species_commonname == "SHY-TYPE ALBATROSSES" ~ "SHY ALBATROSS NEI",
+           species_commonname == "GREY-HEADED ALBATROSS" ~ "GREY HEADED ALBATROSS", 
+           species_commonname == "BLACK-BROWED MOLLYMAWK" ~ "BLACK-BROWED ALBATROSS", 
            species_commonname == "WOLFFISHES (CATFISH) NEI" ~ "WOLFFISHES NEI",
            species_commonname == "TRUE TUNAS NEI" ~ "TUNAS NEI",
            species_commonname == "NORTHERN BLUEFIN TUNA" ~ "LONGTAIL TUNA", #same species
+           species_commonname == "DEVIL RAYS NEI" ~ "MANTAS, DEVIL RAYS NEI",
            TRUE ~ species_commonname))
 
 # Show new dataframe
@@ -162,10 +166,17 @@ dat <- dat %>%
     species_commonname == "MAKO SHARKS" ~ "ISURUS", 
     species_commonname == "SHARKS NEI" ~ NA_character_, 
     species_commonname == "THRESHER SHARKS NEI" ~ "ALOPIAS", 
+    species_commonname == "PELAGIC THRESHER SHARK" ~ "ALOPIAS PELAGICUS",
     species_commonname == "HAMMERHEAD SHARKS NEI" ~	"SPHYRNA",
     species_commonname == "LEATHERBACK TURTLE" ~ "DERMOCHELYS CORIACEA", 
     species_commonname == "OLIVE RIDLEY TURTLE" ~ "LEPIDOCHELYS OLIVACEA", 
     species_commonname == "TUNAS NEI" ~ "THUNNINI", 
+    species_commonname == "LITTLE TUNNY" ~ "EUTHYNNUS ALLETTERATUS",
+    species_commonname == "NARROW-BARRED SPANISH MACKEREL" ~ "SCOMBEROMORUS COMMERSON",
+    species_commonname == "LONGTAIL TUNA" ~ "THUNNUS TONGGOL",
+    species_commonname == "MARLINS, SAILFISH, SPEARFISH NEI" ~ "ISTIOPHORIDAE",
+    species_commonname == "INDO-PACIFIC SAILFISH" ~ "ISTIOPHORUS PLATYPTERUS",
+    species_commonname == "SHORTBILL SPEARFISH" ~ "TETRAPTURUS ANGUSTIROSTRIS",
     species_commonname == "ATLANTIC YELLOW-NOSED ALBATROSS" ~ "THALASSARCHE CHLORORHYNCHOS",
     species_commonname == "BLACK-BROWED ALBATROSS" ~ "THALASSARCHE MELANOPHRYS", 
     species_commonname == "PETRELS AND SHEARWATERS NEI" ~ "PROCELLARIIDAE", 
@@ -186,6 +197,7 @@ dat <- dat %>%
     species_commonname == "BROADNOSE SEVENGILL SHARK" ~ "NOTORYNCHUS CEPEDIANUS",
     species_commonname == "GROUNDFISHES NEI" ~ "OSTEICHTHYES",
     species_commonname == "ALBACORE, YELLOWFIN, BIGEYE TUNA" ~ "THUNNUS", 
+    species_commonname == "MACKERELS NEI" ~ "SCOMBRIDAE",
     is.na(species_commonname) ~ NA_character_,
     TRUE ~ species_sciname))      
 
@@ -216,7 +228,6 @@ dat <- dat %>%
     species_commonname == "SPINETAIL / GIANT DEVIL RAY" ~ "MOBULA MOBULAR",
     species_commonname == "DEVIL RAYS NEI" ~  "MOBULIDAE", 
     species_commonname == "HOUNDSHARKS; SMOOTHHOUNDS NEI" ~ "TRIAKIDAE", 
-    species_commonname == "MACKERELS INDIAN, NEI" ~ "SCOMBRIDAE", 
     species_commonname == "FRIGATE TUNA AND BULLET TUNA" ~ "AUXIS THAZARD AND AUXIS ROCHEI", 
     species_commonname == "SPOT-TAIL SHARK" ~ str_to_upper("Carcharhinus sorrah"),
     species_commonname == "INDO-PACIFIC KING MACKEREL" ~ str_to_upper("Scomberomorus guttatus"),
@@ -224,12 +235,14 @@ dat <- dat %>%
     is.na(species_sciname) ~ species_commonname,
     TRUE ~ species_sciname))
 
-# Remove species that are not relevant to us (we only want sharks, tunas, and tuna-like species)
+# Add species groups so we can remove species that are not relevant to us (we only want sharks, tunas, and tuna-like species)
 dat <- dat %>% 
   left_join(species_groups %>% 
-              select(scientific_name, group) %>% 
-              rename(species_group = group), 
-            by = c("species_sciname" = "scientific_name"))
+              dplyr::select(scientific_name, group) %>% 
+              dplyr::rename(species_group = group), 
+            by = c("species_sciname" = "scientific_name")) %>% 
+  mutate(species_group = ifelse(species_sciname == "KAJIKIA ALBIDA", # not registering for some reason
+                                "tuna-like species", species_group))
 ```
 
 ## Gear Types
@@ -242,31 +255,8 @@ dat %>%
 dat <- dat %>% 
   mutate(gear = as.character(gear)) %>% 
   mutate(gear_group = case_when(
-    grepl("gillnet and|gillnet operated", gear) ~ "gillnet with others",
-    grepl("and purse-seine|and purse seine", gear) ~ "purse seine with others",
-    grepl("coastal longline and troll line combination", gear) ~ "longline with others",
-    grepl("hand line and troll line|hand line, pole and line and troll line|rod and reel and pole and line", gear) ~ "various",
-    grepl("baitboat", gear) ~ "baitboat",
     grepl("longline", gear) ~ "longline",
-    grepl("trawl", gear) ~ "trawl",
-    grepl("handline|hand line", gear) ~ "handline", 
-    grepl("gillnet", gear) ~ "gillnet", 
-    grepl("pair seine", gear) ~ "pair seine",
-    grepl("set lines", gear) ~ "set lines",
-    grepl("not known|gears not|unclassified", gear) ~ NA_character_, 
-    grepl("dredge", gear) ~ "dredge", 
     grepl("purse-seine|purse seine", gear) ~ "purse seine", 
-    grepl("rod-and-reel|rod and reel", gear) ~ "rod and reel", 
-    grepl("sport", gear) ~ "sportfishing", 
-    grepl("trap", gear) ~ "traps",
-    grepl("pot", gear) ~ "pots",
-    grepl("ring net", gear) ~ "ring net", 
-    grepl("trammel", gear) ~ "trammel", 
-    grepl("troll", gear) ~ "troll", 
-    grepl("harpoon", gear) ~ "harpoon", 
-    grepl("beach seine", gear) ~ "beach seine", 
-    grepl("pole-and-line", gear) ~ "pole and line",
-    grepl("danish seine", gear) ~ "danish seine",
     TRUE ~ gear))
 
 
@@ -301,7 +291,7 @@ dat <- dat %>%
     grepl("Serbia & Montenegro", country) ~ "Serbia and Montenegro", 
     grepl("S Tomé e Príncipe", country) ~ "São Tomé and Príncipe", 
     grepl("UK", country) ~ "United Kingdom", 
-    grepl("U.S.A|United States", country) ~ "United States of America",
+    grepl("U.S.A|USA|United States", country) ~ "United States of America",
     grepl("Iran", country) ~ "Iran",
     TRUE ~ country))
 ```
@@ -315,9 +305,9 @@ dat %>%
 dat <- dat %>% 
   mutate(effort_units = as.character(effort_units)) %>% 
   mutate(effort_units = case_when(
-    effort_units %in% c("number of sets", "number of sets |successful number of sets") ~ "sets",
+    effort_units %in% c("number of sets", "number of sets") ~ "sets",
     grepl("hours fished|hours fishing", effort_units) ~ "fishing hours", 
-    grepl("days fished|days fishing|successful fishing days", effort_units) ~ "fishing days", 
+    grepl("days fished|days fishing", effort_units) ~ "fishing days", 
     grepl("days present on fishing grounds", effort_units) ~ "days at fishing ground", 
     TRUE ~ effort_units))
 ```

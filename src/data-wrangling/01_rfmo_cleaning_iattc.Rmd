@@ -103,19 +103,15 @@ PublicLLSharkMt <- PublicLLSharkMt %>%
          effort_units = "hooks",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "PublicLLSharkMt")
 
 # Re-order columns
-PublicLLSharkMt <- PublicLLSharkMt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicLLSharkMt <- PublicLLSharkMt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -197,19 +193,15 @@ PublicLLSharkNum <- PublicLLSharkNum %>%
          effort_units = "hooks",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = "ublicLLSharkNum")
+         sources = "PublicLLSharkNum")
 
 # Re-order columns
-PublicLLSharkNum <- PublicLLSharkNum[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicLLSharkNum <- PublicLLSharkNum[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -291,19 +283,15 @@ PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt %>%
          effort_units = "hooks",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "PublicLLTunaBillfishMt")
 
 # Re-order columns
-PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -385,19 +373,15 @@ PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum %>%
          effort_units = "hooks",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "PublicLLTunaBillfishNum")
 
 # Re-order columns
-PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -471,19 +455,15 @@ PublicPSBillfishFlag <- PublicPSBillfishFlag %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "PublicPSBillfishFlag")
 
 # Re-order columns
-PublicPSBillfishFlag <- PublicPSBillfishFlag[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSBillfishFlag <- PublicPSBillfishFlag[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -557,20 +537,15 @@ PublicPSBillfishSetType <- PublicPSBillfishSetType %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "PublicPSBillfishSetType")
 
 # Re-order columns
-PublicPSBillfishSetType <- PublicPSBillfishSetType[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
-
+PublicPSBillfishSetType <- PublicPSBillfishSetType[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 # Generate Data
 # Generate quarterly data (aggregates)
 quart_agg <- PublicPSBillfishSetType %>% 
@@ -655,19 +630,15 @@ PublicPSSharkFlag_mt <- PublicPSSharkFlag_mt %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "PublicPSSharkFlag")
 
 # Re-order columns
-PublicPSSharkFlag_mt <- PublicPSSharkFlag_mt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSSharkFlag_mt <- PublicPSSharkFlag_mt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -747,19 +718,15 @@ PublicPSSharkFlag_n <- PublicPSSharkFlag_n %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "PublicPSSharkFlag_n")
 
 # Re-order columns
-PublicPSSharkFlag_n <- PublicPSSharkFlag_n[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSSharkFlag_n <- PublicPSSharkFlag_n[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -846,19 +813,15 @@ PublicPSSharkSetType_mt <- PublicPSSharkSetType_mt %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "PublicPSSharkSetType")
 
 # Re-order columns
-PublicPSSharkSetType_mt <- PublicPSSharkSetType_mt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSSharkSetType_mt <- PublicPSSharkSetType_mt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -938,19 +901,15 @@ PublicPSSharkSetType_n <- PublicPSSharkSetType_n %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
-         catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
+         catch_units = "count",
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "PublicPSSharkSetType_n")
 
 # Re-order columns
-PublicPSSharkSetType_n <- PublicPSSharkSetType_n[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSSharkSetType_n <- PublicPSSharkSetType_n[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -1025,19 +984,15 @@ PublicPSTunaFlag <- PublicPSTunaFlag %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "PublicPSTunaFlag")
 
 # Re-order columns
-PublicPSTunaFlag <- PublicPSTunaFlag[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSTunaFlag <- PublicPSTunaFlag[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -1111,19 +1066,15 @@ PublicPSTunaSetType <- PublicPSTunaSetType %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "PublicPSTunaSetType")
 
 # Re-order columns
-PublicPSTunaSetType <- PublicPSTunaSetType[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSTunaSetType <- PublicPSTunaSetType[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)

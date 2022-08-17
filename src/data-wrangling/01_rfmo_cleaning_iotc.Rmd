@@ -146,15 +146,12 @@ CEOther <- CEOther %>%
          settype = NA,  
          effort = Effort,
          effort_units = Description,
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          quality_code = QualityCode, 
          was_generated = "no", 
          sources = "IOTC-DATASETS-2022-02-23-CEOther_1950-2020")
 
 # Select relevant columns 
-CEOther <- CEOther[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname",  "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+CEOther <- CEOther[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate quarterly data (aggregates)
 quart_agg <- CEOther %>% 
@@ -263,15 +260,12 @@ CELongline <- CELongline %>%
          settype = NA,  
          effort = Effort,
          effort_units = Description,
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          quality_code = QualityCode, 
          was_generated = "no", 
          sources = "IOTC-DATASETS-2022-02-23-CELongline_1950-2020")
 
 # Select relevant columns 
-CELongline <- CELongline[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname",  "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+CELongline <- CELongline[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate quarterly data (aggregates)
 quart_agg <- CELongline %>% 
@@ -381,15 +375,12 @@ CESurface <- CESurface %>%
          effort = Effort,
          effort_units = Description,
          catch_units = "metric tonnes",
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA, 
          quality_code = QualityCode, 
          was_generated = "no", 
          sources = "IOTC-DATASETS-2022-02-23-CESurface_1950-2020")
 
 # Select relevant columns 
-CESurface <- CESurface[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+CESurface <- CESurface[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate quarterly data (aggregates)
 quart_agg <- CESurface %>% 
@@ -490,15 +481,12 @@ interactions <- interactions %>%
          effort = OBSERVED_EFFORT,
          effort_units = EFFORT_UNIT,
          catch_units = "count",
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA, 
          quality_code = NA, 
          was_generated = "no", 
          sources = "IOTC-2020-WPEB16-DATA12_CE")
 
 # Select relevant columns 
-interactions <- interactions[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+interactions <- interactions[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate quarterly data (aggregates)
 quart_agg <- interactions %>% 
