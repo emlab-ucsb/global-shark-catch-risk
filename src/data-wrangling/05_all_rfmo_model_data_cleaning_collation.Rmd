@@ -49,7 +49,7 @@ gfw_data_1x1 <- read.csv(file.path(here::here(), "data-updated/global-fishing-wa
 gfw_data_5x5 <- read.csv(file.path(here::here(), "data-updated/global-fishing-watch/outputs/binned_global_gfw_5x5.csv"))
 
 # Ex-vessel price data
-prices <- read.csv(file.path(here::here(), "data-updated/ex-vessel-prices/exvessel_price_database_1976_2017.csv")) %>% 
+prices <- read.csv(file.path(here::here(), "data-updated/ex-vessel-prices/exvessel_price_database_1976_2019.csv")) %>% 
   distinct_all()
 
 # add the min/max years for each year - based on the most recent year that all data sources

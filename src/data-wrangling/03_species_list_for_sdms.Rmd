@@ -117,7 +117,7 @@ species_list <- data.frame(t(sapply(species_list,c))) %>%
                                              "Squatiniformes" #sharks nei order
                                              ) ~ "Sharks nei",
                                      species_sciname %in% c("Istiophoridae", "Xiphiidae") ~ "Xiphioidei",
-                                     species_sciname %in% c("Scombridae", "Gempylidae") ~ "Scombroidei",
+                                     species_sciname %in% c("Scombridae", "Gempylidae", "Scombrolabracidae", "Trichiuridae") ~ "Scombroidei",
                                      species_sciname %in% c("Allothunnus", "Auxis", "Euthynnus", "Katsuwonus", "Thunnus") ~ "Thunnini",
                                      TRUE ~ species_sciname),
          
@@ -146,8 +146,8 @@ species_list_for_sdms <- short_data %>%
               select(scientific_name) %>%
               mutate(threatened = "yes") %>%
               rename(value = scientific_name)) %>%
-  filter(species_group %in% c("tunas", "tuna-like species") |
-           species_group == "sharks and rays" & threatened == "yes") %>%
+  # filter(species_group %in% c("tunas", "tuna-like species") | # remove for now
+  filter(species_group == "sharks and rays" & threatened == "yes") %>%
   select(-threatened)
 
 write.csv(species_list_for_sdms, file.path(here::here(), "data-updated/species-information/species_list_for_sdms.csv"), row.names = F)

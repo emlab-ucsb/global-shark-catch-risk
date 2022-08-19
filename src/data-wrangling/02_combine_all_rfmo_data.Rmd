@@ -62,7 +62,7 @@ dat <- dat %>%
              "ALBACORE, YELLOWFIN, BIGEYE TUNA", 
            species_commonname == "ALBACORE, YELLOWFIN TUNA AND BIGEYE TUNA" ~ 
              "ALBACORE, YELLOWFIN, BIGEYE TUNA", 
-           species_commonname %in% c("MACKERELS INDIAN, NEI", "TUNA-LIKE FISHES NEI") ~ "MACKERELS NEI",
+           species_commonname == "MACKERELS INDIAN, NEI" ~ "MACKERELS NEI",
            species_commonname == "FRIGATE AND BULLET TUNAS" ~ "FRIGATE TUNA AND BULLET TUNA",
            species_commonname == "ALBACORE" ~ "ALBACORE TUNA",  
            species_commonname == "(NORTHERN) SHORTFIN SQUID" ~ "NORTHERN SHORTFIN SQUID", 
@@ -179,7 +179,6 @@ dat <- dat %>%
     species_commonname == "SHORTBILL SPEARFISH" ~ "TETRAPTURUS ANGUSTIROSTRIS",
     species_commonname == "ATLANTIC YELLOW-NOSED ALBATROSS" ~ "THALASSARCHE CHLORORHYNCHOS",
     species_commonname == "BLACK-BROWED ALBATROSS" ~ "THALASSARCHE MELANOPHRYS", 
-    species_commonname == "PETRELS AND SHEARWATERS NEI" ~ "PROCELLARIIDAE", 
     species_commonname == "WHITE-CAPPED ALBATROSS" ~ "THALASSARCHE STEADI", 
     species_commonname == "WHALE SHARK" ~ "RHINCODON TYPUS", 
     species_commonname == "BIGEYE THRESHER SHARK" ~ "ALOPIAS SUPERCILIOSUS", 
