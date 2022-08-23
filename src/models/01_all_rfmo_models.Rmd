@@ -168,29 +168,14 @@ effort_model_results_p1
 
 ```{r}
 # Best performing models in terms of effort
-# IATTC - 1x1 with count and mt, effort reported with target catch by flag
-all_rfmo_other_models(data = eval(as.name(effort_model_results_p1$df_name[which(effort_model_results_p1$rfmo == "IATTC")])), 
-                      rfmos = "IATTC", 
-                      effort_source = effort_model_results_p1$effort_source[which(effort_model_results_p1$rfmo == "IATTC")], 
+for(selected_rfmo in c("IATTC", "ICCAT", "IOTC", "WCPFC")) { 
+
+all_rfmo_other_models(data = eval(as.name(effort_model_results_p1$df_name[which(effort_model_results_p1$rfmo == selected_rfmo)])), 
+                      rfmos = selected_rfmo, 
+                      effort_source = effort_model_results_p1$effort_source[which(effort_model_results_p1$rfmo == selected_rfmo)], 
                       save_loc = save_loc)
 
-# ICCAT - 5x5 with count and mt, effort reported with target catch by flag
-all_rfmo_other_models(data = eval(as.name(effort_model_results_p1$df_name[which(effort_model_results_p1$rfmo == "ICCAT")])), 
-                      rfmos = "ICCAT", 
-                      effort_source = effort_model_results_p1$effort_source[which(effort_model_results_p1$rfmo == "ICCAT")], 
-                      save_loc = save_loc)
-
-# IOTC - 5x5 with count only, effort reported with bycatch by flag
-all_rfmo_other_models(data = eval(as.name(effort_model_results_p1$df_name[which(effort_model_results_p1$rfmo == "IOTC")])), 
-                      rfmos = "IOTC", 
-                      effort_source = effort_model_results_p1$effort_source[which(effort_model_results_p1$rfmo == "IOTC")], 
-                      save_loc = save_loc)
-
-# WCPFC - 5x5 with count only, effort reported with bycatch (no flag available)
-all_rfmo_other_models(data = eval(as.name(effort_model_results_p1$df_name[which(effort_model_results_p1$rfmo == "WCPFC")])), 
-                      rfmos = "WCPFC", 
-                      effort_source = effort_model_results_p1$effort_source[which(effort_model_results_p1$rfmo == "WCPFC")], 
-                      save_loc = save_loc)
+} 
 ```
 
 ```{r}
