@@ -312,7 +312,6 @@ for(selected_rfmo in c("IATTC", "ICCAT", "IOTC", "WCPFC")) {
   rfmo_data <- eval(as.name(effort_model_results_p1$df_name[which(effort_model_results_p1$rfmo ==
                                                                     selected_rfmo)]))
   
-  # if(!(selected_rfmo == "WCPFC" & grepl("bycatch", rfmo_model_option$effort_source))) { 
   rfmo_effort_variables <- case_when(selected_rfmo == "WCPFC" & 
                                        grepl("bycatch", rfmo_model_option$effort_source) ~
                                        "bycatch_total_effort", 
@@ -326,17 +325,27 @@ for(selected_rfmo in c("IATTC", "ICCAT", "IOTC", "WCPFC")) {
                                      grepl("gfw", rfmo_model_option$effort_source) ~
                                         "total_fishing_kwh")
   
+  if(grepl("gfw", rfmo_model_option$effort_source)) { 
+    rfmo_data <- rfmo_data %>% 
+      mutate(effort_units = "kwh")
+  }
+  
   rfmo_other_variables <- paste0("species_commonname|sdm|mean_sst|mean_chla|", 
                                   case_when(grepl("environmentals = mean, include ssh = TRUE",
                                                rfmo_model_option$option) ~ "mean_ssh|", 
-                                            grepl("environmentals = meancv", rfmo_model_option$option) ~ 
+                                            TRUE ~ ""), 
+                                  case_when(grepl("environmentals = meancv", rfmo_model_option$option) ~ 
                                               "cv_sst|cv_chla|", 
-                                            grepl("environmentals = meancv, include ssh = TRUE",
+                                            TRUE ~ ""), 
+                                  case_when(grepl("environmentals = meancv, include ssh = TRUE",
                                                rfmo_model_option$option) ~ "mean_ssh|cv_ssh|", 
-                                            grepl("price = speciesprice", rfmo_model_option$option) ~ 
+                                            TRUE ~ ""), 
+                                  case_when(grepl("price = speciesprice", rfmo_model_option$option) ~ 
                                               "median_price_species|", 
-                                            grepl("price = groupprice", rfmo_model_option$option) ~ 
-                                              "median_price_species|"))
+                                            TRUE ~ ""), 
+                                  case_when(grepl("price = groupprice", rfmo_model_option$option) ~ 
+                                              "median_price_species|", 
+                                            TRUE ~ ""))
   
   all_rfmo_untuned_models(data = rfmo_data,
                   rfmos = selected_rfmo,
