@@ -12,8 +12,8 @@ library(here)
 source(file.path(here::here(), "src/figures/plot_defaults.R"))
 
 # Load data - use cleaned data at the 1x1 resolution using count (not mt converted to count)
-list_files <- list.files(file.path(here::here(), "data/model-data/outputs/all-rfmo-models"), 
-                         pattern = "_tuned_final_predict", full.names = TRUE)
+list_files <- list.files(file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-models"), 
+                         pattern = "_untuned_final_predict", full.names = TRUE)
 
 all_dat <- NULL
 for(file in list_files) { 
@@ -67,11 +67,12 @@ for(file in list_files) {
   all_dat <- all_dat %>% rbind(temp)
 }
 
-top_ten_dat <- NULL
 # Calculate top 10 cells of data for each species
+top_ten_dat <- NULL
 for(spp in unique(all_dat$species_commonname)) { 
+  for(rfmos in unique(all_dat$rfmo)) { 
   temp <- all_dat %>% 
-    filter(species_commonname == spp)
+    filter(species_commonname == spp & rfmo == rfmos)
   
   top_ten_q <- as.numeric(quantile(temp$.final_pred, 0.9))
   
@@ -81,5 +82,28 @@ for(spp in unique(all_dat$species_commonname)) {
   top_ten_dat <- top_ten_dat %>% 
     bind_rows(temp_ten)
   }
+} 
 
-unique(all_dat[,c("species_commonname", "species_sciname")])
+# Stacked bar plot for how many cells in each species for each rfmo
+ggplot() + 
+  geom_bar(data = top_ten_dat %>% 
+             filter(species_sciname != "SHARKS NEI") %>% 
+             mutate(species_sciname = str_to_sentence(species_sciname)), 
+           aes(y = species_sciname), fill = "white", color = "white") + 
+  geom_bar(data = top_ten_dat %>% 
+             filter(species_sciname != "SHARKS NEI") %>% 
+             mutate(species_sciname = str_to_sentence(species_sciname)), 
+           aes(y = species_sciname, fill = rfmo), alpha = 0.6, color = "white") + 
+  scale_x_continuous(name = "Number of High-Risk Cells", labels = scales::comma, 
+                     expand = c(0,0)) + 
+  ylab("") + 
+  scale_fill_manual(name = "", values = c("IATTC" = "darkorchid4", 
+                                          "ICCAT" = "darkolivegreen4", 
+                                          "IOTC" = "darkorange4", 
+                                          "WCPFC" = "dodgerblue4")) + 
+  theme_classic() + 
+  theme(panel.grid.major.x = element_line(color = "gray58"), 
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
+        axis.text.y = element_text(face = "italic"))
+
+
