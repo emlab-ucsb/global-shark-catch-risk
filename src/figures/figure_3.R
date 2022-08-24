@@ -13,8 +13,8 @@ library(here)
 source(file.path(here::here(), "src/figures/plot_defaults.R"))
 
 # Load data - use cleaned data at the 1x1 resolution using count (not mt converted to count)
-list_files <- list.files(file.path(here::here(), "data/model-data/outputs/all-rfmo-models"), 
-                         pattern = "_tuned_final_predict", full.names = TRUE)
+list_files <- list.files(file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-models"), 
+                         pattern = "_untuned_final_predict", full.names = TRUE)
 
 all_dat <- NULL
 for(file in list_files) { 

@@ -32,7 +32,7 @@ library(here)
 source(file.path(here::here(), "src/figures/plot_defaults.R"))
 
 # Load data - use cleaned data at the 1x1 resolution using count (not mt converted to count)
-list_files <- list.files(file.path(here::here(), "data/model-data/inputs/all-rfmo-models"), 
+list_files <- list.files(file.path(here::here(), "data-updated/model-data/inputs/all-rfmo-models"), 
                          pattern = "1x1_count_hooks", full.names = TRUE)
 
 all_dat <- NULL

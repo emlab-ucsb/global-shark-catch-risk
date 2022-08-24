@@ -30,7 +30,7 @@ library(here)
 source(file.path(here::here(), "src/figures/plot_defaults.R"))
 
 # Load data - use cleaned data at the 1x1 resolution using count (not mt converted to count)
-list_files <- list.files(file.path(here::here(), "data/model-data/inputs/all-rfmo-models"), 
+list_files <- list.files(file.path(here::here(), "data-updated/model-data/inputs/all-rfmo-models"), 
                          pattern = "1x1_tuna_hooks", full.names = TRUE)
 
 top_ten <- NULL
@@ -175,7 +175,7 @@ for(name in names(tuna_rasters)) {
     geom_errorbar(aes(ymin = mean_cpue-sd_cpue, ymax = mean_cpue+sd_cpue), width = 0.2, 
                   color = "darkolivegreen4") +
     geom_line(color = "darkolivegreen4") + 
-    scale_x_continuous(breaks = 2012:2018) +
+    scale_x_continuous(breaks = 2012:2020) +
     xlab("") + 
     ylab("Mean CPUE (mt/hook)") + 
     theme_classic() + 
@@ -222,7 +222,7 @@ for(name in names(tuna_rasters)) {
     facet_wrap(vars(species_commonname), ncol = 1, scales = "free_y") + 
     scale_color_manual(values = c("blue shark" = "navy", "shortfin mako shark" = "darkorange4", 
                                   "silky shark" = "gray48")) + 
-    scale_x_continuous(breaks = 2012:2018) + 
+    scale_x_continuous(breaks = 2012:2020) + 
     xlab("") + 
     ylab("Mean CPUE (count/hook)") + 
     theme_classic() + 
@@ -248,4 +248,4 @@ final_plot <- ggdraw() +
 
 # Save
 ggsave(here::here("figures/final/figure_2.png"), final_plot,
-       width = 16, height = 14, units = "in", dpi = 600, bg = "white")
+       width = 20, height = 14, units = "in", dpi = 600, bg = "white")
