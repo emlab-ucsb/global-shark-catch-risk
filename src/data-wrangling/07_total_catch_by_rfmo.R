@@ -12,15 +12,10 @@ library(rgdal)
 library(here)
 
 # Load data
-all_data <- read.csv(file.path(here::here(), "data/rfmo-observer-data/outputs/all_data.csv"))
-
-# Species grouping
-species_groups <- read_xlsx(file.path(here::here(), "data/species-information/species_groups.xlsx"), sheet = "species_list") %>% 
-  filter(group %in% c("tunas", "tuna-like species", "sharks and rays")) %>% 
-  mutate(scientific_name = str_to_upper(scientific_name))
+all_data <- read.csv(file.path(here::here(), "data-updated/rfmo-data/outputs/all_data.csv"))
 
 # Sharks to mt conversion
-mt_count <- read.csv(file.path(here::here(), "data/species-information/spp_weight_count_conversion.csv")) %>%
+mt_count <- read.csv(file.path(here::here(), "data-updated/species-information/spp_weight_count_conversion.csv")) %>%
   mutate(scientific_name = str_to_upper(scientific_name))
 
 # Add sharks nei to the mix for sharks to mt conversion
@@ -42,27 +37,25 @@ for(rfmos in unique(all_data$rfmo)) {
              gear_group %in% c("longline", "purse seine") &
              catch_units %in% c("metric tonnes", "count") & 
              was_generated == "no" &
-             year <= 2018 & year >= 2012)
+             year >= 2012)
   
   if(rfmos == "WCPFC") { 
     temp <- temp %>% 
-      filter(sources %in% c("bycatch and effort from observers", 
-                            "self-reported catch and effort by flag + year")) %>%
       select(rfmo, year, country, latitude, longitude, gear_group, time_period, effort, effort_units, spatial_notes, 
-             species_commonname, species_sciname, catch, catch_units) %>% 
+             species_commonname, species_sciname, catch, catch_units, species_group) %>% 
       distinct_all() %>% 
       group_by(rfmo, year, country, latitude, longitude, gear_group, time_period, effort_units,
-               spatial_notes, species_commonname, species_sciname, catch_units) %>% 
+               spatial_notes, species_commonname, species_sciname, catch_units, species_group) %>% 
       summarise(catch = sum(catch, na.rm = T), 
                 effort = sum(effort, na.rm = T)) %>% 
       ungroup() 
   } else {
     temp <- temp %>%
       select(rfmo, year, country, latitude, longitude, gear_group, time_period, effort, effort_units, spatial_notes, 
-             species_commonname, species_sciname, catch, catch_units) %>% 
+             species_commonname, species_sciname, catch, catch_units, species_group) %>% 
       distinct_all() %>% 
       group_by(rfmo, year, country, latitude, longitude, gear_group, time_period, effort_units,
-               spatial_notes, species_commonname, species_sciname, catch_units) %>% 
+               spatial_notes, species_commonname, species_sciname, catch_units, species_group) %>% 
       summarise(catch = sum(catch, na.rm = T), 
                 effort = sum(effort, na.rm = T)) %>% 
       ungroup() %>% 
@@ -78,25 +71,25 @@ for(rfmos in unique(all_data$rfmo)) {
   short_data <- short_data %>% 
     mutate(species_sciname = ifelse(is.na(species_sciname), species_commonname, species_sciname)) %>%
     group_by(rfmo, country, year, latitude, longitude, gear_group, effort_units, species_commonname, spatial_notes,
-             species_sciname, catch_units) %>% 
+             species_sciname, catch_units, species_group) %>% 
     summarise(catch = sum(catch, na.rm = T), 
               effort = sum(effort, na.rm = T)) %>% 
     ungroup() 
   
-  short_data <- short_data %>% 
-    left_join(species_groups %>% 
-                rename(species_group = group, 
-                       species_commonname = english_name) %>% 
-                mutate(species_commonname = str_to_upper(species_commonname)) %>% 
-                select(-species_commonname),
-              by = c("species_sciname" = "scientific_name")) %>% 
-    select(rfmo, year, country, latitude, longitude, gear_group, effort, effort_units, species_group, spatial_notes,
-           species_commonname, species_sciname, catch, catch_units) %>%
-    mutate(species_sciname = case_when(species_sciname == "TETRAPTURUS AUDAX" ~ "KAJIKIA AUDAX",
-                                       species_sciname == "MAKAIRA INDICA" ~ "ISTIOMPAX INDICA", 
-                                       species_sciname == "TETRAPTURUS ALBIDUS" ~ "KAJIKIA ALBIDA",
-                                       species_sciname == "TETRAPTURUS PFLUEGERI" ~ "TETRAPTURUS PFLUEGERI", 
-                                       TRUE ~ species_sciname))
+  # short_data <- short_data %>% 
+  #   left_join(species_groups %>% 
+  #               rename(species_group = group, 
+  #                      species_commonname = english_name) %>% 
+  #               mutate(species_commonname = str_to_upper(species_commonname)) %>% 
+  #               select(-species_commonname),
+  #             by = c("species_sciname" = "scientific_name")) %>% 
+  #   select(rfmo, year, country, latitude, longitude, gear_group, effort, effort_units, species_group, spatial_notes,
+  #          species_commonname, species_sciname, catch, catch_units) %>%
+  #   mutate(species_sciname = case_when(species_sciname == "TETRAPTURUS AUDAX" ~ "KAJIKIA AUDAX",
+  #                                      species_sciname == "MAKAIRA INDICA" ~ "ISTIOMPAX INDICA", 
+  #                                      species_sciname == "TETRAPTURUS ALBIDUS" ~ "KAJIKIA ALBIDA",
+  #                                      species_sciname == "TETRAPTURUS PFLUEGERI" ~ "TETRAPTURUS PFLUEGERI", 
+  #                                      TRUE ~ species_sciname))
   
   # how much data contributed to "nei"s
   short_data <- short_data %>% 
@@ -226,13 +219,13 @@ for(rfmos in unique(all_data$rfmo)) {
 
 # Save outputs
 write.csv(rfmo_sharks_count, 
-          file.path(here::here(), "data/rfmo-observer-data/outputs/total_shark_catch_count.csv"), 
+          file.path(here::here(), "data-updated/rfmo-data/outputs/total_shark_catch_count.csv"), 
           row.names = F)
 
 write.csv(rfmo_sharks_mt, 
-          file.path(here::here(), "data/rfmo-observer-data/outputs/total_shark_catch_mt.csv"), 
+          file.path(here::here(), "data-updated/rfmo-data/outputs/total_shark_catch_mt.csv"), 
           row.names = F)
 
 write.csv(rfmo_tunas_mt, 
-          file.path(here::here(), "data/rfmo-observer-data/outputs/total_tunas_catch_mt.csv"), 
+          file.path(here::here(), "data-updated/rfmo-data/outputs/total_tunas_catch_mt.csv"), 
           row.names = F)

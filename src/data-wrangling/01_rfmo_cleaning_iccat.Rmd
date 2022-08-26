@@ -10,8 +10,6 @@ ICCAT data were mostly in Microsoft Access databases, so I had to export the que
 # Table of Contents: {#top}
 
 - [T2CE Web]
-- [T2CE By Schools]
-- [CDIS]
 - [Combining Files]
 
 ```{r, include=FALSE}
@@ -55,24 +53,8 @@ outputs_location <- file.path(here::here(), "data-updated/rfmo-data/outputs/")
 # write.csv(mdb_data, file.path(file_path, "t2ce_20220131web.csv"), row.names = F)
 
 # Load t2ce web
-t2ce_web <-  read.csv(file.path(file_path, "t2ce_20220131web.csv"))
-  
-# Not going to use for this iteration since its L/F
-# # Load t2ce size
-# file_list <- c(list.files(paste0(file_path), pattern = "t2sz"), "Species.xlsx")
-# file_list <- file_list[grepl(".xlsx", file_list)]
-# 
-# for(file in file_list) { 
-#   name <- colsplit(file, "[.]", c("name", ""))[,1]
-#   name <- paste0("size_", name)
-#   temp <- read_xlsx(paste0(file_path, file))
-#   assign(name, temp)
-# }
-# 
-# remove(temp)
-
-# Load t2ce by school
-t2ce_school <- read_xlsx(paste0(file_path, "t2ce_ETRO-PS1991-20_bySchool.xlsx"), sheet="dsT2CE_PS-ETRO_91-20", skip=6)
+t2ce_web <-  read.csv(file.path(file_path, "t2ce_20220131web.csv")) %>% 
+  filter((DSetTypeID %in% c(".w", "n.") & CatchUnit %in% c("kg", "nr")) | (DSetTypeID == "nw" & CatchUnit == "nr"))
 ```
 
 # Load Coded Files
@@ -282,153 +264,6 @@ write.csv(t2ce_web, paste0(save_location, filename), row.names = FALSE)
 
 # Clean up
 remove(t2ce_web, quart_agg, yearly_agg)
-```
-[Back To Top](#top)
-
-# T2CE By Schools
-```{r}
-# Keep only data from the year 2012 onward
-t2ce_school <- t2ce_school %>% 
-  filter(YearC >= 2012)
-
-# Pivot tables so each row represents a different species
-t2ce_school <- t2ce_school %>% 
-  pivot_longer(cols=YFT:FRI, names_to = 'SpeciesCode', values_to = 'MonthlyCatch') %>% 
-  filter(MonthlyCatch > 0)
-
-# Reform data so different effort types are in different rows
-t2ce_school <- bind_rows(list(t2ce_school %>% 
-                         mutate(effort = Eff1,
-                                effort_units = Eff1Type),
-                       t2ce_school %>% 
-                         mutate(effort = Eff2,
-                                effort_units = Eff2Type),
-                       t2ce_school %>% 
-                         mutate(effort = Eff3,
-                                effort_units = Eff3Type),
-                       t2ce_school %>% 
-                         mutate(effort = Eff4,
-                                effort_units = Eff4Type),             
-                       t2ce_school %>% 
-                         mutate(effort = Eff5,
-                                effort_units = Eff5Type)))
-
-# Join with other datasets
-t2ce_school <- t2ce_school %>% 
-  left_join(gear_groups, by=c("GearCode" = "Code")) %>%
-  left_join(effort_types[,c("EffortTypeCode", "EffortTypeName")], by=c("effort_units" = "EffortTypeCode")) %>%
-  left_join(species[,c("SpeciesCode", "ScieName", "English")], by="SpeciesCode") %>% 
-  left_join(time_periods, by="TimePeriodID")
-
-# Fix some effort values
-t2ce_school <- t2ce_school %>% 
-  mutate(EffortTypeName = ifelse(is.na(EffortTypeName), effort_units, EffortTypeName),
-         effort_units = toupper(effort_units),
-         EffortTypeName = ifelse(effort_units == "HOURS.STD", "hours std", EffortTypeName), 
-         EffortTypeName = ifelse(effort_units == "HOURS.FAD", "FAD hours", EffortTypeName), 
-         EffortTypeName = ifelse(effort_units == "HOURS.FSC", "free school hours", EffortTypeName),
-         EffortTypeName = ifelse(effort_units == "HOURS.SEA", "hours at sea", EffortTypeName)
-         )
-
-# Make all names uppercase
-t2ce_school$ScieName<- toupper(t2ce_school$ScieName)
-t2ce_school$English<- toupper(t2ce_school$English)
-
-# Format relevant columns
-t2ce_school <- t2ce_school %>% 
-  mutate(rfmo = "ICCAT", 
-         year = YearC, 
-         month = TimePeriodID, 
-         time_period = TPeriodGroup,
-         country = Flag, 
-         gear = Name, 
-         settype = FishMode, 
-         longitude = xLon,
-         latitude = yLat, 
-         effort_units = EffortTypeName,
-         species_commonname = English, 
-         species_sciname = ScieName, 
-         catch = MonthlyCatch/1000, # catch is in kg, let's convert to tonnes 
-         catch_units = "metric tonnes", 
-         spatial_notes = paste0("center of ", GeoStrataCode, " cell"),
-         quality_code = NA, 
-         was_generated = "no", 
-         sources = "t2ce_ETRO-PS1991-20_bySchool"
-         )
-
-# Keep only relevant columns
-t2ce_school <- t2ce_school[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
-
-# Make column values consistent with other datasets 
-# Countries
-t2ce_school  <- t2ce_school %>% 
-  mutate(country = gsub("UK|EU|FR|[.]", "", country), 
-         country = gsub("-", "", country))
-
-# Gears
-t2ce_school  <- t2ce_school %>% 
-  mutate(gear = gsub("purse seine", "purse-seine", gear))
-
-# Settype
-t2ce_school  <- t2ce_school %>% 
-  mutate(settype = gsub("n/a", NA, settype), 
-         settype = gsub("FSC", "free schools", settype))
-
-# Effort units
-t2ce_school  <- t2ce_school %>% 
-  mutate(effort_units = gsub("Number of ", "", effort_units), 
-         effort_units = gsub("made", "", effort_units), 
-         effort_units = gsub("sets", "number of sets", effort_units), 
-         effort_units = str_squish(effort_units)
-         )
-
-# Months and time periods
-t2ce_school <- t2ce_school %>% 
-  mutate(month = gsub(17, NA, month), 
-         month = gsub(13, 1, month), 
-         month = gsub(14, 4, month), 
-         month = gsub(15, 7, month), 
-         month = gsub(16, 10, month),
-         month = as.numeric(month),
-         time_period = tolower(time_period),
-         time_period = gsub("month", "monthly", time_period), 
-         time_period = gsub("trimester", "quarterly", time_period))
-
-# Generate data
-# Generate quarterly data (aggregates)
-quart_agg <- t2ce_school %>% 
-  filter(time_period == "monthly") %>%
-  mutate(month = ceiling(month/3),
-         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
-                        ifelse(month == 2, 4, 
-                               ifelse(month == 3, 7, 10))),
-         time_period = "quarterly", 
-         was_generated = "yes") %>% 
-  group_by_at(setdiff(names(t2ce_school), c("catch", "effort"))) %>%
-  summarise(catch = sum(catch), 
-            effort = sum(effort))
-
-# Generate yearly data (aggregates)
-yearly_agg <- t2ce_school %>% 
-  filter(time_period == "monthly") %>%
-  mutate(month = NA,
-         time_period = "yearly", 
-         was_generated = "yes") %>% 
-  group_by_at(setdiff(names(t2ce_school), c("catch", "effort"))) %>%
-  summarise(catch = sum(catch), 
-            effort = sum(effort))
-
-# Combine raw with generated data
-t2ce_school <- t2ce_school %>% 
-  bind_rows(quart_agg) %>% 
-  bind_rows(yearly_agg)
-
-# Save File
-filename <- "t2ce_by_school.csv"
-write.csv(t2ce_school, paste0(save_location, filename), row.names = FALSE)
-
-# Clean up
-remove(t2ce_school, yearly_agg, quart_agg)
 ```
 [Back To Top](#top)
 
