@@ -22,6 +22,7 @@
 #    areas overlapped, we took the mean of groupings across overlapping regions.
 
 # Load libraries
+library(raster)
 library(tidyverse)
 library(cowplot)
 library(sf)

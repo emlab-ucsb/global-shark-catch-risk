@@ -20,6 +20,7 @@
 
 
 # Load libraries
+library(raster)
 library(tidyverse)
 library(cowplot)
 library(sf)

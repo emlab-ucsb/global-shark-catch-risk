@@ -2,7 +2,19 @@
 # (A) predicted spatial risk map for sharks globally, (B) for blue sharks, 
 # (C) for silky sharks, (D) for all hammerheads, (E) for some other key species
 
+# Some important notes
+# 1) Data we are using are 1x1 resolution (with 5x5 resolution evenly redistributed to 1x1 cells)
+#    and count for bycatch catch units and metric tonnes for target catch units. All effort is
+#    hooks from total target effort
+# 2) Some RFMOs report their data at different spatial resolutions (1x1 degrees with degrees
+#    centered around whole numbers [e.g., 150] vs centered around half numbers [e.g., 150.5]).
+#    To combat this, we first rasterized data in groups using "like" spatial resolutions. We 
+#    then re-sampled to a common, arbitrarily chosen CRS using nearest neighbor methods. This
+#    method reduced artefacts of slight 0.5 degree shifts among RFMO reporting. If RFMO reporting
+#    areas overlapped, we took the mean of groupings across overlapping regions.
+
 # Load libraries
+library(raster)
 library(tidyverse)
 library(cowplot)
 library(sf)
