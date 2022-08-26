@@ -132,7 +132,7 @@ fig_4a <- ggplot() +
   geom_sf(data = iccat_boundary, fill = "darkolivegreen4", alpha = 0.6, color = "black") + 
   geom_sf(data = iattc_boundary, fill = "darkorchid4", alpha = 0.6, color = "black") + 
   geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)),
-            mapping = aes(x=x, y=y), fill = "black") +
+            mapping = aes(x=x, y=y), fill = "black",  color = "black") +
   coord_sf() + 
   custom_theme 
 

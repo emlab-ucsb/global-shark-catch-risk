@@ -129,7 +129,7 @@ fig_1a <- ggplot() +
   geom_sf(data = iccat_boundary, fill = NA, color = "black") + 
   geom_sf(data = iattc_boundary, fill = NA, color = "black") + 
   geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)),
-              mapping = aes(x=x, y=y), fill = "black") +
+              mapping = aes(x=x, y=y), fill = "black", color = "black") +
   coord_sf() + 
   custom_theme + 
   theme(legend.position = "bottom") 
@@ -152,7 +152,7 @@ fig_1b <- ggplot() +
   geom_sf(data = iccat_boundary, fill = NA, color = "black") + 
   geom_sf(data = iattc_boundary, fill = NA, color = "black") + 
   geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)), 
-              mapping = aes(x=x, y=y), fill = "black") + 
+              mapping = aes(x=x, y=y), fill = "black", color = "black") + 
   coord_sf() + 
   custom_theme + 
   theme(legend.position = "none")
@@ -170,7 +170,7 @@ fig_1c <- ggplot() +
   geom_sf(data = iccat_boundary, fill = NA, color = "black") + 
   geom_sf(data = iattc_boundary, fill = NA, color = "black") + 
   geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)), 
-            mapping = aes(x=x, y=y), fill = "black") + 
+            mapping = aes(x=x, y=y), fill = "black", color = "black") + 
   coord_sf() + 
   custom_theme + 
   theme(legend.position = "none")
