@@ -187,9 +187,9 @@ vulnerable <- map(.x = species_left[which(species_left %in% str_to_lower(gsub(" 
                   .f = ~{ list(eval(as.name(.x)))})
 vulnerable <- bind_rows(vulnerable)
 
-not_threatened <- map(.x = species_left[which(species_left %in% str_to_lower(gsub(" ", "_", species_listing$Species[which(species_listing$IUCN_Code == "NT")])))], 
+near_threatened <- map(.x = species_left[which(species_left %in% str_to_lower(gsub(" ", "_", species_listing$Species[which(species_listing$IUCN_Code == "NT")])))], 
                   .f = ~{ list(eval(as.name(.x)))})
-not_threatened <- bind_rows(not_threatened)
+near_threatened <- bind_rows(near_threatened)
 
 # Create color schemes - each species a different color
 color_palette <- c(
@@ -205,7 +205,7 @@ color_palette <- c(
   "CARCHARHINUS FALCIFORMIS" = "gray48", # match fig 2
   "LAMNA NASUS" = "lightskyblue",
   "SPHYRNA ZYGAENA" = "violetred4",  
-  # not threatened
+  # near threatened
   "PRIONACE GLAUCA" = "navy", # to match fig 2 
   "ISURUS OXYRINCHUS" = "darkorange4"# match fig 2
   )
@@ -371,18 +371,18 @@ fig_5c <- fig_5c +
   custom_theme + 
   theme(legend.position = "none")
 
-# Plot 5d - not threatened
+# Plot 5d - near threatened
 fig_5d <-
   ggplot() +
-  geom_tile(not_threatened %>%
+  geom_tile(near_threatened %>%
               filter(!is.na(layer)) %>% 
               arrange(species_sciname) %>% 
               mutate(species_sciname = factor(species_sciname)),
             mapping = aes(x=x, y=y, fill=species_sciname),
             height = 1, width = 1, color = NA) +
-  scale_fill_manual(name = "", values = sort(color_palette[unique(not_threatened$species_sciname)]),
-                    breaks = sort(names(color_palette[unique(not_threatened$species_sciname)])),
-                    labels = sort(str_to_sentence(names(color_palette[unique(not_threatened$species_sciname)])))) +
+  scale_fill_manual(name = "", values = sort(color_palette[unique(near_threatened$species_sciname)]),
+                    breaks = sort(names(color_palette[unique(near_threatened$species_sciname)])),
+                    labels = sort(str_to_sentence(names(color_palette[unique(near_threatened$species_sciname)])))) +
   theme(legend.position = "bottom", 
         legend.text = element_text(face = "italic"), 
         text = element_text(size = 18))
@@ -390,7 +390,7 @@ fig_5d <-
 legend_5d <- get_legend(fig_5d)
 
 fig_5d <- fig_5d + 
-  ggpattern::geom_tile_pattern(not_threatened %>%
+  ggpattern::geom_tile_pattern(near_threatened %>%
             filter(!is.na(layer)) %>%
             select(-layer) %>%
             group_by(x, y) %>%
@@ -406,12 +406,12 @@ fig_5d <- fig_5d +
             pattern_spacing = 0.01, 
             pattern_density = 0.2, 
             pattern_size = 0.1) +
-  ggpattern::scale_pattern_colour_manual(name = "", values = sort(color_palette[unique(not_threatened$species_sciname)]),
-                                       breaks = sort(names(color_palette[unique(not_threatened$species_sciname)])),
-                                       labels = sort(str_to_sentence(names(color_palette[unique(not_threatened$species_sciname)])))) + 
-  ggpattern::scale_pattern_fill_manual(name = "", values = sort(color_palette[unique(not_threatened$species_sciname)]),
-                                         breaks = sort(names(color_palette[unique(not_threatened$species_sciname)])),
-                                         labels = sort(str_to_sentence(names(color_palette[unique(not_threatened$species_sciname)])))) +
+  ggpattern::scale_pattern_colour_manual(name = "", values = sort(color_palette[unique(near_threatened$species_sciname)]),
+                                       breaks = sort(names(color_palette[unique(near_threatened$species_sciname)])),
+                                       labels = sort(str_to_sentence(names(color_palette[unique(near_threatened$species_sciname)])))) + 
+  ggpattern::scale_pattern_fill_manual(name = "", values = sort(color_palette[unique(near_threatened$species_sciname)]),
+                                         breaks = sort(names(color_palette[unique(near_threatened$species_sciname)])),
+                                         labels = sort(str_to_sentence(names(color_palette[unique(near_threatened$species_sciname)])))) +
   geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
   geom_sf(data = iotc_boundary, fill = NA, color = "black") +
   geom_sf(data = iccat_boundary, fill = NA, color = "black") +
@@ -433,7 +433,7 @@ final_plot <- ggdraw() +
   draw_plot(fig_5d, 0.5, 0.07, 0.5, 0.38) + 
   draw_plot(legend_5d, 0.5, 0, 0.5, 0.07) + 
   draw_plot_label(label = c("Critically Endangered", "Endangered", 
-                            "Vulnerable", "Not Threatened"),
+                            "Vulnerable", "Near Threatened"),
                   x = c(0.25, 0.75, 0.25, 0.75), y = c(1,1,0.5,0.5), 
                   hjust = 0.5, size = 30)
 
