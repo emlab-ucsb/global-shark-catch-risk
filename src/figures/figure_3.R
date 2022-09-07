@@ -184,11 +184,13 @@ for(layer in c("global", "endangered", "BLUE SHARK", "SHORTFIN MAKO SHARK")) {
 # Figure 3a - all sharks
 fig_3a <- ggplot() + 
   geom_tile(global, 
-            mapping = aes(x=x, y=y, fill=layer)) + 
+            mapping = aes(x=x, y=y, fill=layer, color = layer)) + 
   scale_fill_distiller("Bycatch Risk", palette = "RdYlBu", na.value = NA, 
                        breaks = c(min(global$layer, na.rm = T), max(global$layer, na.rm = T)), 
                        labels = c("Low", "High"), 
                        guide = guide_colorbar(title.vjust = 0.8)) + 
+  scale_color_distiller("Bycatch Risk", palette = "RdYlBu", na.value = NA, 
+                       breaks = c(min(global$layer, na.rm = T), max(global$layer, na.rm = T)), guide = "none") + 
   geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
   geom_sf(data = iotc_boundary, fill = NA, color = "black") +
   geom_sf(data = iccat_boundary, fill = NA, color = "black") +
@@ -208,11 +210,13 @@ fig_3a <- fig_3a +
 # Figure 3b - endangered sharks
 fig_3b <- ggplot() + 
   geom_tile(endangered, 
-            mapping = aes(x=x, y=y, fill=layer)) + 
+            mapping = aes(x=x, y=y, fill=layer, color = layer)) + 
   scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
                        breaks = c(min(endangered$layer, na.rm = T), max(endangered$layer, na.rm = T)), 
                        labels = c("Low", "High"), 
                        guide = guide_colorbar(title.vjust = 0.8)) + 
+  scale_color_distiller("", palette = "RdYlBu", na.value = NA, 
+                       breaks = c(min(endangered$layer, na.rm = T), max(endangered$layer, na.rm = T)), guide = "none") + 
   geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
   geom_sf(data = iotc_boundary, fill = NA, color = "black") +
   geom_sf(data = iccat_boundary, fill = NA, color = "black") +
@@ -226,11 +230,13 @@ fig_3b <- ggplot() +
 # Figure 3c - silky shark
 fig_3c <- ggplot() + 
   geom_tile(blue_shark, 
-            mapping = aes(x=x, y=y, fill=layer)) + 
+            mapping = aes(x=x, y=y, fill=layer, color = layer)) + 
   scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
                        breaks = c(min(blue_shark$layer, na.rm = T), max(blue_shark$layer, na.rm = T)), 
                        labels = c("Low", "High"), 
                        guide = guide_colorbar(title.vjust = 0.8)) + 
+  scale_color_distiller("", palette = "RdYlBu", na.value = NA, 
+                       breaks = c(min(blue_shark$layer, na.rm = T), max(blue_shark$layer, na.rm = T)), guide = "none") + 
   geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
   geom_sf(data = iotc_boundary, fill = NA, color = "black") +
   geom_sf(data = iccat_boundary, fill = NA, color = "black") +
@@ -244,11 +250,14 @@ fig_3c <- ggplot() +
 # Figure 3d - shortfin mako shark
 fig_3d <- ggplot() + 
   geom_tile(shortfin_mako_shark, 
-            mapping = aes(x=x, y=y, fill=layer)) + 
+            mapping = aes(x=x, y=y, fill=layer, color = layer)) + 
   scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
                        breaks = c(min(shortfin_mako_shark$layer, na.rm = T), max(shortfin_mako_shark$layer, na.rm = T)), 
                        labels = c("Low", "High"), 
                        guide = guide_colorbar(title.vjust = 0.8)) + 
+  scale_color_distiller("", palette = "RdYlBu", na.value = NA, 
+                       breaks = c(min(shortfin_mako_shark$layer, na.rm = T), max(shortfin_mako_shark$layer, na.rm = T)), 
+                                  guide = "none") +
   geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
   geom_sf(data = iotc_boundary, fill = NA, color = "black") +
   geom_sf(data = iccat_boundary, fill = NA, color = "black") +
@@ -285,3 +294,100 @@ final_plot <- ggdraw() +
 ggsave(here::here("figures/final/figure_3_option2.png"), final_plot,
        width = 14, height = 4, units = "in", dpi = 600, bg = "white")
 
+# Run similar plots but for every species independently for the supplemental
+for(layer in unique(all_dat$species_commonname)) { 
+  
+  dat_temp <- all_dat %>% 
+    filter(grepl(layer, species_commonname))
+  
+  if(nrow(dat_temp) == 0) { next }
+  
+  dat_temp <- dat_temp %>% 
+    group_by(rfmo, year, latitude, longitude) %>% 
+    summarise(total_pred = sum(.final_pred, na.rm = T)) %>% 
+    ungroup() %>% 
+    group_by(rfmo, latitude, longitude) %>% 
+    summarise(mean_total_pred = mean(total_pred, na.rm = T)) %>% 
+    ungroup() %>% 
+    mutate(longitude_orig = longitude, 
+           latitude_orig = latitude) %>% 
+    st_as_sf(., coords = c("longitude_orig", "latitude_orig"), crs = 4326)
+  
+  raster_stack <- stack()
+  
+  raster_1 <- dat_temp %>% 
+    filter(latitude%%1 == 0 & longitude%%1 == 0) 
+  
+  if(nrow(raster_1) > 0) { 
+    raster_1 <- raster_1 %>% 
+      rasterize(., whole_numbers, field = "mean_total_pred", fun = mean, background = NA)
+    
+    raster_stack <- stack(raster_stack, raster_1)
+  }
+  
+  raster_2 <- dat_temp %>% 
+    filter(latitude%%1 != 0 & longitude%%1 == 0) 
+  
+  if(nrow(raster_2) > 0) { 
+    raster_2 <- raster_2 %>% 
+      rasterize(., whole_numbers, field = "mean_total_pred", fun = mean, background = NA)
+    
+    raster_stack <- stack(raster_stack, raster_2)
+  }
+  
+  raster_3 <- dat_temp %>% 
+    filter(latitude%%1 == 0 & longitude%%1 != 0)  
+  
+  if(nrow(raster_3) > 0) { 
+    raster_3 <- raster_3 %>% 
+      rasterize(., whole_numbers, field = "mean_total_pred", fun = mean, background = NA)
+    
+    raster_stack <- stack(raster_stack, raster_3)
+  }
+  
+  raster_4 <- dat_temp %>% 
+    filter(latitude%%1 != 0 & longitude%%1 != 0)  
+  
+  if(nrow(raster_4) > 0) { 
+    raster_4 <- raster_4 %>% 
+      rasterize(., whole_numbers, field = "mean_total_pred", fun = mean, background = NA)
+    
+    raster_stack <- stack(raster_stack, raster_4)
+  }
+  
+  if(nlayers(raster_stack) > 1) { 
+  raster_comb <- calc(raster_stack, mean, na.rm = T) 
+  } else { 
+    raster_comb <- raster_stack }
+  
+  raster_comb <- raster::as.data.frame(raster_comb, xy = TRUE) 
+  
+  # Some species are all 0s
+  if(min(raster_comb$layer, na.rm = T) == max(raster_comb$layer, na.rm = T)) {next}
+  
+  fig_supp <- ggplot() + 
+    geom_tile(raster_comb, 
+              mapping = aes(x=x, y=y, fill=layer, color = layer)) + 
+    scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
+                         breaks = c(min(raster_comb$layer, na.rm = T), max(raster_comb$layer, na.rm = T)), 
+                         labels = c("Low", "High"), 
+                         guide = guide_colorbar(title.vjust = 0.8)) + 
+    scale_color_distiller("", palette = "RdYlBu", na.value = NA, 
+                         breaks = c(min(raster_comb$layer, na.rm = T), max(raster_comb$layer, na.rm = T)), guide = "none") + 
+    geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
+    geom_sf(data = iotc_boundary, fill = NA, color = "black") +
+    geom_sf(data = iccat_boundary, fill = NA, color = "black") +
+    geom_sf(data = iattc_boundary, fill = NA, color = "black") +
+    geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)),
+              mapping = aes(x=x, y=y), fill = "black", color = "black") +
+    coord_sf() + 
+    custom_theme + 
+    theme(legend.position = "bottom") 
+  
+  # Save
+  ggsave(paste0(here::here("figures/supplemental"), 
+                "/figure_3_", gsub(" ", "_", 
+                                   gsub("[(]|[)]", "", str_to_lower(layer))), 
+                ".png"), 
+         width = 3, height = 2, units = "in", dpi = 600, bg = "white")
+} 
