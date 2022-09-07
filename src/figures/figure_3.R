@@ -1,6 +1,6 @@
 # Figure 3. Hotspots of shark interactions with longline fisheries for with 
-# (A) predicted spatial risk map for sharks globally, (B) for blue sharks, 
-# (C) for silky sharks, (D) for all hammerheads, (E) for some other key species
+# (A) predicted spatial risk map for sharks globally, (B) endangered sharks, 
+# (C) blue sharks, (D) shortfin mako
 
 # Some important notes
 # 1) Data we are using are 1x1 resolution (with 5x5 resolution evenly redistributed to 1x1 cells)
@@ -16,6 +16,7 @@
 # Load libraries
 library(raster)
 library(tidyverse)
+library(rfishbase)
 library(cowplot)
 library(sf)
 library(tmap)
@@ -31,7 +32,7 @@ list_files <- list.files(file.path(here::here(), "data-updated/model-data/output
 all_dat <- NULL
 for(file in list_files) { 
   temp <- read.csv(file) %>% 
-    select(rfmo, year, latitude, longitude, species_commonname, spatial_notes, .final_pred)
+    select(rfmo, year, latitude, longitude, species_commonname, species_sciname, spatial_notes, .final_pred)
   
   if(unique(temp$spatial_notes) == "center of 5x5 cell") { 
     
@@ -69,7 +70,7 @@ for(file in list_files) {
              latitude_rescaled = ifelse(is.na(latitude_rescaled), latitude, latitude_rescaled),
              .final_pred= .final_pred/25) %>% 
       mutate(spatial_notes = "center of 1x1 cell") %>%
-      group_by(rfmo, year, latitude_rescaled, longitude_rescaled, species_commonname, spatial_notes) %>% 
+      group_by(rfmo, year, latitude_rescaled, longitude_rescaled, species_commonname, species_sciname, spatial_notes) %>% 
       summarise(.final_pred = sum(.final_pred, na.rm = T)) %>% 
       ungroup() %>% 
       rename(latitude = latitude_rescaled, 
@@ -79,14 +80,27 @@ for(file in list_files) {
   all_dat <- all_dat %>% rbind(temp)
 }
 
+# Get list of species and their IUCN code
+species_listing <- stocks(str_to_sentence(unique(all_dat$species_sciname)), 
+                          fields = c("Species", "IUCN_Code", "IUCN_DateAssessed")) %>% 
+  filter(!is.na(IUCN_Code)) %>% 
+  group_by(Species) %>% 
+  slice_max(order_by = IUCN_DateAssessed, n = 1) %>% 
+  ungroup() %>% 
+  filter(IUCN_Code %in% c("EN", "VU", "CR")) %>% 
+  mutate(species_sciname = str_to_upper(Species))
+
 # Rasterize based on the center of each cell (a little annoying)
-for(layer in c("global", "BLUE SHARK", "SILKY SHARK", "HAMMERHEAD")) { 
+for(layer in c("global", "endangered", "BLUE SHARK", "SHORTFIN MAKO SHARK")) { 
   
-  if(layer != "global") { 
+  if(layer == "global") { 
+    dat_temp <- all_dat
+  } else if(layer == "endangered") {
     dat_temp <- all_dat %>% 
-      filter(grepl(layer, species_commonname))
-  } else { 
-    dat_temp <- all_dat}
+      filter(species_sciname %in% unique(species_listing$species_sciname)) 
+  } else {
+    dat_temp <- all_dat %>% 
+      filter(grepl(layer, species_commonname))}
   
   dat_temp <- dat_temp %>% 
     group_by(rfmo, year, latitude, longitude) %>% 
@@ -191,8 +205,26 @@ legend <- get_legend(fig_3a)
 fig_3a <- fig_3a + 
   theme(legend.position = "none")
 
-# Figure 3b - blue shark
+# Figure 3b - endangered sharks
 fig_3b <- ggplot() + 
+  geom_tile(endangered, 
+            mapping = aes(x=x, y=y, fill=layer)) + 
+  scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
+                       breaks = c(min(endangered$layer, na.rm = T), max(endangered$layer, na.rm = T)), 
+                       labels = c("Low", "High"), 
+                       guide = guide_colorbar(title.vjust = 0.8)) + 
+  geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
+  geom_sf(data = iotc_boundary, fill = NA, color = "black") +
+  geom_sf(data = iccat_boundary, fill = NA, color = "black") +
+  geom_sf(data = iattc_boundary, fill = NA, color = "black") +
+  geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)),
+            mapping = aes(x=x, y=y), fill = "black", color = "black") +
+  coord_sf() + 
+  custom_theme + 
+  theme(legend.position = "none") 
+
+# Figure 3c - silky shark
+fig_3c <- ggplot() + 
   geom_tile(blue_shark, 
             mapping = aes(x=x, y=y, fill=layer)) + 
   scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
@@ -209,30 +241,12 @@ fig_3b <- ggplot() +
   custom_theme + 
   theme(legend.position = "none") 
 
-# Figure 3c - silky shark
-fig_3c <- ggplot() + 
-  geom_tile(silky_shark, 
-            mapping = aes(x=x, y=y, fill=layer)) + 
-  scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
-                       breaks = c(min(silky_shark$layer, na.rm = T), max(silky_shark$layer, na.rm = T)), 
-                       labels = c("Low", "High"), 
-                       guide = guide_colorbar(title.vjust = 0.8)) + 
-  geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
-  geom_sf(data = iotc_boundary, fill = NA, color = "black") +
-  geom_sf(data = iccat_boundary, fill = NA, color = "black") +
-  geom_sf(data = iattc_boundary, fill = NA, color = "black") +
-  geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)),
-            mapping = aes(x=x, y=y), fill = "black", color = "black") +
-  coord_sf() + 
-  custom_theme + 
-  theme(legend.position = "none") 
-
-# Figure 3d - all hammehead sharks
+# Figure 3d - shortfin mako shark
 fig_3d <- ggplot() + 
-  geom_tile(hammerhead, 
+  geom_tile(shortfin_mako_shark, 
             mapping = aes(x=x, y=y, fill=layer)) + 
   scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
-                       breaks = c(min(hammerhead$layer, na.rm = T), max(hammerhead$layer, na.rm = T)), 
+                       breaks = c(min(shortfin_mako_shark$layer, na.rm = T), max(shortfin_mako_shark$layer, na.rm = T)), 
                        labels = c("Low", "High"), 
                        guide = guide_colorbar(title.vjust = 0.8)) + 
   geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
@@ -245,7 +259,7 @@ fig_3d <- ggplot() +
   custom_theme + 
   theme(legend.position = "none") 
 
-# Final plot
+# Final plot - option 1 
 final_plot <- ggdraw() + 
   draw_plot(fig_3a, 0, 0.55, 0.5, 0.45) + 
   draw_plot(fig_3b, 0.5, 0.55, 0.5, 0.45) + 
@@ -256,6 +270,18 @@ final_plot <- ggdraw() +
                   hjust = 0, size = 30)
 
 # Save
-ggsave(here::here("figures/final/figure_3.png"), final_plot,
+ggsave(here::here("figures/final/figure_3_option1.png"), final_plot,
        width = 14, height = 8, units = "in", dpi = 600, bg = "white")
+
+# Final plot - Option 2 just all sharks and vulnerable
+final_plot <- ggdraw() + 
+  draw_plot(fig_3a, 0, 0.1, 0.5, 0.9) + 
+  draw_plot(fig_3b, 0.5, 0.1, 0.5, 0.9) + 
+  draw_plot(legend, 0, 0, 1, 0.14) +
+  draw_plot_label(label = LETTERS[1:2], x = c(0, 0.5), y = 1, 
+                  hjust = 0, size = 30)
+
+# Save
+ggsave(here::here("figures/final/figure_3_option2.png"), final_plot,
+       width = 14, height = 4, units = "in", dpi = 600, bg = "white")
 

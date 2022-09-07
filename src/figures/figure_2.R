@@ -22,6 +22,7 @@
 # Load libraries
 library(raster)
 library(tidyverse)
+library(rfishbase)
 library(cowplot)
 library(sf)
 library(tmap)
@@ -40,9 +41,14 @@ top_ten_yearly <- NULL
 for(file in list_files) { 
   temp <- read.csv(file)
   
+  if(grepl("WCPFC", file)) { # no shark data for 2012 for WCPFC 
+    temp <- temp %>% 
+      filter(year != 2012)
+    }
+  
   # Get mean annual catch and effort
   temp_sub <- temp %>%
-    group_by(latitude, longitude, species_commonname, species_group, effort_units, catch_units, rfmo) %>%
+    group_by(latitude, longitude, species_sciname, species_commonname, species_group, effort_units, catch_units, rfmo) %>%
     summarise(mean_annual_catch = mean(catch, na.rm = T),
               mean_annual_target_effort = mean(target_effort, na.rm = T)) %>%
     ungroup() %>%
@@ -73,7 +79,7 @@ for(file in list_files) {
     filter(latlon_group %in% top_ten_tuna$latlon_group & 
              target_effort > 0) %>% 
     mutate(cpue = catch/target_effort) %>% 
-    select(year, rfmo, species_commonname, species_group, 
+    select(year, rfmo, species_commonname, species_sciname, species_group, 
              effort_units, catch_units, cpue, catch, latlon_group) 
 
   top_ten_yearly <- top_ten_yearly %>% 
@@ -84,7 +90,7 @@ for(file in list_files) {
 # Species selection (which tuna species have the highest overall catch)
 top_species <- top_ten %>% 
   filter(species_group == "tunas" & catch_units == "metric tonnes") %>% 
-  group_by(species_commonname) %>% 
+  group_by(species_commonname, species_sciname) %>% 
   summarise(tot_catch = sum(mean_annual_catch, na.rm = T)) %>% 
   ungroup() %>% 
   arrange(desc(tot_catch)) %>% 
@@ -170,30 +176,39 @@ tuna_plots <- list()
 for(name in names(tuna_rasters)) { 
   temp_plot <- ggplot(data = top_ten_yearly_mean %>% 
                         filter(species_commonname == str_to_upper(gsub("_", " ", name))) %>% 
-                        filter(catch_units == "metric tonnes"), 
+                        filter(catch_units == "metric tonnes") %>% 
+                        mutate(mean_cpue = mean_cpue*10000, 
+                               sd_cpue = sd_cpue*10000), 
                       aes(x = year, y = mean_cpue)) + 
     geom_point(color = "darkolivegreen4") + 
-    geom_errorbar(aes(ymin = mean_cpue-sd_cpue, ymax = mean_cpue+sd_cpue), width = 0.2, 
+    geom_errorbar(aes(ymin = max(0, mean_cpue-sd_cpue, na.rm = T), ymax = mean_cpue+sd_cpue), width = 0.2, 
                   color = "darkolivegreen4") +
     geom_line(color = "darkolivegreen4") + 
+    scale_y_continuous(limits = c(0, 1.75)) + 
     scale_x_continuous(breaks = 2012:2020) +
     xlab("") + 
-    ylab("Mean CPUE (mt/hook)") + 
+    ylab("Mean CPUE (mt/10,000 hooks)") + 
     theme_classic() + 
     theme(text = element_text(size = 18))
   
   tuna_plots[[name]] <- temp_plot
 } 
 
-# Plot C, F, I (lines for shark species - cpue per year)
+# Plot C, F, I (lines for shark species - all sharks and endangered sharks)
 top_sharks <- top_ten %>% 
-  filter(species_group == "sharks and rays" & catch_units == "count" & !grepl("NEI", species_commonname)) %>% 
-  group_by(species_commonname) %>% 
-  summarise(tot_catch = sum(mean_annual_catch, na.rm = T)) %>% 
-  ungroup() %>% 
-  arrange(desc(tot_catch)) %>% 
-  slice_head(n = 3)
+  filter(species_group == "sharks and rays" & catch_units == "count")
 
+species_listing <- stocks(str_to_sentence(unique(top_sharks$species_sciname)), 
+                          fields = c("Species", "IUCN_Code", "IUCN_DateAssessed")) %>% 
+  filter(!is.na(IUCN_Code)) %>% 
+  group_by(Species) %>% 
+  slice_max(order_by = IUCN_DateAssessed, n = 1) %>% 
+  ungroup() 
+
+top_sharks <- species_listing %>% 
+  filter(IUCN_Code %in% c("EN", "VU", "CR")) %>% 
+  mutate(species_sciname = str_to_upper(Species))
+  
 shark_plots <- list()
 
 for(name in names(tuna_rasters)) { 
@@ -207,25 +222,38 @@ for(name in names(tuna_rasters)) {
   
   sharks_temp <- top_ten_yearly %>% 
     filter(latlon_group %in% relevant_locations$latlon_group & 
-             species_commonname %in% top_sharks$species_commonname & 
+             species_sciname %in% top_sharks$species_sciname & 
              catch_units == "count") %>% 
-    group_by(year, species_commonname, species_group,
-             effort_units, catch_units) %>% 
+    group_by(year, effort_units, catch_units) %>% 
     summarise(mean_cpue = mean(cpue, na.rm = T), 
-              sd_cpue = sd(cpue, na.rm = T)) 
+              sd_cpue = sd(cpue, na.rm = T)) %>% 
+    ungroup() %>% 
+    mutate(species_cat = "Vulnerable Shark Species") %>% 
+    bind_rows(top_ten_yearly %>% 
+                filter(latlon_group %in% relevant_locations$latlon_group & 
+                         catch_units == "count") %>% 
+                group_by(year, effort_units, catch_units) %>% 
+                summarise(mean_cpue = mean(cpue, na.rm = T), 
+                          sd_cpue = sd(cpue, na.rm = T)) %>% 
+                ungroup() %>% 
+                mutate(species_cat = "All Reported Shark Species")) %>%
+    bind_rows(data.frame(mean_cpue = c(0.13/10000, 35/10000),
+                         species_cat = c("Vulnerable Shark Species",
+                                         "All Reported Shark Species")))
   
   temp_plot <- ggplot(data = sharks_temp %>% 
-                        mutate(species_commonname = str_to_lower(species_commonname)), 
-                      aes(x = year, y = mean_cpue, color = species_commonname)) + 
+                        mutate(mean_cpue = mean_cpue*10000, 
+                               sd_cpue = sd_cpue*10000), 
+                      aes(x = year, y = mean_cpue, color = species_cat)) + 
     geom_point() + 
-    geom_errorbar(aes(ymin = mean_cpue-sd_cpue, ymax = mean_cpue+sd_cpue), width = 0.2) +
     geom_line() + 
-    facet_wrap(vars(species_commonname), ncol = 1, scales = "free_y") + 
-    scale_color_manual(values = c("blue shark" = "navy", "shortfin mako shark" = "darkorange4", 
-                                  "silky shark" = "gray48")) + 
+    geom_errorbar(aes(ymin = max(0, mean_cpue-sd_cpue, na.rm = T), ymax = mean_cpue+sd_cpue), width = 0.2) +
+    facet_wrap(vars(species_cat), ncol = 1, scales = "free_y") + 
+    scale_color_manual(values = c("Vulnerable Shark Species" = "navy", 
+                                  "All Reported Shark Species" = "darkorange4")) + 
     scale_x_continuous(breaks = 2012:2020) + 
     xlab("") + 
-    ylab("Mean CPUE (count/hook)") + 
+    ylab("Mean CPUE (count/10,000 hooks)") + 
     theme_classic() + 
     theme(text = element_text(size = 18), 
           legend.position = "none")
@@ -235,18 +263,19 @@ for(name in names(tuna_rasters)) {
 
 # Final plot
 final_plot <- ggdraw() + 
-  draw_plot(location_plots[[1]], 0, 0.66, 0.33, 0.33) + 
-  draw_plot(tuna_plots[[1]], 0.33, 0.66, 0.33, 0.33) + 
-  draw_plot(shark_plots[[1]], 0.66, 0.66, 0.33, 0.33) + 
-  draw_plot(location_plots[[2]], 0, 0.33, 0.33, 0.33) + 
-  draw_plot(tuna_plots[[2]], 0.33, 0.33, 0.33, 0.33) + 
-  draw_plot(shark_plots[[2]], 0.66, 0.33, 0.33, 0.33) + 
-  draw_plot(location_plots[[3]], 0, 0.0, 0.33, 0.33) + 
-  draw_plot(tuna_plots[[3]], 0.33, 0.0, 0.33, 0.33) + 
-  draw_plot(shark_plots[[3]], 0.66, 0.0, 0.33, 0.33) + 
-  draw_plot_label(label = LETTERS[1:9], x = rep(c(0, 0.33, 0.66), 3), 
-                  y = rep(c(1, 0.66, 0.33), each = 3), hjust = 0, size = 30)
+  draw_plot(location_plots[[1]], 0, 0.66, 0.33, 0.32) + 
+  draw_plot(tuna_plots[[1]], 0.33, 0.66, 0.33, 0.32) + 
+  draw_plot(shark_plots[[1]], 0.66, 0.66, 0.33, 0.32) + 
+  draw_plot(location_plots[[2]], 0, 0.33, 0.33, 0.32) + 
+  draw_plot(tuna_plots[[2]], 0.33, 0.33, 0.33, 0.32) + 
+  draw_plot(shark_plots[[2]], 0.66, 0.33, 0.33, 0.32) + 
+  draw_plot(location_plots[[3]], 0, 0.0, 0.33, 0.32) + 
+  draw_plot(tuna_plots[[3]], 0.33, 0.0, 0.33, 0.32) + 
+  draw_plot(shark_plots[[3]], 0.66, 0.0, 0.33, 0.32) + 
+  draw_plot_label(label = LETTERS[1:9], x = rep(c(0.02, 0.333, 0.666), 3), 
+                  y = rep(c(0.985, 0.66, 0.33), each = 3), hjust = 0.5, vjust = 0.5,
+                  size = 30)
 
 # Save
 ggsave(here::here("figures/final/figure_2.png"), final_plot,
-       width = 20, height = 14, units = "in", dpi = 600, bg = "white")
+       width = 20.5, height = 14, units = "in", dpi = 600, bg = "white")
