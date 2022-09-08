@@ -231,7 +231,7 @@ write.csv(overlapping_proportions,
           here::here("tables/supplemental/overlapping_catch_effort_cpue.csv"), 
           row.names = FALSE)
 
-# Figure of areas with high CPUE
+# Figure of areas with high CPUE - for discussion/results
 ggplot() + 
   geom_tile(mean_cpue_scaled %>% 
             filter(layer == max(layer, na.rm = T)), 
@@ -258,9 +258,30 @@ rfmo_spp_totals <- all_dat %>%
             mean_bycatch_effort = mean(total_bycatch_effort, na.rm = T), 
             mean_cpue = mean(total_cpue, na.rm = T))%>% 
   ungroup() %>% 
-  mutate(latitude_temp = latitude, 
-         longitude_temp = longitude) %>% 
-  st_as_sf(., coords = c("longitude_temp", "latitude_temp"), crs = 4326) 
+  mutate(longitude_orig = longitude, 
+         latitude_orig = latitude) %>% 
+  st_as_sf(., coords = c("longitude", "latitude"), crs = 4326) 
 
-rfmo_spp_totals_overlap <- st_intersection(rfmo_spp_totals, 
-                                           overlapping_cells)
+overlapped_raster <- rasterize(overlapping_cells %>% filter(cpue == 1), whole_numbers, field = "cpue", method = "ngb")
+overlapped_raster <- rasterToPolygons(overlapped_raster)
+overlapped_raster <- st_as_sf(overlapped_raster)
+
+rfmo_spp_totals_overlap <- lengths(st_intersects(rfmo_spp_totals,
+                                                 overlapped_raster))  > 0
+
+rfmo_spp_totals <- rfmo_spp_totals[rfmo_spp_totals_overlap, ]
+
+ggplot() + 
+  geom_sf(data = rfmo_spp_totals %>% 
+            group_by(rfmo, longitude_orig, latitude_orig) %>% 
+            slice_max(mean_cpue, n = 1, with_ties = FALSE) %>% 
+            ungroup(), aes(color = species_commonname), size = 0.2) +
+  geom_sf(data = wcpfc_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iotc_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iccat_boundary, fill = NA, color = "black") + 
+  geom_sf(data = iattc_boundary, fill = NA, color = "black") + 
+  geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)), 
+            mapping = aes(x=x, y=y), fill = "black", color = "black") + 
+  coord_sf() + 
+  custom_theme + 
+  theme(legend.position = "bottom")
