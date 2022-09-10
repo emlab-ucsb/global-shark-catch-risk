@@ -81,14 +81,38 @@ for(file in list_files) {
 }
 
 # Get list of species and their IUCN code
-species_listing <- stocks(str_to_sentence(unique(all_dat$species_sciname)), 
-                          fields = c("Species", "IUCN_Code", "IUCN_DateAssessed")) %>% 
-  filter(!is.na(IUCN_Code)) %>% 
-  group_by(Species) %>% 
-  slice_max(order_by = IUCN_DateAssessed, n = 1) %>% 
-  ungroup() %>% 
+# Had to look up by hand because rfishbase is not up to date
+species_listing <- data.frame(
+  species_sciname = c("Alopias pelagicus",
+                      "Alopias superciliosus",
+                      "Alopias vulpinus",
+                      "Carcharhinus falciformis",
+                      "Carcharhinus limbatus",
+                      "Carcharhinus longimanus",
+                      "Isurus oxyrinchus",
+                      "Isurus paucus",
+                      "Lamna nasus",
+                      "Prionace glauca",
+                      "Rhincodon typus",
+                      "Sphyrna lewini",
+                      "Sphyrna mokarran",
+                      "Sphyrna zygaena"), 
+  IUCN_Code = c("EN",
+                "VU",
+                "VU",
+                "VU",
+                "VU",
+                "CR",
+                "EN",
+                "EN",
+                "VU",
+                "NT",
+                "EN",
+                "CR",
+                "CR",
+                "VU")) %>% 
   filter(IUCN_Code %in% c("EN", "VU", "CR")) %>% 
-  mutate(species_sciname = str_to_upper(Species))
+  mutate(species_sciname = str_to_upper(species_sciname))
 
 # Rasterize based on the center of each cell (a little annoying)
 for(layer in c("global", "endangered", "BLUE SHARK", "SHORTFIN MAKO SHARK")) { 

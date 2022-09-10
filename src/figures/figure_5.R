@@ -17,7 +17,6 @@
 # Load libraries
 library(raster)
 library(tidyverse)
-library(rfishbase)
 library(cowplot)
 library(sf)
 library(tmap)
@@ -83,16 +82,40 @@ for(file in list_files) {
 }
 
 # Get list of species and their IUCN code
-species_listing <- stocks(str_to_sentence(unique(all_dat$species_sciname)), 
-                          fields = c("Species", "IUCN_Code", "IUCN_DateAssessed")) %>% 
-  filter(!is.na(IUCN_Code)) %>% 
-  group_by(Species) %>% 
-  slice_max(order_by = IUCN_DateAssessed, n = 1) %>% 
-  ungroup() 
+# Had to look up by hand because rfishbase is not up to date
+species_listing <- data.frame(
+  species_sciname = c("Alopias pelagicus",
+                      "Alopias superciliosus",
+                      "Alopias vulpinus",
+                      "Carcharhinus falciformis",
+                      "Carcharhinus limbatus",
+                      "Carcharhinus longimanus",
+                      "Isurus oxyrinchus",
+                      "Isurus paucus",
+                      "Lamna nasus",
+                      "Prionace glauca",
+                      "Rhincodon typus",
+                      "Sphyrna lewini",
+                      "Sphyrna mokarran",
+                      "Sphyrna zygaena"), 
+  IUCN_Code = c("EN",
+                  "VU",
+                  "VU",
+                  "VU",
+                  "VU",
+                  "CR",
+                  "EN",
+                  "EN",
+                  "VU",
+                  "NT",
+                  "EN",
+                  "CR",
+                  "CR",
+                  "VU")) 
 
 # Remove species groups with no IUCN code
 all_dat <- all_dat %>% 
-  filter(str_to_sentence(species_sciname) %in% species_listing$Species)
+  filter(str_to_sentence(species_sciname) %in% species_listing$species_sciname)
 
 # Map of hotspots for threatened species... probably one per IUCN listing
 # Rasterize based on each species first
@@ -175,19 +198,19 @@ for(spp in unique(all_dat$species_sciname)) {
 } 
 
 # Divvy up into different vulnerability listings
-endangered <- map(.x = species_left[which(species_left %in% str_to_lower(gsub(" ", "_", species_listing$Species[which(species_listing$IUCN_Code == "EN")])))], 
+endangered <- map(.x = species_left[which(species_left %in% str_to_lower(gsub(" ", "_", species_listing$species_sciname[which(species_listing$IUCN_Code == "EN")])))], 
                   .f = ~{ list(eval(as.name(.x)))})
 endangered <- bind_rows(endangered)
 
-critically_endangered <- map(.x = species_left[which(species_left %in% str_to_lower(gsub(" ", "_", species_listing$Species[which(species_listing$IUCN_Code == "CR")])))], 
+critically_endangered <- map(.x = species_left[which(species_left %in% str_to_lower(gsub(" ", "_", species_listing$species_sciname[which(species_listing$IUCN_Code == "CR")])))], 
                              .f = ~{ list(eval(as.name(.x)))})
 critically_endangered <- bind_rows(critically_endangered)
 
-vulnerable <- map(.x = species_left[which(species_left %in% str_to_lower(gsub(" ", "_", species_listing$Species[which(species_listing$IUCN_Code == "VU")])))], 
+vulnerable <- map(.x = species_left[which(species_left %in% str_to_lower(gsub(" ", "_", species_listing$species_sciname[which(species_listing$IUCN_Code == "VU")])))], 
                   .f = ~{ list(eval(as.name(.x)))})
 vulnerable <- bind_rows(vulnerable)
 
-near_threatened <- map(.x = species_left[which(species_left %in% str_to_lower(gsub(" ", "_", species_listing$Species[which(species_listing$IUCN_Code == "NT")])))], 
+near_threatened <- map(.x = species_left[which(species_left %in% str_to_lower(gsub(" ", "_", species_listing$species_sciname[which(species_listing$IUCN_Code == "NT")])))], 
                   .f = ~{ list(eval(as.name(.x)))})
 near_threatened <- bind_rows(near_threatened)
 
@@ -196,18 +219,20 @@ color_palette <- c(
   # critically endangered
   "CARCHARHINUS LONGIMANUS" = "#C5000BFF", 
   "SPHYRNA LEWINI" = "#FFD320FF", 
+  "SPHYRNA MOKARRAN" = "black", # no data
   # endangered
   "ALOPIAS PELAGICUS" = "#FF950EFF", 
+  "ISURUS OXYRINCHUS" = "darkorange4",
   "ISURUS PAUCUS" = "orchid3", 
   # vulnerable
   "ALOPIAS SUPERCILIOSUS" = "limegreen",
   "ALOPIAS VULPINUS" = "blue",
-  "CARCHARHINUS FALCIFORMIS" = "gray48", # match fig 2
+  "CARCHARHINUS FALCIFORMIS" = "gray48", 
+  "CARCHARHINUS LIMBATUS" = "wheat2", # no data 
   "LAMNA NASUS" = "lightskyblue",
   "SPHYRNA ZYGAENA" = "violetred4",  
   # near threatened
-  "PRIONACE GLAUCA" = "navy", # to match fig 2 
-  "ISURUS OXYRINCHUS" = "darkorange4"# match fig 2
+  "PRIONACE GLAUCA" = "navy"
   )
 
 # paletteer::paletteer_d("ggthemes::calc")
@@ -390,28 +415,6 @@ fig_5d <-
 legend_5d <- get_legend(fig_5d)
 
 fig_5d <- fig_5d + 
-  ggpattern::geom_tile_pattern(near_threatened %>%
-            filter(!is.na(layer)) %>%
-            select(-layer) %>%
-            group_by(x, y) %>%
-            mutate(n = n()) %>%
-            ungroup() %>%
-            filter(n > 1) %>% 
-            pivot_wider(names_from = species_sciname, values_from = n) %>% 
-            mutate(`ISURUS OXYRINCHUS` = ifelse(!is.na(`ISURUS OXYRINCHUS`), "ISURUS OXYRINCHUS", NA), 
-                     `PRIONACE GLAUCA` = ifelse(!is.na(`PRIONACE GLAUCA`), "PRIONACE GLAUCA", NA)) %>% 
-            rename(species_1 = `ISURUS OXYRINCHUS`, species_2 = `PRIONACE GLAUCA`),
-            mapping = aes(x=x, y=y, pattern_colour = species_1, pattern_fill = species_1, fill = species_2),
-            pattern = "stripe", color = NA, height = 1, width = 1, 
-            pattern_spacing = 0.01, 
-            pattern_density = 0.2, 
-            pattern_size = 0.1) +
-  ggpattern::scale_pattern_colour_manual(name = "", values = sort(color_palette[unique(near_threatened$species_sciname)]),
-                                       breaks = sort(names(color_palette[unique(near_threatened$species_sciname)])),
-                                       labels = sort(str_to_sentence(names(color_palette[unique(near_threatened$species_sciname)])))) + 
-  ggpattern::scale_pattern_fill_manual(name = "", values = sort(color_palette[unique(near_threatened$species_sciname)]),
-                                         breaks = sort(names(color_palette[unique(near_threatened$species_sciname)])),
-                                         labels = sort(str_to_sentence(names(color_palette[unique(near_threatened$species_sciname)])))) +
   geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
   geom_sf(data = iotc_boundary, fill = NA, color = "black") +
   geom_sf(data = iccat_boundary, fill = NA, color = "black") +
