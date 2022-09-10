@@ -184,7 +184,7 @@ for(name in names(tuna_rasters)) {
     geom_errorbar(aes(ymin = max(0, mean_cpue-sd_cpue, na.rm = T), ymax = mean_cpue+sd_cpue), width = 0.2, 
                   color = "darkolivegreen4") +
     geom_line(color = "darkolivegreen4") + 
-    scale_y_continuous(limits = c(0, 1.75)) + 
+    scale_y_continuous(limits = c(0, 0.000175*10000)) +
     scale_x_continuous(breaks = 2012:2020) +
     xlab("") + 
     ylab("Mean CPUE (mt/10,000 hooks)") + 
@@ -237,7 +237,7 @@ for(name in names(tuna_rasters)) {
                           sd_cpue = sd(cpue, na.rm = T)) %>% 
                 ungroup() %>% 
                 mutate(species_cat = "All Reported Shark Species")) %>%
-    bind_rows(data.frame(mean_cpue = c(0.13/10000, 35/10000),
+    bind_rows(data.frame(mean_cpue = c(1.3e-05, 0.0035),
                          species_cat = c("Vulnerable Shark Species",
                                          "All Reported Shark Species")))
   
