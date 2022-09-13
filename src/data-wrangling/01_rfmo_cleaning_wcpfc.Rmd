@@ -9,8 +9,6 @@ This is a notebook designed to grab data saved in Google Drive and re-format it 
 
 - [Bycatch Longline]
 - [Bycatch Purse Seine]
-- [(Potential) Target Longline]
-- [(Potential) Target Purse Seine]
 - [Longline by Flag and Year]
 - [Purse Seine by Flag and Year]
 - [Combining Files]
@@ -26,22 +24,24 @@ library(here)
 # Housekeeping
 ```{r, echo=TRUE}
 # List files to choose from
-file_path <- file.path(here::here(), "data/rfmo-observer-data/inputs/wcpfc/")
-save_location <- file.path(here::here(), "data/rfmo-observer-data/intermediates/wcpfc/")
-outputs_location <- file.path(here::here(), "data/rfmo-observer-data/outputs/")
+file_path <- file.path(here::here(), "data-updated/rfmo-data/inputs/wcpfc/")
+save_location <- file.path(here::here(), "data-updated/rfmo-data/intermediates/wcpfc/")
+outputs_location <- file.path(here::here(), "data-updated/rfmo-data/outputs/")
 ```
 
 # Load Data
 ```{r, echo=TRUE}
 # Read in files
+country_codes_ref <- read.csv(file.path(here::here(), "data-updated", "two_letter_country_codes.csv"))
+  
 # Bycatch files
-bycatch_longline <- read_xlsx(paste0(file_path, "BDEP Tables (MASTER - 30 July 2019).xlsx"), sheet = "Table 4")
-bycatch_seine <- read_xlsx(paste0(file_path, "BDEP Tables (MASTER - 30 July 2019).xlsx"), sheet = "Table 5")
+bycatch_longline <- read_xlsx(paste0(file_path, "BDEP Tables (MASTER - 27 July 2021).xlsx"), sheet = "Table 4")
+bycatch_seine <- read_xlsx(paste0(file_path, "BDEP Tables (MASTER - 27 July 2021).xlsx"), sheet = "Table 5")
 
 # Target fish files 
 list_files <- list.files(file_path, pattern ="CSV")
 for(file in list_files) { 
-    name <- as.character(colsplit(file, "[.]", c("",""))[,1])
+    name <- as.character(str_split(file, "[.]")[[1]][1])
     temp <- read.csv(paste0(file_path, file))
     assign(name, temp)
 }
@@ -49,13 +49,13 @@ for(file in list_files) {
 remove(temp)
 
 # Read in species file (bycatch data only)
-species <- read_xlsx(paste0(file_path, "BDEP Tables (MASTER - 30 July 2019).xlsx"), sheet = "Species List")
+species <- read_xlsx(paste0(file_path, "BDEP Tables (MASTER - 27 July 2021).xlsx"), sheet = "Species List")
 
 # ASFIS species list
 asfis_species <- read.delim(paste0(file_path, "ASFIS_sp_2019.txt"), sep=",")
 
 # Read in yearly observed effort file
-effort <- read_xlsx(paste0(file_path, "BDEP Tables (MASTER - 30 July 2019).xlsx"), sheet = "Table 1", skip=1)
+effort <- read_xlsx(paste0(file_path, "BDEP Tables (MASTER - 27 July 2021).xlsx"), sheet = "Table 1", skip=1)
 effort <- effort[,c(1:5)]
 colnames(effort) <- c("year", "fishery", "total_effort", "total_observed_effort", "observer_coverage")
 effort <- effort[!is.na(effort$total_effort), ]
@@ -93,17 +93,13 @@ bycatch_longline <- bycatch_longline %>%
          settype = NA, 
          effort_units = "hooks",
          catch_units = "count",
-         is_targeted = "no",
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          was_generated = "no", 
          quality_code = NA, 
          sources = "bycatch and effort from observers")
 
 # Select relevant columns 
-bycatch_longline <- bycatch_longline[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "observer_coverage", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+bycatch_longline <- bycatch_longline[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Save File
 filename <- "bycatch_longline.csv"
@@ -146,17 +142,13 @@ bycatch_seine <- bycatch_seine %>%
          settype = NA,  
          effort_units = "number of sets",
          catch_units = "count",
-         is_targeted = "no",
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "bycatch and effort from observers")
 
 # Select relevant columns 
-bycatch_seine <- bycatch_seine[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "observer_coverage", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+bycatch_seine <- bycatch_seine[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Save File
 filename <- "bycatch_seine.csv"
@@ -168,256 +160,23 @@ remove(effort)
 ```
 [Back To Top](#top)
 
-# Driftnet
-This dataset is not relevant because it only has data going up to 1990.
-```{r, echo=TRUE}
-remove(DRIFTNET)
-```
-[Back To Top](#top)
-
-# (Potential) Target Longline
-```{r, echo=TRUE}
-# Use an easier name
-longline <- LONGLINE
-remove(LONGLINE)
-
-# Only keep data from year 2000+
-longline <- longline %>% 
-  filter(yy >= 2000)
-
-# Fix the lat/long columns
-# First convert N/S, E/W to pos and negative
-# The readme: Latitude == latitude of south-west corner; Longitude == longitude of south-west corner for 5x5 degree grids
-# So, to get the center, we need to add 2.5 degrees in each direction
-longline <- longline %>% 
-  separate(lat5, into = c('latitude', 'lat_direction'), sep = 2) %>% 
-  separate(lon5, into = c('longitude', 'lon_direction'), sep = 3) %>% 
-  mutate(latitude = ifelse(lat_direction == "S", as.numeric(latitude)*(-1)+2.5, as.numeric(latitude)+2.5), 
-         longitude = ifelse(lon_direction == "W", as.numeric(longitude)*(-1)+2.5, as.numeric(longitude)+2.5))
-
-# Pivot tables so each row represents a different species
-longline <- longline %>% 
-  pivot_longer(cols=alb_c:oth_n, names_to = 'species_code', values_to = 'catch') %>% 
-  filter(catch > 0)
-
-# Break species_code column into species name and catch units
-longline <- longline %>% 
-  separate(species_code, into=c("species_code", "catch_units"), sep=3) %>% 
-  mutate(catch_units = gsub("_n", "count", catch_units), 
-         catch_units = gsub("_c", "metric tonnes", catch_units))
-
-# Join with AFSIS species codes
-longline$species_code <- toupper(longline$species_code)
-longline <- left_join(longline, asfis_species[,c("X3A_CODE", "Scientific_name", "English_name")], by=c("species_code" = "X3A_CODE"))
-
-# Make all species names all caps
-longline$species_sciname <- toupper(longline$Scientific_name)
-longline$species_commonname <- toupper(longline$English_name)
-
-# Fix names where species code is "OTH" (other species)
-longline <- longline %>% 
-  mutate(species_sciname = ifelse(species_code == "OTH", "OTHER SPECIES", species_sciname), 
-         species_commonname = ifelse(species_code == "OTH", "OTHER SPECIES", species_commonname))
-
-# Add columns that are not currently here
-longline <- longline %>% 
-  mutate(rfmo = "WCPFC", 
-         year = yy, 
-         month = mm, 
-         time_period = "monthly", 
-         country = NA,
-         gear = "longline",
-         settype = NA,  
-         effort = hhooks*100,
-         effort_units = "hooks",
-         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
-         spatial_notes = "center of 5x5 cell", 
-         quality_code = NA, 
-         was_generated = "no", 
-         sources = "self-reported catch and effort by month")
-
-# Select relevant columns 
-longline <- longline[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
-
-# Generate quarterly data (aggregates)
-quart_agg <- longline %>% 
-  filter(time_period == "monthly") %>%
-  mutate(month = ceiling(month/3),
-         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
-                        ifelse(month == 2, 4, 
-                               ifelse(month == 3, 7, 10))),
-         time_period = "quarterly", 
-         was_generated = "yes") %>% 
-  group_by_at(setdiff(names(longline), c("catch", "effort"))) %>%
-  summarise(catch = sum(catch), 
-            effort = sum(effort))
-
-# Generate yearly data (aggregates)
-yearly_agg <- longline %>% 
-  filter(time_period == "monthly") %>%
-  mutate(month = NA,
-         time_period = "yearly", 
-         was_generated = "yes") %>% 
-  group_by_at(setdiff(names(longline), c("catch", "effort"))) %>%
-  summarise(catch = sum(catch), 
-            effort = sum(effort))
-
-# Combine raw with generated data
-longline <- longline %>% 
-  bind_rows(quart_agg) %>% 
-  bind_rows(yearly_agg)
-
-# Save File
-filename <- "longline.csv"
-write.csv(longline, paste0(save_location, filename), row.names = FALSE)
-
-# Clean up
-remove(longline, quart_agg, yearly_agg)
-```
-[Back To Top](#top)
-
-# (Potential) Target Purse Seine
-```{r, echo=TRUE}
-# Use an easier name
-purseseine <- PURSE_SEINE
-remove(PURSE_SEINE)
-
-# Only keep data from year 2000+
-purseseine <- purseseine %>% 
-  filter(yy >= 2000)
-
-# Fix the lat/long columns
-# First convert N/S, E/W to pos and negative
-# The readme: Latitude == latitude of south-west corner; Longitude == longitude of south-west corner for 5x5 degree grids
-# So, to get the center, we need to add 2.5 degrees in each direction
-purseseine <- purseseine %>% 
-  separate(lat5, into = c('latitude', 'lat_direction'), sep = 2) %>% 
-  separate(lon5, into = c('longitude', 'lon_direction'), sep = 3) %>% 
-  mutate(latitude = ifelse(lat_direction == "S", as.numeric(latitude)*(-1)+2.5, as.numeric(latitude)+2.5), 
-         longitude = ifelse(lon_direction == "W", as.numeric(longitude)*(-1)+2.5, as.numeric(longitude)+2.5))
-
-# Pivot tables so each row represents the set type and the number of sets for that set type
-purseseine <- purseseine %>% 
-  pivot_longer(cols=sets_una:sets_oth, names_to = 'settype', values_to = 'effort') %>% 
-  mutate(settype = gsub("sets_una", "unassociated school", settype), 
-         settype = gsub("sets_log", "natural log/debris", settype), 
-         settype = gsub("sets_dfad", "drifting FAD", settype), 
-         settype = gsub("sets_afad", "anchored FAD", settype), 
-         settype = gsub("sets_oth", "other", settype), 
-         effort_units = "number of sets")
-
-# Copy the data, but instead put number of days as the effort unit
-purseseine <- rbind(purseseine, purseseine %>% 
-                      mutate(effort = days, 
-                             effort_units = "fishing days"))
-
-# Pivot tables so each row represents a different species
-purseseine <- purseseine %>% 
-  pivot_longer(cols=skj_c_una:oth_c_oth, names_to = 'species_code', values_to = 'catch') %>% 
-  filter(catch > 0)
-
-# Break species_code column into species name and catch units
-purseseine <- purseseine %>% 
-  separate(species_code, into=c("species_code", "catch_units", "catch_set"), sep=c(3,6)) %>% 
-  mutate(catch_units = gsub("_c_", "metric tonnes", catch_units), 
-         catch_set = gsub("una", "unassociated school", catch_set), 
-         catch_set = gsub("log", "natural log/debris", catch_set), 
-         catch_set = gsub("dfad", "drifting FAD", catch_set), 
-         catch_set = gsub("afad", "anchored FAD", catch_set), 
-         catch_set = gsub("oth", "other", catch_set))
-
-# Only keep rows of catch that correspond to the settype == catch_set
-purseseine <- purseseine %>% 
-  filter(settype == catch_set)
-
-# Join with ASFIS species codes
-purseseine$species_code <- toupper(purseseine$species_code)
-purseseine <- left_join(purseseine, asfis_species[,c("X3A_CODE", "Scientific_name", "English_name")], by=c("species_code" = "X3A_CODE"))
-
-# Make all species names all caps
-purseseine$species_sciname <- toupper(purseseine$Scientific_name)
-purseseine$species_commonname <- toupper(purseseine$English_name)
-
-# Fix names where species code is "OTH" (other species)
-purseseine <- purseseine %>% 
-  mutate(species_sciname = ifelse(species_code == "OTH", "OTHER SPECIES", species_sciname), 
-         species_commonname = ifelse(species_code == "OTH", "OTHER SPECIES", species_commonname))
-
-# Add columns that are not currently here
-purseseine <- purseseine %>% 
-  mutate(rfmo = "WCPFC", 
-         year = yy, 
-         month = mm, 
-         time_period = "monthly", 
-         country = NA,
-         gear = "purse-seine",
-         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
-         spatial_notes = "center of 5x5 cell", 
-         quality_code = NA, 
-         was_generated = "no", 
-         sources = "self-reported catch and effort by month")
-
-# Select relevant columns 
-purseseine <- purseseine[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
-
-# Generate quarterly data (aggregates)
-quart_agg <- purseseine %>% 
-  filter(time_period == "monthly") %>%
-  mutate(month = ceiling(month/3),
-         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
-                        ifelse(month == 2, 4, 
-                               ifelse(month == 3, 7, 10))),
-         time_period = "quarterly", 
-         was_generated = "yes") %>% 
-  group_by_at(setdiff(names(purseseine), c("catch", "effort"))) %>%
-  summarise(catch = sum(catch), 
-            effort = sum(effort))
-
-# Generate yearly data (aggregates)
-yearly_agg <- purseseine %>% 
-  filter(time_period == "monthly") %>%
-  mutate(month = NA,
-         time_period = "yearly", 
-         was_generated = "yes") %>% 
-  group_by_at(setdiff(names(purseseine), c("catch", "effort"))) %>%
-  summarise(catch = sum(catch), 
-            effort = sum(effort))
-
-# Combine
-purseseine <- purseseine %>% 
-  bind_rows(quart_agg) %>% 
-  bind_rows(yearly_agg)
-
-# Save File
-filename <- "purseseine.csv"
-write.csv(purseseine, paste0(save_location, filename), row.names = FALSE)
-
-# Clean up
-remove(purseseine, quart_agg, yearly_agg)
-```
-[Back To Top](#top)
-
 # Longline by Flag and Year
 ```{r, echo=TRUE}
 # Use an easier name
 ll_flagyr <- WCPFC_L_PUBLIC_BY_FLAG_YR
 remove(WCPFC_L_PUBLIC_BY_FLAG_YR)
 
-# Only keep data from year 2000+
+# Only keep data from year 2012+
 ll_flagyr <- ll_flagyr %>% 
-  filter(yy >= 2000)
+  filter(yy >= 2012)
 
-# Flags are not using a 3-digit code like all other examples, and we can't download the full list of codes for free
-# The flag codes are available in pdf format, but not csv and they're not copying over well to an excel spreadsheet.
-# We'll just do it by hand then
-country_codes <- ll_flagyr %>% select(flag_id) %>% distinct_all() %>% filter(flag_id != "")
-country_codes$country <- c("Japan", "Taiwan", "Korea", "Philippines", "Indonesia", "Australia", "New Caledonia", "New Zealand", "China", "Fiji", "United States", "French Polynesia", "Samoa", "Micronesia", "Papua New Guinea", "Tonga", "Viet Nam", "Belize",  "Vanuatu", "Cook Islands", "Marshall Islands", "Solomon Islands", "Kiribati", "Tuvalu", "Portugal")
+# Update flags
+country_codes <- ll_flagyr %>% 
+  select(flag_id) %>% 
+  distinct_all() %>% 
+  filter(flag_id != "") %>% 
+  left_join(country_codes_ref %>% dplyr::rename(country = Name), 
+            by = c("flag_id" = "Code"))
 
 # Merge flag codes
 ll_flagyr <- left_join(ll_flagyr, country_codes, by="flag_id")
@@ -466,17 +225,13 @@ ll_flagyr <- ll_flagyr %>%
          settype = NA,  
          effort = hhooks*100,
          effort_units = "hooks",
-         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "self-reported catch and effort by flag + year")
 
 # Select relevant columns 
-ll_flagyr <- ll_flagyr[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+ll_flagyr <- ll_flagyr[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Save File
 filename <- "longline_flagyear.csv"
@@ -493,9 +248,9 @@ remove(ll_flagyr)
 ps_flagyr <- WCPFC_S_PUBLIC_BY_FLAG_YEAR
 remove(WCPFC_S_PUBLIC_BY_FLAG_YEAR)
 
-# Only keep data from year 2000+
+# Only keep data from year 2012+
 ps_flagyr <- ps_flagyr %>% 
-  filter(yy >= 2000)
+  filter(yy >= 2012)
 
 # Merge flag codes
 ps_flagyr <- left_join(ps_flagyr, country_codes, by="flag_id")
@@ -564,17 +319,13 @@ ps_flagyr <- ps_flagyr %>%
          month = NA, 
          time_period = "yearly",
          gear = "purse-seine",
-         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
          sources = "self-reported catch and effort by flag + year")
 
 # Select relevant columns 
-ps_flagyr <- ps_flagyr[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+ps_flagyr <- ps_flagyr[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Save File
 filename <- "purseseine_flagyear.csv"
@@ -601,6 +352,14 @@ for(file in files_list) {
   temp <- read.csv(paste0(save_location, file))
   combined_dat <- combined_dat %>% bind_rows(temp)
 }
+# Remove instances of NA for lat or lon (some issues with grid in sfskh)
+combined_dat <- combined_dat %>% 
+  filter(!is.na(latitude) & !is.na(longitude))
+
+# Filter so only 1x1 or 5x5 data are included
+combined_dat <- combined_dat %>% 
+  filter(spatial_notes %in% c("center of 5x5 cell", "center of 1x1 cell") & 
+           grepl("purse-seine|purse seine|longline|long line|long-line", gear))
 
 # Save final data file for this RFMO
 filename <- "wcpfc-all.csv"

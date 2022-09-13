@@ -17,67 +17,42 @@ library(here)
 ###
 
 # rfmo data
-all_data <- read.csv(file.path(here::here(), "data/rfmo-observer-data/outputs/all_data.csv"))
+all_data <- vroom::vroom(file.path(here::here(), "data-updated/rfmo-data/outputs/all_data.csv"))
 
-# Species groupings
-species_groups <- read_xlsx(file.path(here::here(),"data/species-information/species_groups.xlsx", sheet = "species_list")) %>% 
-  filter(group %in% c("tunas", "tuna-like species", "sharks and rays")) %>% 
-  mutate(scientific_name = str_to_upper(scientific_name))
+# # Species groupings
+# species_groups <- read_xlsx(file.path(here::here(),"data-updated/species-information/species_groups.xlsx", sheet = "species_list")) %>% 
+#   filter(group %in% c("tunas", "tuna-like species", "sharks and rays")) %>% 
+#   mutate(scientific_name = str_to_upper(scientific_name))
 ```
 
 ```{r}
-# Only keep relevant longline data from 2012-2018 at useable resolutions
+# Only keep relevant data at useable resolutions
 short_data <- all_data %>% 
   filter(spatial_notes %in% c("center of 5x5 cell", "center of 1x1 cell") &
-             gear_group == "longline" & effort_units == "hooks" &
-             was_generated == "no" &
-             year <= 2018 & year >= 2012) %>% 
-  select(species_commonname, species_sciname) %>% 
+             was_generated == "no") %>% 
+  select(species_commonname, species_sciname, species_group) %>% 
   distinct_all()
 
 # Some data cleaning
-short_data <- short_data %>% 
-  left_join(species_groups %>% 
-              rename(species_group = group, 
-                     species_commonname = english_name) %>% 
-              mutate(species_commonname = str_to_upper(species_commonname)) %>% 
-              select(-species_commonname),
-            by = c("species_sciname" = "scientific_name")) %>% 
-  mutate(species_sciname = case_when(species_sciname == "TETRAPTURUS AUDAX" ~ "KAJIKIA AUDAX",
-                                     species_sciname == "MAKAIRA INDICA" ~ "ISTIOMPAX INDICA", 
-                                     species_sciname == "TETRAPTURUS ALBIDUS" ~ "KAJIKIA ALBIDA",
-                                     species_sciname == "TETRAPTURUS PFLUEGERI" ~ "TETRAPTURUS PFLUEGERI", 
-                                     TRUE ~ species_sciname))
+# short_data <- short_data %>% 
+#   mutate(species_sciname = case_when(species_sciname == "TETRAPTURUS AUDAX" ~ "KAJIKIA AUDAX",
+#                                      species_sciname == "MAKAIRA INDICA" ~ "ISTIOMPAX INDICA", 
+#                                      species_sciname == "TETRAPTURUS ALBIDUS" ~ "KAJIKIA ALBIDA",
+#                                      species_sciname == "TETRAPTURUS PFLUEGERI" ~ "TETRAPTURUS PFLUEGERI",
+#                                      TRUE ~ species_sciname))
 
-# how much data contributed to "nei"s
-short_data <- short_data %>% 
-  mutate(species_group = case_when(is.na(species_group) & 
-                                     grepl("NEI|OTHER", species_commonname) & 
-                                     grepl("SHARK", species_commonname) ~ "sharks and rays", 
-                                   species_commonname == "SILKY OR BLACKTIP SHARK" ~ "sharks and rays",
-                                   is.na(species_group) & 
-                                     grepl("NEI|OTHER", species_commonname) & 
-                                     grepl("MARLIN|BILLFISH|TUNA-LIKE", species_commonname) ~ "tuna-like species", 
-                                   species_commonname == "FRIGATE AND BULLET TUNAS" ~ "tunas",
-                                   is.na(species_group) & 
-                                     grepl("NEI|OTHER", species_commonname) & 
-                                     grepl("TUNA", species_commonname) ~ "tunas",
-                                   TRUE ~ species_group))
 
 # Now standardize nei species if can...
 short_data <- short_data %>%
+  mutate(species_sciname = gsub(" SPP", "", species_sciname)) %>% 
   mutate(species_resolution = case_when(grepl("NEI|OTHER|SPP", species_commonname) ~ "NEI",
                                         grepl("NEI|OTHER|SPP", species_sciname) ~ "NEI",
                                         species_commonname == "SILKY OR BLACKTIP SHARK" ~ "NEI",
                                         species_commonname == "FRIGATE AND BULLET TUNAS" ~ "NEI",
+                                        species_commonname == "FRIGATE TUNA AND BULLET TUNA" ~ "NEI",
+                                        
                                         !grepl(" ", species_sciname) ~ "NEI",
-                                        TRUE ~ "SPECIES SPECIFIC"),
-         species_commonname = case_when(species_commonname == "OTHER SHARKS" ~ "SHARKS NEI",
-                                        species_commonname == "OTHER TUNA" ~ "TUNAS NEI",
-                                        TRUE ~ species_commonname),
-         species_sciname = case_when(species_commonname == "TUNAS NEI" ~ "THUNNUS",
-                                     is.na(species_sciname) ~ species_commonname,
-                                     TRUE ~ gsub(" SPP|[.]", "", species_sciname)))
+                                        TRUE ~ "SPECIES SPECIFIC"))
 
 # Some edits because we have some super families and suborders and rfishbase can't account for that
 get_species_lists <- short_data %>%
@@ -86,7 +61,9 @@ get_species_lists <- short_data %>%
   distinct_all() %>%
   mutate(species_sciname = str_to_sentence(species_sciname),
          species_sciname = ifelse(species_sciname == "Xiphioidei", "Xiphiidae", species_sciname), # Xiphioidei family
-         species_sciname = ifelse(species_sciname == "Scombroidei", "Gempylidae", species_sciname)) %>% #Scombroidei family
+         species_sciname = ifelse(species_sciname == "Scombroidei", "Gempylidae", species_sciname), #Scombroidei family
+         species_sciname = ifelse(species_sciname == "Thunnini", "Allothunnus", 
+                                  species_sciname)) %>% #Thunnini family
   bind_rows(data.frame("species_sciname" = c("Istiophoridae", # Xiphioidei family
                                              "Scombridae", # Scombroidei family
                                              "Scombrolabracidae", #Scombroidei family
@@ -97,7 +74,11 @@ get_species_lists <- short_data %>%
                                              "Lamniformes", #sharks nei order
                                              "Orectolobiformes", #sharks nei order
                                              "Pristiophoriformes", #sharks nei order
-                                             "Squatiniformes" #sharks nei order
+                                             "Squatiniformes", #sharks nei order
+                                             "Auxis", #Thunnini family
+                                             "Euthynnus", #Thunnini family
+                                             "Katsuwonus", #Thunnini family
+                                             "Thunnus" #Thunnini family
                                              )))
 
 # function to iterate through options and return the results
@@ -136,22 +117,27 @@ species_list <- data.frame(t(sapply(species_list,c))) %>%
                                              "Squatiniformes" #sharks nei order
                                              ) ~ "Sharks nei",
                                      species_sciname %in% c("Istiophoridae", "Xiphiidae") ~ "Xiphioidei",
-                                     species_sciname == "Istiophoridae.1" ~ "Istiophoridae",
-                                     species_sciname %in% c("Scombridae", "Gempylidae") ~ "Scombroidei",
+                                     species_sciname %in% c("Scombridae", "Gempylidae", "Scombrolabracidae", "Trichiuridae") ~ "Scombroidei",
+                                     species_sciname %in% c("Allothunnus", "Auxis", "Euthynnus", "Katsuwonus", "Thunnus") ~ "Thunnini",
                                      TRUE ~ species_sciname),
+         
+           species_sciname = gsub("[.]1", "", species_sciname),
            species_sciname = str_to_upper(species_sciname)) %>%
   ungroup() %>%
   mutate(value = gsub("\n", "", value))
 
 species_list <- species_list %>%
   bind_rows(data.frame("species_sciname" = c("CARCHARHINUS FALCIFORMIS/CARCHARHINUS LIMBATUS",
-                                             "CARCHARHINUS FALCIFORMIS/CARCHARHINUS LIMBATUS"),
-                       "value" = c("Carcharhinus falciformis", "Carcharhinus limbatus")))
+                                             "CARCHARHINUS FALCIFORMIS/CARCHARHINUS LIMBATUS", 
+                                             "AUXIS THAZARD AND AUXIS ROCHEI", 
+                                             "AUXIS THAZARD AND AUXIS ROCHEI"),
+                       "value" = c("Carcharhinus falciformis", "Carcharhinus limbatus", 
+                                   "Auxis thazard", "Auxis rochei"))) %>% 
+  distinct_all()
 
-species_threatened_fishing <- read.csv(file.path(here::here(), "data/species-information/spp_list_fishing_threat.csv"))
+species_threatened_fishing <- read.csv(file.path(here::here(), "data-updated/species-information/spp_list_fishing_threat.csv"))
 
 species_list_for_sdms <- short_data %>%
-  filter(species_group %in% c("sharks and rays", "tunas", "tuna-like species")) %>%
   select(species_commonname, species_sciname, species_resolution, species_group) %>%
   distinct_all() %>%
   left_join(species_list) %>%
@@ -160,9 +146,9 @@ species_list_for_sdms <- short_data %>%
               select(scientific_name) %>%
               mutate(threatened = "yes") %>%
               rename(value = scientific_name)) %>%
-  filter(species_group %in% c("tunas", "tuna-like species") |
-           species_group == "sharks and rays" & threatened == "yes") %>%
+  # filter(species_group %in% c("tunas", "tuna-like species") | # remove for now
+  filter(species_group == "sharks and rays" & threatened == "yes") %>%
   select(-threatened)
 
-write.csv(species_list_for_sdms, file.path(here::here(), "data/species-information/species_list_for_sdms.csv"), row.names = F)
+write.csv(species_list_for_sdms, file.path(here::here(), "data-updated/species-information/species_list_for_sdms.csv"), row.names = F)
 ```
