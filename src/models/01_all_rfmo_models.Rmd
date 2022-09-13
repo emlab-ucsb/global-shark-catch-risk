@@ -356,13 +356,13 @@ all_rfmo_untuned_models(data = count_1x1_obs,
 
 ```{r}
 # Final check of results
-untuned_iattc <- readRDS(paste0(save_loc, "IATTC_ps_untuned_model.rds"))
+untuned_iattc <- readRDS(paste0(save_loc, "IATTC_ll_untuned_model.rds"))
 
-untuned_iccat <- readRDS(paste0(save_loc, "ICCAT_ps_untuned_model.rds"))
+untuned_iccat <- readRDS(paste0(save_loc, "ICCAT_ll_untuned_model.rds"))
 
-untuned_iotc <- readRDS(paste0(save_loc, "IOTC_ps_untuned_model.rds"))
+untuned_iotc <- readRDS(paste0(save_loc, "IOTC_ll_untuned_model.rds"))
 
-untuned_wcpfc <- readRDS(paste0(save_loc, "WCPFC_ps_untuned_model.rds"))
+untuned_wcpfc <- readRDS(paste0(save_loc, "WCPFC_ll_untuned_model.rds"))
 
 bind_rows(untuned_iattc$test_metrics, untuned_iccat$test_metrics, 
                       untuned_iotc$test_metrics, untuned_wcpfc$test_metrics) %>% 
