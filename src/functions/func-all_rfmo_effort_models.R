@@ -11,6 +11,7 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
   # Fix data
   data_gfw <- data_gfw %>% 
     filter(gear_group == "longline") %>% 
+    mutate_if(is.integer, as.numeric) %>% 
     mutate_if(is_character, as.factor) %>% 
     arrange(year, latitude, longitude) %>% 
     mutate(pres_abs = factor(ifelse(catch > 0, "present", "absent")),
@@ -18,6 +19,7 @@ all_rfmo_effort_models <- function(data_gfw, data_effort, save_loc){
   
   data_effort <- data_effort %>%
     filter(gear_group == "longline") %>% 
+    mutate_if(is.integer, as.numeric) %>% 
     mutate_if(is_character, as.factor) %>% 
     arrange(year, latitude, longitude) %>% 
     mutate(pres_abs = factor(ifelse(catch > 0, "present", "absent")),

@@ -18,22 +18,24 @@ library(here)
 ###
 
 # Species lists for sdms 
-species_list <- read.csv(file.path(here::here(), "data/species-information/species_list_for_sdms.csv"))
+species_list <- read.csv(file.path(here::here(), "data-updated/species-information/species_list_for_sdms.csv"))
 
 ### 
 # Set Values
 ###
-spatial_scale <- 1 # adjust depending on the scale we're aiming for (5x5 cell or 1x1 cell)
+spatial_scale <- 5 # adjust depending on the scale we're aiming for (5x5 cell or 1x1 cell)
 ```
 
 # IUCN SDMs
 ```{r}
 # Load, clean, and filter SDM file names
-sdm_list <- list.files(file.path(here::here(), "data/iucn-sdm-data/intermediates"))
+sdm_list <- list.files(file.path(here::here(), "data-updated/iucn-sdm-data/intermediates"))
 
 # Create master database with sdm info
 all_sdm <- NULL
 for(file in sdm_list) {
+  
+  temp_sdm <- read.csv(file.path(here::here(), "data-updated/iucn-sdm-data/intermediates", file))
 
   colnames(temp_sdm)[4] <- "probability"
 
@@ -95,7 +97,7 @@ all_sdm <- all_sdm %>%
 # Get list of species names and file names... for nei grouping
 sdm_files_names <- NULL
 for(file in sdm_list) {
-  temp_sdm <- read_csv(file.path(here::here(), "data/iucn-sdm-data/intermediates", file), n_max = 1)
+  temp_sdm <- read_csv(file.path(here::here(), "data-updated/iucn-sdm-data/intermediates", file), n_max = 1)
   sdm_files_names <- bind_rows(sdm_files_names, data.frame("file" = file, "species_sciname" = temp_sdm$sp_name))
 }
 
@@ -110,7 +112,7 @@ for(nei in unique(species_list$species_sciname)) {
   if(length(temp_sdm_list) != 0) {
     for(file in temp_sdm_list) {
 
-    temp_sdm <- read_csv(file.path(here::here(),"data/iucn-sdm-data/intermediates", file))
+    temp_sdm <- read_csv(file.path(here::here(),"data-updated/iucn-sdm-data/intermediates", file))
 
     colnames(temp_sdm)[4] <- "probability"
 
@@ -183,19 +185,19 @@ all_sdm <- all_sdm %>%
   bind_rows(nei_sdms) %>% 
   distinct_all()
 
-write.csv(all_sdm, file.path(here::here(), paste0("data/iucn-sdm-data/outputs/global_combined_iucn_sdm_",spatial_scale,"x",spatial_scale,".csv")),
+write.csv(all_sdm, file.path(here::here(), paste0("data-updated/iucn-sdm-data/outputs/global_combined_iucn_sdm_",spatial_scale,"x",spatial_scale,".csv")),
           row.names = F)
 ```
 
 # Sea Surface Temperature
 ```{r}
-file_list <- list.files(file.path(here::here(), "data/sea-surface-temperature/intermediates",
-                        pattern = "csv"))
+file_list <- list.files(file.path(here::here(), "data-updated/sea-surface-temperature/intermediates"),
+                        pattern = "csv")
 
 sst_data <- NULL
 
 for(file in file_list) {
-  temp <- read.csv(file.path(here::here(), "data/sea-surface-temperature/intermediates", file))
+  temp <- read.csv(file.path(here::here(), "data-updated/sea-surface-temperature/intermediates", file))
   temp_save <- NULL
 
  for(shift_lat_n in 1:2) {
@@ -243,7 +245,9 @@ for(file in file_list) {
               sd_sst = sd(sst, na.rm = T),
               se_sst = sd_sst/(sqrt(n())),
               cv_sst = sd_sst/mean_sst*100) %>%
-     ungroup()
+     ungroup() %>% 
+    rename(longitude = lon_bin, 
+           latitude = lat_bin)
 
   sst_data <- sst_data %>%
     bind_rows(temp_save) %>% 
@@ -251,19 +255,19 @@ for(file in file_list) {
 
 }
 
-write.csv(sst_data, file.path(here::here(), paste0("data/sea-surface-temperature/outputs/binned_global_sst_",spatial_scale,"x",spatial_scale,".csv")),
+write.csv(sst_data, file.path(here::here(), paste0("data-updated/sea-surface-temperature/outputs/binned_global_sst_",spatial_scale,"x",spatial_scale,".csv")),
           row.names = F)
 ```
 
 # Chlorophyll-A
 ```{r}
-file_list <- list.files(file.path(here::here(), "data/chlorophyll-a/intermediates"),
+file_list <- list.files(file.path(here::here(), "data-updated/chlorophyll-a/intermediates"),
                         pattern = "csv")
 
 chla_data <- NULL
 
 for(file in file_list) {
-  temp <- read.csv(file.path(here::here(), "data/chlorophyll-a/intermediates",
+  temp <- read.csv(file.path(here::here(), "data-updated/chlorophyll-a/intermediates",
                              file))
   temp_save <- NULL
 
@@ -313,7 +317,9 @@ for(file in file_list) {
               sd_chla = sd(chla, na.rm = T),
               se_chla = sd_chla/(sqrt(n())),
               cv_chla = sd_chla/mean_chla*100) %>%
-    ungroup()
+    ungroup() %>% 
+    rename(longitude = lon_bin, 
+           latitude = lat_bin)
 
   chla_data <- chla_data %>%
     bind_rows(temp_save) %>% 
@@ -321,19 +327,66 @@ for(file in file_list) {
 
 }
 
-write.csv(chla_data, file.path(here::here(), paste0("data/chlorophyll-a/outputs/binned_global_chla_",spatial_scale,"x",spatial_scale,".csv")),
+write.csv(chla_data, file.path(here::here(), paste0("data-updated/chlorophyll-a/outputs/binned_global_chla_",spatial_scale,"x",spatial_scale,".csv")),
           row.names = F)
 ```
 
 # Sea Surface Height
 ```{r}
-file_list <- list.files(file.path(here::here(), "data/sea-surface-height/intermediates"),
-                        pattern = "csv")
+# grab data first
+# List files
+# files <- list.files(file.path(here::here(), "data-updated", "sea-surface-height", "inputs"))
+# 
+# for(file in files) { 
+#   tmp_raster <- brick(file.path(here::here(), "data-updated", "sea-surface-height", "inputs", file), varname = "SLA")
+#   
+#   tmp_df <- as.data.frame(tmp_raster, xy = TRUE) %>% 
+#     rename(layer = colnames(.)[3]) %>% 
+#     rename(longitude = y, 
+#            latitude = x) %>% 
+#     mutate(longitude = ifelse(longitude > 180, longitude - 360, longitude),  
+#            date = as.Date("1985-01-01") + as.numeric(gsub("X", "", names(tmp_raster)))) %>% 
+#     filter(!is.na(layer))
+#   
+#   write.csv(tmp_df, file.path(here::here(), "data-updated", "sea-surface-height", "intermediates", 
+#                               gsub("[.]nc", ".csv", file)), row.names = F)
+#   }
+# 
+# # Take means across years... 
+# for(year in 2012:2019) { 
+#   files <- list.files(file.path(here::here(), "data-updated", "sea-surface-height", "intermediates"), 
+#                       pattern = paste0("ssh_grids_v1812_", year), full.names = T)
+#   
+#   all_data <- NULL
+#   
+#   for(file in files) { 
+#     temp <- read.csv(file)
+#     
+#     all_data <- bind_rows(all_data, temp)
+#     
+#   }
+#   
+#   all_data <- all_data %>% 
+#     group_by(latitude, longitude) %>% 
+#     summarise(mean_ssh = mean(layer, na.rm = T)) %>% 
+#     ungroup() %>% 
+#     mutate(year = year)
+#   
+#   write.csv(all_data, file.path(here::here(), "data-updated", "sea-surface-height", "intermediates", 
+#                                 paste0("mean_ssh_", year, ".csv")), 
+#             row.names = F)
+#   
+#   print(year)
+# } 
+
+# Now we can generate the grids
+file_list <- list.files(file.path(here::here(), "data-updated/sea-surface-height/intermediates"),
+                        pattern = "mean_ssh")
 
 ssh_data <- NULL
 
 for(file in file_list) {
-  temp <- read.csv(file.path(here::here(), "data/sea-surface-height/intermediates",
+  temp <- read.csv(file.path(here::here(), "data-updated/sea-surface-height/intermediates",
                              file))
   temp_save <- NULL
 
@@ -392,19 +445,19 @@ for(file in file_list) {
 
 }
 
-write.csv(ssh_data, file.path(here::here(), paste0("data/sea-surface-height/outputs/binned_global_ssh_",spatial_scale,"x",spatial_scale,".csv")),
+write.csv(ssh_data, file.path(here::here(), paste0("data-updated/sea-surface-height/outputs/binned_global_ssh_",spatial_scale,"x",spatial_scale,".csv")),
           row.names = F)
 ```
 
 # Global Fishing Watch
 ```{r}
-gfw_data <- read.csv(file.path(here::here(), "data/global-fishing-watch/inputs/1x1_gfw_query_v20190502.csv"))
+gfw_data <- vroom::vroom(file.path(here::here(), "data-updated/global-fishing-watch/inputs/gfw_effort_ll_ps_1x1_2012_2021.csv"))
 
-tonnage_groups <- read.csv(file.path(here::here(), "data/global-fishing-watch/inputs/tonnage_groups_v20200410.csv"))
+tonnage_groups <- read.csv(file.path(here::here(), "data-updated/global-fishing-watch/inputs/gfw_tonnage_groups_v20220803.csv"))
 
 # simplify for easier use
 gfw <- gfw_data %>%
-  filter(rfmo %in% unique(short_data$rfmo)) %>%
+  filter(rfmo %in% c("WCPFC", "IOTC", "ICCAT", "IATTC")) %>%
   mutate(gear_group = case_when(grepl("longline", gear) ~ "longline",
                                 grepl("purse", gear) ~ "purse seine",
                                 TRUE ~ "other")) %>%
@@ -456,8 +509,8 @@ gfw_shift <- gfw_shift %>%
   summarise(total_fishing_kwh = sum(total_fishing_kwh, na.rm = T)) %>%
   ungroup() %>%
   rename(latitude = lat_bin,
-         longitude = lon_bin) %>% 
+         longitude = lon_bin) %>%
   distinct_all()
 # save
-write.csv(gfw_shift,  file.path(here::here(), paste0("data/global-fishing-watch/outputs/binned_global_gfw_",spatial_scale,"x",spatial_scale,".csv")), row.names = F)
+write.csv(gfw_shift,  file.path(here::here(), paste0("data-updated/global-fishing-watch/outputs/binned_global_gfw_",spatial_scale,"x",spatial_scale,".csv")), row.names = F)
 ```

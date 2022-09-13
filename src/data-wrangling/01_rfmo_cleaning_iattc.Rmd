@@ -7,7 +7,6 @@ This is a notebook designed to grab data saved in Google Drive and re-format it 
 
 # Table of Contents: {#top}
 
-- [Catch By Flag and Gear]
 - [PublicLLSharkMt]
 - [PublicLLSharkNum]
 - [PublicLLTunaBillfishMt]
@@ -18,7 +17,6 @@ This is a notebook designed to grab data saved in Google Drive and re-format it 
 - [PublicPSSharkSetType]
 - [PublicPSTunaFlag]
 - [PublicPSTunaSetType]
-- [PublicSizePSBillfish]
 - [Combining Files]
 
 ```{r, include=FALSE}
@@ -31,9 +29,9 @@ library(here)
 # Housekeeping
 ```{r, echo=TRUE}
 # List files to choose from
-file_path <- file.path(here::here(), "data/rfmo-observer-data/inputs/iattc/")
-save_location <- file.path(here::here(),"data/rfmo-observer-data/intermediates/iattc/")
-outputs_location <- file.path(here::here(), "data/rfmo-observer-data/outputs/")
+file_path <- file.path(here::here(), "data-updated/rfmo-data/inputs/iattc/")
+save_location <- file.path(here::here(),"data-updated/rfmo-data/intermediates/iattc/")
+outputs_location <- file.path(here::here(), "data-updated/rfmo-data/outputs/")
 ```
 
 # Load Data
@@ -43,7 +41,7 @@ files_list <- list.files(file_path, pattern="csv")
 
 # Load files
 for(file in files_list) { 
-  name <- as.character(colsplit(file, "[.]", c("",""))[,1])
+  name <- as.character(str_split(file, "[.]")[[1]][1])
   temp <- read.csv(paste0(file_path, file))
   assign(name, temp)
 }
@@ -60,19 +58,13 @@ species_codes <- read.delim(paste0(file_path, "ASFIS_sp_2019.txt"), sep=",")
   # col X3A_CODE is what is linked to the files
 ```
 
-# Catch By Flag and Gear
-This dataset seems a little useless for this project because there are no geospatial data that can be extrapolated. 
-```{r, echo=TRUE}
-remove(`CatchFlagGear1918-2018`)
-```
-[Back To Top](#top)
 
 # PublicLLSharkMt
 From the readme sheet: Data reported only in numbers or only in weight are reported identically in __MT and __Num files. However, when the same data are reported in both numner and weight, the __Num file contains number data in the number columns and the weight data are excluded and vice versa.
 ```{r, echo=TRUE}
-# Select only data from year 2000 onward
+# Select only data from year 2012 onward
 PublicLLSharkMt <- PublicLLSharkMt %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # To be sure I'm not repeated data, for MT files, I will only keep the mt columns
 PublicLLSharkMt <- PublicLLSharkMt %>% 
@@ -111,19 +103,15 @@ PublicLLSharkMt <- PublicLLSharkMt %>%
          effort_units = "hooks",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicLLSharkMt")
 
 # Re-order columns
-PublicLLSharkMt <- PublicLLSharkMt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicLLSharkMt <- PublicLLSharkMt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -164,9 +152,9 @@ remove(PublicLLSharkMt, quart_agg, yearly_agg)
 # PublicLLSharkNum
 From the readme sheet: Data reported only in numbers or only in weight are reported identically in __MT and __Num files. However, when the same data are reported in both numner and weight, the __Num file contains number data in the number columns and the weight data are excluded and vice versa.
 ```{r, echo=TRUE}
-# Select only data from year 2000 onward
+# Select only data from year 2012 onward
 PublicLLSharkNum <- PublicLLSharkNum %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # To be sure I'm not repeated data, for Num files, I will only keep the n columns
 PublicLLSharkNum <- PublicLLSharkNum %>% 
@@ -205,19 +193,15 @@ PublicLLSharkNum <- PublicLLSharkNum %>%
          effort_units = "hooks",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicLLSharkNum")
 
 # Re-order columns
-PublicLLSharkNum <- PublicLLSharkNum[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicLLSharkNum <- PublicLLSharkNum[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -258,9 +242,9 @@ remove(PublicLLSharkNum, quart_agg, yearly_agg)
 # PublicLLTunaBillfishMt
 From the readme sheet: Data reported only in numbers or only in weight are reported identically in __MT and __Num files. However, when the same data are reported in both numner and weight, the __Num file contains number data in the number columns and the weight data are excluded and vice versa.
 ```{r, echo=TRUE}
-# Select only data from year 2000 onward
+# Select only data from year 2012 onward
 PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # To be sure I'm not repeated data, for Mt files, I will only keep the mt columns
 PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt %>% 
@@ -299,19 +283,15 @@ PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt %>%
          effort_units = "hooks",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicLLTunaBillfishMt")
 
 # Re-order columns
-PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicLLTunaBillfishMt <- PublicLLTunaBillfishMt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -352,9 +332,9 @@ remove(PublicLLTunaBillfishMt, quart_agg, yearly_agg)
 # PublicLLTunaBillfishNum
 From the readme sheet: Data reported only in numbers or only in weight are reported identically in __MT and __Num files. However, when the same data are reported in both numner and weight, the __Num file contains number data in the number columns and the weight data are excluded and vice versa.
 ```{r, echo=TRUE}
-# Select only data from year 2000 onward
+# Select only data from year 2012 onward
 PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # To be sure I'm not repeated data, for Num files, I will only keep the n columns
 PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum %>% 
@@ -393,19 +373,15 @@ PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum %>%
          effort_units = "hooks",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 5x5 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicLLTunaBillfishNum")
 
 # Re-order columns
-PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicLLTunaBillfishNum <- PublicLLTunaBillfishNum[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -445,9 +421,9 @@ remove(PublicLLTunaBillfishNum, quart_agg, yearly_agg)
 
 # PublicPSBillfishFlag
 ```{r, echo=TRUE}
-# Select only data from year 2000 onward
+# Select only data from year 2012 onward
 PublicPSBillfishFlag <- PublicPSBillfishFlag %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # Pivot tables so each row represents a different species
 PublicPSBillfishFlag<- PublicPSBillfishFlag %>% 
@@ -479,19 +455,15 @@ PublicPSBillfishFlag <- PublicPSBillfishFlag %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicPSBillfishFlag")
 
 # Re-order columns
-PublicPSBillfishFlag <- PublicPSBillfishFlag[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSBillfishFlag <- PublicPSBillfishFlag[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -531,9 +503,9 @@ remove(PublicPSBillfishFlag, quart_agg, yearly_agg)
 
 # PublicPSBillfishSetType
 ```{r, echo=TRUE}
-# Select only data from year 2000 onward
+# Select only data from year 2012 onward
 PublicPSBillfishSetType <- PublicPSBillfishSetType %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # Pivot tables so each row represents a different species
 PublicPSBillfishSetType <- PublicPSBillfishSetType %>% 
@@ -565,20 +537,15 @@ PublicPSBillfishSetType <- PublicPSBillfishSetType %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicPSBillfishSetType")
 
 # Re-order columns
-PublicPSBillfishSetType <- PublicPSBillfishSetType[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
-
+PublicPSBillfishSetType <- PublicPSBillfishSetType[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 # Generate Data
 # Generate quarterly data (aggregates)
 quart_agg <- PublicPSBillfishSetType %>% 
@@ -617,9 +584,9 @@ remove(PublicPSBillfishSetType, quart_agg, yearly_agg)
 
 # PublicPSSharkFlag
 ```{r, echo=TRUE}
-# Select only data from year 2000 onward
+# Select only data from year 2012 onward
 PublicPSSharkFlag <- PublicPSSharkFlag %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # To be sure I'm not repeating data I will only keep the mt columns first
 PublicPSSharkFlag_mt <- PublicPSSharkFlag %>% 
@@ -663,19 +630,15 @@ PublicPSSharkFlag_mt <- PublicPSSharkFlag_mt %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicPSSharkFlag")
 
 # Re-order columns
-PublicPSSharkFlag_mt <- PublicPSSharkFlag_mt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSSharkFlag_mt <- PublicPSSharkFlag_mt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -755,19 +718,15 @@ PublicPSSharkFlag_n <- PublicPSSharkFlag_n %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicPSSharkFlag_n")
 
 # Re-order columns
-PublicPSSharkFlag_n <- PublicPSSharkFlag_n[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSSharkFlag_n <- PublicPSSharkFlag_n[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -808,9 +767,9 @@ remove(PublicPSSharkFlag)
 
 # PublicPSSharkSetType
 ```{r, echo=TRUE}
-# Select only data from year 2000 onward
+# Select only data from year 2012 onward
 PublicPSSharkSetType <- PublicPSSharkSetType %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # To be sure I'm not repeating data I will only keep the mt columns first
 PublicPSSharkSetType_mt <- PublicPSSharkSetType %>% 
@@ -854,19 +813,15 @@ PublicPSSharkSetType_mt <- PublicPSSharkSetType_mt %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicPSSharkSetType")
 
 # Re-order columns
-PublicPSSharkSetType_mt <- PublicPSSharkSetType_mt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSSharkSetType_mt <- PublicPSSharkSetType_mt[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -946,19 +901,15 @@ PublicPSSharkSetType_n <- PublicPSSharkSetType_n %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
-         catch_units = "count", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
+         catch_units = "count",
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicPSSharkSetType_n")
 
 # Re-order columns
-PublicPSSharkSetType_n <- PublicPSSharkSetType_n[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSSharkSetType_n <- PublicPSSharkSetType_n[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -999,9 +950,9 @@ remove(PublicPSSharkSetType)
 
 # PublicPSTunaFlag
 ```{r, echo=TRUE}
-# Select only data from year 2000 onward
+# Select only data from year 2012 onward
 PublicPSTunaFlag <- PublicPSTunaFlag %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # Pivot tables so each row represents a different species
 PublicPSTunaFlag<- PublicPSTunaFlag %>% 
@@ -1033,19 +984,15 @@ PublicPSTunaFlag <- PublicPSTunaFlag %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicPSTunaFlag")
 
 # Re-order columns
-PublicPSTunaFlag <- PublicPSTunaFlag[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSTunaFlag <- PublicPSTunaFlag[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -1085,9 +1032,9 @@ remove(PublicPSTunaFlag, quart_agg, yearly_agg)
 
 # PublicPSTunaSetType
 ```{r, echo=TRUE}
-# Select only data from year 2000 onward
+# Select only data from year 2012 onward
 PublicPSTunaSetType <- PublicPSTunaSetType %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # Pivot tables so each row represents a different species
 PublicPSTunaSetType <- PublicPSTunaSetType  %>% 
@@ -1119,19 +1066,15 @@ PublicPSTunaSetType <- PublicPSTunaSetType %>%
          effort_units = "number of sets",
          species_commonname = English_name, 
          species_sciname = Scientific_name, 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
          catch = MonthlyCatch, 
          catch_units = "metric tonnes", 
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
          spatial_notes = "center of 1x1 cell", 
          quality_code = NA, 
          was_generated = "no", 
-         sources = NA)
+         sources = "PublicPSTunaSetType")
 
 # Re-order columns
-PublicPSTunaSetType <- PublicPSTunaSetType[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+PublicPSTunaSetType <- PublicPSTunaSetType[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate Data
 # Generate quarterly data (aggregates)
@@ -1169,78 +1112,6 @@ remove(PublicPSTunaSetType, quart_agg, yearly_agg)
 ```
 [Back To Top](#top)
 
-# PublicSizePSBillfish
-```{r, echo=TRUE}
-# Keep only data from 2000 + 
-PublicSizePSBillfish <- PublicSizePSBillfish %>% 
-  filter(Year >= 2000)
-
-# Merge with species
-PublicSizePSBillfish <- PublicSizePSBillfish %>% 
-  left_join(species_codes[,c("X3A_CODE", "Scientific_name", "English_name")], by=c("Species" = "X3A_CODE")) 
-
-# Create relevant fields
-PublicSizePSBillfish <- PublicSizePSBillfish %>% 
-  mutate(rfmo = "IATTC", 
-         year = Year, 
-         month = Month, 
-         time_period = "monthly", 
-         country = NA, 
-         gear = "purse-seine", 
-         settype = NA,
-         longitude = LonC1, 
-         latitude = LatC1,
-         effort = NA, 
-         effort_units = NA,
-         species_commonname = toupper(English_name), 
-         species_sciname = toupper(Scientific_name), 
-         is_targeted = ifelse(grepl("TUNA", English_name), "yes-implied", "no"),
-         catch = NumFish, 
-         catch_units = "count", 
-         measurement = SizeCm, 
-         measurement_unit = "cm", 
-         measurement_method = "fork length",
-         spatial_notes = "center of 1x1 cell", 
-         quality_code = NA, 
-         was_generated = "no", 
-         sources = NA)
-
-# Re-order columns
-PublicSizePSBillfish <- PublicSizePSBillfish[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
-
-# Generate Data
-# Generate quarterly data (aggregates)
-quart_agg <- PublicSizePSBillfish %>% 
-  mutate(month = ceiling(month/3),
-         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
-                        ifelse(month == 2, 4, 
-                               ifelse(month == 3, 7, 10))),
-         time_period = "quarterly", 
-         was_generated = "yes") %>% 
-  group_by_at(setdiff(names(PublicSizePSBillfish), c("catch"))) %>%
-  summarise(catch = sum(catch))
-
-# Generate yearly data (aggregates)
-yearly_agg <- PublicSizePSBillfish %>% 
-  mutate(month = NA,
-         time_period = "yearly", 
-         was_generated = "yes") %>% 
-  group_by_at(setdiff(names(PublicSizePSBillfish), c("catch", "effort"))) %>%
-  summarise(catch = sum(catch))
-
-# Combine raw with generated data
-PublicSizePSBillfish <- PublicSizePSBillfish %>% 
-  bind_rows(quart_agg) %>% 
-  bind_rows(yearly_agg)
-
-# Save File
-filename <- "PublicSizePSBillfish.csv"
-write.csv(PublicSizePSBillfish, paste0(save_location, filename), row.names = FALSE)
-
-# Clean up
-remove(PublicSizePSBillfish, quart_agg, yearly_agg)
-```
-[Back To Top](#top)
 
 # Combining Files
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
@@ -1258,6 +1129,15 @@ for(file in files_list) {
   temp <- read.csv(paste0(save_location, file))
   combined_dat <- rbind(combined_dat, temp)
 }
+
+# Remove instances of NA for lat or lon (some issues with grid in sfskh)
+combined_dat <- combined_dat %>% 
+  filter(!is.na(latitude) & !is.na(longitude))
+
+# Filter so only 1x1 or 5x5 data are included
+combined_dat <- combined_dat %>% 
+  filter(spatial_notes %in% c("center of 5x5 cell", "center of 1x1 cell") & 
+           grepl("purse-seine|purse seine|longline|long line|long-line", gear))
 
 # Save final data file for this RFMO
 filename <- "iattc-all.csv"

@@ -3,13 +3,15 @@ title: "RFMO Data Cleaning - IOTC"
 output: html_notebook
 ---
 
-This is a notebook designed to grab data saved in Google Drive and re-format it for easier analyses later.
+This is a notebook designed to grab data and re-format it for easier analyses later.
+Note that some of the species scientific names are not present, we will add these in later analyses so that we can ensure RFMOs have consistent species names. 
 
 # Table of Contents: {#top}
 
-- [CE Coastal]
+- [CE Other]
 - [CE Longline]
 - [CE Surface]
+- [Interactions]
 - [Combining Files]
 
 ```{r, include=FALSE}
@@ -23,9 +25,9 @@ library(here)
 # Housekeeping
 ```{r, echo=TRUE}
 # List files to choose from
-file_path <- file.path(here::here(), "data/rfmo-observer-data/inputs/iotc/")
-save_location <- file.path(here::here(), "data/rfmo-observer-data/intermediates/iotc/")
-outputs_location <- file.path(here::here(), "data/rfmo-observer-data/outputs/")
+file_path <- file.path(here::here(), "data-updated/rfmo-data/inputs/iotc/")
+save_location <- file.path(here::here(), "data-updated/rfmo-data/intermediates/iotc/")
+outputs_location <- file.path(here::here(), "data-updated/rfmo-data/outputs/")
 ```
 
 # Load Data
@@ -35,8 +37,8 @@ list_files <- list.files(file_path, pattern="csv")
 
 # Load files
 for(file in list_files) { 
-  name <- colsplit(file, "[.]", c("",""))[,1]
-  name <- as.character(colsplit(name, "-", c("","","",""))[,4])
+  name <- str_split(file, "[.]")[[1]][1]
+  name <- gsub("_1950", "", as.character(str_split(name, "-")[[1]][6]))
   temp <- read.csv(paste0(file_path, file))
   assign(name, temp)
 }
@@ -45,16 +47,22 @@ for(file in list_files) {
 remove(temp)
 
 # Fleet/Country
-fleet <- read_xlsx(paste0(file_path, "IOTC-2019-DATASETS-CEref.xlsx"), sheet="CodeFleet")
+fleet <- read_xlsx(paste0(file_path, "IOTC-DATASETS-2022-02-23-CEref_1950-2020.xlsx"), sheet="CodeFleet")
 colnames(fleet) <- c("Fleet", "Country", "French")
 
 # Gear
-gear <- read_xlsx(paste0(file_path, "IOTC-2019-DATASETS-CEref.xlsx"), sheet="CodeGear")
+gear <- read_xlsx(paste0(file_path, "IOTC-DATASETS-2022-02-23-CEref_1950-2020.xlsx"), sheet="CodeGear")
 colnames(gear)[4] <- "gear"
 
 # Effort
-effort <- read_xlsx(paste0(file_path, "IOTC-2019-DATASETS-CEref.xlsx"), sheet="CodeEffort")
+effort <- read_xlsx(paste0(file_path, "IOTC-DATASETS-2022-02-23-CEref_1950-2020.xlsx"), sheet="CodeEffort")
 effort <- unique(effort[,c("EffortUnits", "Description")])
+
+# add Interactions datast
+interactions <- read_xlsx(paste0(file_path, "IOTC-2020-WPEB16-DATA12_CE.xlsx"), 
+                          sheet = "CE", skip = 1)
+interactions_spp <- read_xlsx(paste0(file_path, "IOTC-2020-WPEB16-DATA12_CE.xlsx"), 
+                          sheet = "REF_SPECIES")
 
 # Grid sizes
 grid_size <- data.frame("size" = c(1,2,3,4,5,6), "lat_shift" = c(5,10,10,20,1,5), "lon_shift"=c(10,20,10,20,1,5))
@@ -69,32 +77,32 @@ species <- read.delim(paste0(file_path, "ASFIS_sp_2019.txt"), sep=",")
 ```
 [Back To Top](#top)
 
-# CE Coastal
+# CE Other
 ```{r, echo=TRUE}
-# Filter to year 2000 or greater
-CECoastal <- CECoastal %>% 
-  filter(Year >= 2000)
+# Filter to year 2012 or greater
+CEOther <- CEOther %>% 
+  filter(Year >= 2012)
 
 # Pivot tables so each row represents a different species
-CECoastal <- CECoastal %>% 
+CEOther <- CEOther %>% 
   pivot_longer(cols=YFT.NO:NTAD.MT, names_to = 'speciescode', values_to = 'catch') %>% 
   filter(catch > 0)
 
 # Split speciescodes into species code and catch units (number vs metric tonnes)
-CECoastal <- CECoastal %>% 
+CEOther <- CEOther %>% 
   separate(speciescode, into=c("speciescode", "catch_units"), sep=-3) %>% 
   mutate(catch_units = gsub(".NO", "count", catch_units), 
          catch_units = gsub(".MT", "metric tonnes", catch_units))
 
 # Fix GPS locations and add spatial notes
-CECoastal <- CECoastal %>% 
+CEOther <- CEOther %>% 
   separate(Grid, into = c("size", "quadrant", "latitude", "longitude"), sep = c(1,2,4), convert=TRUE) %>%
   left_join(grid_size, by="size") %>%
   mutate(latitude = ifelse(quadrant == 2|quadrant == 3, as.numeric(latitude)*(-1)-lat_shift, as.numeric(latitude)+lat_shift), 
          longitude == ifelse(quadrant == 3|quadrant == 4, as.numeric(longitude)*(-1)-lon_shift, as.numeric(longitude)+lon_shift))
 
 # Add fleet/country
-CECoastal <- CECoastal %>% 
+CEOther <- CEOther %>% 
   mutate(Fleet = gsub(" ", "", Fleet)) %>% # fix extra spaces
   left_join(fleet[,c("Fleet", "Country")], by="Fleet") %>%
   mutate(Country = gsub("[.]", " ", Country), 
@@ -104,32 +112,32 @@ CECoastal <- CECoastal %>%
          Country = gsub("Eu ", "", Country))
 
 # Add species data
-CECoastal <- left_join(CECoastal, species[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("speciescode" = "X3A_CODE") )
+CEOther <- left_join(CEOther, species[,c("X3A_CODE", "Scientific_name", "English_name")], by = c("speciescode" = "X3A_CODE") )
 
 # Make all species names all caps
-CECoastal$species_sciname <- toupper(CECoastal$Scientific_name)
-CECoastal$species_commonname <- toupper(CECoastal$English_name)
+CEOther$species_sciname <- toupper(CEOther$Scientific_name)
+CEOther$species_commonname <- toupper(CEOther$English_name)
 
 # Fix species names that were not included in the ASFIS codes
-CECoastal <- CECoastal %>% 
+CEOther <- CEOther %>% 
   mutate(species_commonname = ifelse(speciescode == "BILL", "BILLFISH NEI",
                                      ifelse(speciescode == "NTAD", "OTHER SPECIES", species_commonname)), 
          species_sciname = ifelse(speciescode == "NTAD", "OTHER SPECIES", species_sciname))
 
 # Add gear
-CECoastal <- CECoastal %>% 
+CEOther <- CEOther %>% 
   left_join(gear[,c("CECode", "gear")], by=c("Gear" = "CECode")) %>% 
   mutate(gear = tolower(gear),
          gear = gsub("  ", " ", gear))
 
 # Add effort units
-CECoastal <- CECoastal %>% 
+CEOther <- CEOther %>% 
   left_join(effort[,c("EffortUnits", "Description")], by="EffortUnits") %>%
   mutate(Description = gsub("Number of ", "", Description), 
          Description = gsub("Men-days", "men days", Description))
 
 # Create/mutate relevant columns
-CECoastal <- CECoastal %>% 
+CEOther <- CEOther %>% 
   mutate(rfmo = "IOTC", 
          year = Year, 
          month = MonthStart, 
@@ -138,19 +146,15 @@ CECoastal <- CECoastal %>%
          settype = NA,  
          effort = Effort,
          effort_units = Description,
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
-         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
          quality_code = QualityCode, 
          was_generated = "no", 
-         sources = NA)
+         sources = "IOTC-DATASETS-2022-02-23-CEOther_1950-2020")
 
 # Select relevant columns 
-CECoastal <- CECoastal[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+CEOther <- CEOther[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate quarterly data (aggregates)
-quart_agg <- CECoastal %>% 
+quart_agg <- CEOther %>% 
   filter(time_period == "monthly") %>%
   mutate(month = ceiling(month/3),
          month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
@@ -158,39 +162,39 @@ quart_agg <- CECoastal %>%
                                ifelse(month == 3, 7, 10))),
          time_period = "quarterly", 
          was_generated = "yes") %>% 
-  group_by_at(setdiff(names(CECoastal), c("catch", "effort"))) %>%
+  group_by_at(setdiff(names(CEOther), c("catch", "effort"))) %>%
   summarise(catch = sum(catch), 
             effort = sum(effort))
 
 # Generate yearly data (aggregates)
-yearly_agg <- CECoastal %>% 
+yearly_agg <- CEOther %>% 
   filter(time_period == "monthly") %>%
   mutate(month = NA,
          time_period = "yearly", 
          was_generated = "yes") %>% 
-  group_by_at(setdiff(names(CECoastal), c("catch", "effort"))) %>%
+  group_by_at(setdiff(names(CEOther), c("catch", "effort"))) %>%
   summarise(catch = sum(catch), 
             effort = sum(effort))
 
 # Combine raw with generated data
-CECoastal <- CECoastal %>% 
+CEOther <- CEOther %>% 
   bind_rows(quart_agg) %>% 
   bind_rows(yearly_agg)
 
 # Save File
-filename <- "CECoastal.csv"
-write.csv(CECoastal, paste0(save_location, filename), row.names = FALSE)
+filename <- "CEOther.csv"
+write.csv(CEOther, paste0(save_location, filename), row.names = FALSE)
 
 # Clean up
-remove(CECoastal, quart_agg, yearly_agg)
+remove(CEOther, quart_agg, yearly_agg)
 ```
 [Back To Top](#top)
 
 # CE Longline
 ```{r, echo=TRUE}
-# Filter to year 2000 or greater
+# Filter to year 2012 or greater
 CELongline <- CELongline %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # Pivot tables so each row represents a different species
 CELongline <- CELongline %>% 
@@ -256,16 +260,12 @@ CELongline <- CELongline %>%
          settype = NA,  
          effort = Effort,
          effort_units = Description,
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA,
-         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
          quality_code = QualityCode, 
          was_generated = "no", 
-         sources = NA)
+         sources = "IOTC-DATASETS-2022-02-23-CELongline_1950-2020")
 
 # Select relevant columns 
-CELongline <- CELongline[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+CELongline <- CELongline[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate quarterly data (aggregates)
 quart_agg <- CELongline %>% 
@@ -306,9 +306,9 @@ remove(CELongline, quart_agg, yearly_agg)
 
 # CE Surface
 ```{r, echo=TRUE}
-# Filter to year 2000 or greater
+# Filter to year 2012 or greater
 CESurface <- CESurface %>% 
-  filter(Year >= 2000)
+  filter(Year >= 2012)
 
 # Pivot tables so each row represents a different species
 CESurface <- CESurface %>% 
@@ -375,16 +375,12 @@ CESurface <- CESurface %>%
          effort = Effort,
          effort_units = Description,
          catch_units = "metric tonnes",
-         measurement = NA, 
-         measurement_unit = NA, 
-         measurement_method = NA, 
-         is_targeted = ifelse(grepl("TUNA", species_commonname), "yes-implied", "no"),
          quality_code = QualityCode, 
          was_generated = "no", 
-         sources = NA)
+         sources = "IOTC-DATASETS-2022-02-23-CESurface_1950-2020")
 
 # Select relevant columns 
-CESurface <- CESurface[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "is_targeted", "catch", "catch_units", "measurement", "measurement_unit", "measurement_method", "spatial_notes", "quality_code", "was_generated", "sources")]
+CESurface <- CESurface[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
 
 # Generate quarterly data (aggregates)
 quart_agg <- CESurface %>% 
@@ -423,6 +419,113 @@ remove(CESurface, quart_agg, yearly_agg)
 ```
 [Back To Top](#top)
 
+# Interactions
+```{r}
+# Filter to year 2012 or greater
+interactions <- interactions %>% 
+  filter(YEAR >= 2012)
+
+# Fix GPS locations and add spatial notes
+interactions <- interactions %>% 
+  separate(GRID,  into = c("size", "quadrant", "latitude", "longitude"), sep = c(1,2,4), convert=TRUE) %>%
+  left_join(grid_size, by="size") %>%
+  mutate(latitude = ifelse(quadrant == 2|quadrant == 3, as.numeric(latitude)*(-1)-lat_shift, as.numeric(latitude)+lat_shift), 
+         longitude == ifelse(quadrant == 3|quadrant == 4, as.numeric(longitude)*(-1)-lon_shift, as.numeric(longitude)+lon_shift))
+
+# Add fleet/country
+interactions <- interactions %>% 
+  mutate(FLAG = gsub(" |[.]", "", FLAG)) %>% # fix extra spaces 
+  left_join(fleet[,c("Fleet", "Country")], by=c("FLAG"= "Fleet")) %>%
+  mutate(Country = gsub("[.]", " ", Country), 
+         Country = gsub("REP", "Republic", Country), 
+         Country = str_to_title(Country), 
+         Country = gsub("Uk", "UK", Country), 
+         Country = gsub("Eu ", "", Country), 
+         Country = gsub(",China", "", Country))
+
+# Add species data
+interactions <- left_join(interactions, interactions_spp[, c("CODE", "NAME_EN")], 
+                          by = c("SPECIES" = "CODE")) %>% 
+  mutate(NAME_EN = str_to_sentence(NAME_EN)) %>% 
+  left_join(., species[,c("Scientific_name", "English_name")], by = c("NAME_EN" = "English_name"))
+
+# Make all species names all caps
+interactions$species_sciname <- toupper(interactions$Scientific_name)
+interactions$species_commonname <- toupper(interactions$NAME_EN)
+
+# Fix species names that were not included in the ASFIS codes
+interactions <- interactions %>% 
+  mutate(species_commonname = ifelse(is.na(SPECIES), "OTHER SPECIES", species_commonname),
+    species_sciname = ifelse(is.na(SPECIES), "OTHER SPECIES", species_sciname))
+
+# Add gear
+interactions <- left_join(interactions, gear[,c("CECode", "gear")], by=c("GEAR" = "CECode")) %>%
+  mutate(gear = tolower(gear), 
+         gear = gsub("  ", " ", gear), 
+         gear = gsub("purse seine", "purse-seine", gear),
+         gear = ifelse(GEAR == "BBOF", "baitboat (offshore)", gear))
+
+# Add effort units
+interactions <- interactions %>% 
+  mutate(EFFORT_UNIT = paste0(str_to_lower(EFFORT_UNIT), "s"))
+
+# Create/mutate relevant columns
+interactions <- interactions %>% 
+  mutate(rfmo = "IOTC", 
+         year = YEAR, 
+         month = MONTH, 
+         settype = NA, 
+         catch = OBSERVED_CATCH, 
+         time_period = "monthly", 
+         country = Country,
+         effort = OBSERVED_EFFORT,
+         effort_units = EFFORT_UNIT,
+         catch_units = "count",
+         quality_code = NA, 
+         was_generated = "no", 
+         sources = "IOTC-2020-WPEB16-DATA12_CE")
+
+# Select relevant columns 
+interactions <- interactions[,c("rfmo", "year", "month", "time_period", "country", "gear", "settype", "longitude", "latitude", "effort", "effort_units", "species_commonname", "species_sciname", "catch", "catch_units", "spatial_notes", "quality_code", "was_generated", "sources")]
+
+# Generate quarterly data (aggregates)
+quart_agg <- interactions %>% 
+  filter(time_period == "monthly") %>%
+  mutate(month = ceiling(month/3),
+         month = ifelse(month == 1, 1, # fix so each quarter == first month of quarter
+                        ifelse(month == 2, 4, 
+                               ifelse(month == 3, 7, 10))),
+         time_period = "quarterly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(interactions), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Generate yearly data (aggregates)
+yearly_agg <- interactions %>% 
+  filter(time_period == "monthly") %>%
+  mutate(month = NA,
+         time_period = "yearly", 
+         was_generated = "yes") %>% 
+  group_by_at(setdiff(names(interactions), c("catch", "effort"))) %>%
+  summarise(catch = sum(catch), 
+            effort = sum(effort))
+
+# Combine raw with generated data
+interactions <- interactions %>% 
+  bind_rows(quart_agg) %>% 
+  bind_rows(yearly_agg)
+
+# Save File
+filename <- "interactions.csv"
+write.csv(interactions, paste0(save_location, filename), row.names = FALSE)
+
+# Clean up
+remove(interactions, quart_agg, yearly_agg)
+```
+
+[Back To Top](#top)
+
 # Combining Files
 ```{r echo=TRUE}
 # Find list of cleaned data
@@ -443,6 +546,11 @@ for(file in files_list) {
 # Remove instances of NA for lat or lon (some issues with grid in sfskh)
 combined_dat <- combined_dat %>% 
   filter(!is.na(latitude) & !is.na(longitude))
+
+# Filter so only 1x1 or 5x5 data are included
+combined_dat <- combined_dat %>% 
+  filter(spatial_notes %in% c("center of 5x5 cell", "center of 1x1 cell") & 
+           grepl("purse-seine|purse seine|longline|long line|long-line", gear))
 
 # Save final data file for this RFMO
 filename <- "iotc-all.csv"

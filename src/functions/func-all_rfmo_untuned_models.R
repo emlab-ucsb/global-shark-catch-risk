@@ -5,18 +5,20 @@
 #' @param save_loc output file loc to save r2
 #' @param rfmos which rfmo to choose
 #' @param effort_source which effort source to choose
+#' @param logtrans whether to log transform the catch variable
 #' @param mtry_class the original model's mtry for classification
 #' @param mtry_reg the original model's mtry for regression
 #' @param min_n_class the original model's min_n for classification
 #' @param min_n_reg the original model's min_n for classification
 
-all_rfmo_untuned_models <- function(data, save_loc, rfmos, effort_source, classification_variables, regression_variables, mtry_class, mtry_reg, min_n_class, min_n_reg){
+all_rfmo_untuned_models <- function(data, save_loc, rfmos, effort_source, logtrans = FALSE, classification_variables, regression_variables, mtry_class, mtry_reg, min_n_class, min_n_reg){
 
   # Filter to only include relevant data
   prep_ll <- data %>% 
     filter(gear_group == "longline" & 
              catch_units == "count" & 
              effort_units == "hooks") %>% 
+    mutate_if(is.integer, as.numeric) %>% 
     mutate_if(is_character, as.factor) %>% 
     mutate_if(is.integer, as.numeric) %>% 
     arrange(year, latitude, longitude) %>% 
@@ -145,6 +147,11 @@ all_rfmo_untuned_models <- function(data, save_loc, rfmos, effort_source, classi
       step_impute_knn(all_numeric(), -all_outcomes(), neighbors = 3, impute_with = imp_vars(latitude, longitude)) %>%
       update_role(latitude, longitude, new_role = "none") %>% 
       step_dummy(all_nominal(), -all_outcomes()) 
+    
+    if(logtrans == TRUE) { 
+      reg_recipe <- reg_recipe %>% 
+        step_log(catch, offset = 1, skip = TRUE)
+    }
             
      ###
      # Classification Model
