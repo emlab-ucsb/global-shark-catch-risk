@@ -406,12 +406,13 @@ for(layer in unique(all_dat$species_commonname)) {
               mapping = aes(x=x, y=y), fill = "black", color = "black") +
     coord_sf() + 
     custom_theme + 
-    theme(legend.position = "bottom") 
+    theme(legend.position = "bottom", 
+          text = element_text(size = 18)) 
   
   # Save
   ggsave(paste0(here::here("figures/supplemental"), 
                 "/figure_3_", gsub(" ", "_", 
                                    gsub("[(]|[)]", "", str_to_lower(layer))), 
                 ".png"), 
-         width = 3, height = 2, units = "in", dpi = 600, bg = "white")
+         width = 7, height = 4, units = "in", dpi = 600, bg = "white")
 } 
