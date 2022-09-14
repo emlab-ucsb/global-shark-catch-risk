@@ -232,41 +232,41 @@ all_model_results_p2
 ### Update this prior to running
 # Run the best performing model and tune
 # IATTC - 1x1 count and mt | mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh | effort reported with target catch (flag)
-# iattc_effort_variables <- paste0(colnames(mt_1x1_obs)[grepl("target_effort_", colnames(mt_1x1_obs))], collapse = "|")
+# iattc_effort_variables <- paste0(colnames(mt_1x1_obs)[grepl("target_effort_", colnames(mt_1x1_obs))], collapse = "$|")
 #
 # all_rfmo_tuned_models(data = mt_1x1_obs,
 #                 rfmos = "IATTC",
 #                 effort_source = "effort reported with target catch (flag)",
-#                 classification_variables = paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|",
+#                 classification_variables = paste0("species_commonname$|sdm$|mean_sst$|mean_chla$|mean_ssh$|cv_sst$|cv_chla$|cv_ssh$|",
 #                                                   iattc_effort_variables),
-#                 regression_variables = paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|",
+#                 regression_variables = paste0("species_commonname$|sdm$|mean_sst$|mean_chla$|mean_ssh$|cv_sst$|cv_chla$|cv_ssh$|",
 #                                                   iattc_effort_variables),
 #                 save_loc = save_loc,
 #                 mtry_class = 5, min_n_class = 10, mtry_reg = 5, min_n_reg = 5)
 
 # ICCAT - 1x1 count only | mean_sst, mean_chla, mean_ssh, cv_sst, cv_chla, cv_ssh, species price | effort reported with target catch (flag)
-# iccat_effort_variables <- paste0(colnames(count_1x1_obs)[grepl("target_effort_", colnames(count_1x1_obs))], collapse = "|")
+# iccat_effort_variables <- paste0(colnames(count_1x1_obs)[grepl("target_effort_", colnames(count_1x1_obs))], collapse = "$|")
 #
 # all_rfmo_tuned_models(data = count_1x1_obs, rfmos = "ICCAT",
 #                       effort_source = "effort reported with target catch (flag)",
 #                       classification_variables =
-#                         paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|median_price_species|",
+#                         paste0("species_commonname$|sdm$|mean_sst$|mean_chla$|mean_ssh$|cv_sst$|cv_chla$|cv_ssh$|median_price_species$|",
 #                                                         iccat_effort_variables),
 #                       regression_variables =
-#                         paste0("species_commonname|sdm|mean_sst|mean_chla|mean_ssh|cv_sst|cv_chla|cv_ssh|median_price_species|",
+#                         paste0("species_commonname$|sdm$|mean_sst$|mean_chla$|mean_ssh$|cv_sst$|cv_chla$|cv_ssh$|median_price_species$|",
 #                                                         iccat_effort_variables),
 #                       save_loc = save_loc,
 #                       mtry_class = 7, min_n_class = 10, mtry_reg = 7, min_n_reg = 5)
 # # # IOTC - 5x5 count and mt| mean_sst, mean_chla, cv_sst, cv_chla | effort reported with target catch (flag)
-# iotc_effort_variables <- paste0(colnames(mt_5x5_obs)[grepl("target_effort_", colnames(mt_5x5_obs))], collapse = "|")
+# iotc_effort_variables <- paste0(colnames(mt_5x5_obs)[grepl("target_effort_", colnames(mt_5x5_obs))], collapse = "$|")
 #
 # all_rfmo_tuned_models(data = mt_5x5_obs, rfmos = "IOTC",
 #                       effort_source = "effort reported with target catch (flag)",
 #                       classification_variables =
-#                         paste0("species_commonname|sdm|mean_sst|mean_chla|cv_sst|cv_chla|",
+#                         paste0("species_commonname$|sdm$|mean_sst$|mean_chla$|cv_sst$|cv_chla$|",
 #                                iotc_effort_variables),
 #                       regression_variables =
-#                         paste0("species_commonname|sdm|mean_sst|mean_chla|cv_sst|cv_chla|",
+#                         paste0("species_commonname$|sdm$|mean_sst$|mean_chla$|cv_sst$|cv_chla$|",
 #                                iotc_effort_variables), save_loc = save_loc,
 #                       mtry_class = 6, min_n_class = 10, mtry_reg = 6, min_n_reg = 5)
 #
@@ -276,8 +276,8 @@ all_model_results_p2
 # all_rfmo_tuned_models(data = count_5x5_obs,
 #                 rfmos = "WCPFC",
 #                 effort_source = "effort reported with bycatch (flag)",
-#                 classification_variables = "species_commonname|sdm|mean_sst|mean_chla|mean_ssh|bycatch_total_effort",
-#                 regression_variables = "species_commonname|sdm|mean_sst|mean_chla|mean_ssh|bycatch_total_effort",
+#                 classification_variables = "species_commonname$|sdm$|mean_sst$|mean_chla$|mean_ssh$|bycatch_total_effort$",
+#                 regression_variables = "species_commonname|sdm$|mean_sst$|mean_chla$|mean_ssh$|bycatch_total_effort$",
 #                 save_loc = save_loc,
 #                 mtry_class = 5, min_n_class = 10, mtry_reg = 5, min_n_reg = 5)
 #
@@ -314,37 +314,37 @@ for(selected_rfmo in c("IATTC", "ICCAT", "IOTC", "WCPFC")) {
   
   rfmo_effort_variables <- case_when(selected_rfmo == "WCPFC" & 
                                        grepl("bycatch", rfmo_model_option$effort_source) ~
-                                       "bycatch_total_effort", 
+                                       "bycatch_total_effort$", 
                                      grepl("target", rfmo_model_option$effort_source) ~ 
                                         paste0(colnames(rfmo_data)[grepl("target_effort_",
                                                                          colnames(rfmo_data))],   
-                                               collapse = "|"), 
+                                               collapse = "$|"), 
                                       grepl("bycatch", rfmo_model_option$effort_source) ~ 
                                         paste0(colnames(rfmo_data)[grepl("bycatch_total_effort_",  
-                                                                         colnames(rfmo_data))], collapse = "|"),
+                                                                         colnames(rfmo_data))], collapse = "$|"),
                                      grepl("gfw", rfmo_model_option$effort_source) ~
-                                        "total_fishing_kwh")
+                                        "total_fishing_kwh$")
   
   if(grepl("gfw", rfmo_model_option$effort_source)) { 
     rfmo_data <- rfmo_data %>% 
       mutate(effort_units = "kwh")
   }
   
-  rfmo_other_variables <- paste0("species_commonname|sdm|mean_sst|mean_chla|", 
+  rfmo_other_variables <- paste0("species_commonname$|sdm$|mean_sst$|mean_chla$|", 
                                   case_when(grepl("environmentals = mean, include ssh = TRUE",
-                                               rfmo_model_option$option) ~ "mean_ssh|", 
+                                               rfmo_model_option$option) ~ "mean_ssh$|", 
                                             TRUE ~ ""), 
                                   case_when(grepl("environmentals = meancv", rfmo_model_option$option) ~ 
-                                              "cv_sst|cv_chla|", 
+                                              "cv_sst$|cv_chla$|", 
                                             TRUE ~ ""), 
                                   case_when(grepl("environmentals = meancv, include ssh = TRUE",
-                                               rfmo_model_option$option) ~ "mean_ssh|cv_ssh|", 
+                                               rfmo_model_option$option) ~ "mean_ssh$|cv_ssh$|", 
                                             TRUE ~ ""), 
                                   case_when(grepl("price = speciesprice", rfmo_model_option$option) ~ 
-                                              "median_price_species|", 
+                                              "median_price_species$|", 
                                             TRUE ~ ""), 
                                   case_when(grepl("price = groupprice", rfmo_model_option$option) ~ 
-                                              "median_price_species|", 
+                                              "median_price_species$|", 
                                             TRUE ~ ""))
   
   all_rfmo_untuned_models(data = rfmo_data,
@@ -381,3 +381,28 @@ bind_rows(untuned_iattc$test_metrics, untuned_iccat$test_metrics,
               select(rfmo, rsq) %>% 
               rename(original_rsq = rsq))
 ```
+
+```{r}
+# Plot feature importance for each portion of the model
+for(rfmo in c("iattc", "iccat", "iotc", "wcpfc")) { 
+  temp <- eval(as.name(paste0("untuned_", rfmo)))$feature_importance
+  
+  feature_importance <- temp %>%
+      mutate(Variable = str_to_lower(Variable),
+             Variable = gsub("species_commonname_", "(species) ", Variable),
+             Variable = gsub("target_effort_", "(target effort) ", Variable), 
+             Variable = gsub("bycatch_total_effort_", "(bycatch effort) ", Variable),
+             Variable = gsub("_|[.]", " ", Variable))
+  
+    ggplot(data = feature_importance %>% 
+             arrange(desc(Importance)), aes(x = Importance, y = Variable)) +
+      geom_point() +
+      facet_wrap(vars(component), scales = "free_x") +
+      ylab("")
+    
+    ggsave(file.path(here::here(), "figures/supplemental/", paste0(rfmo, "_featureimportance.png")),
+           width = 10, height = 6, units = "in", bg = "white")
+
+  }
+```
+

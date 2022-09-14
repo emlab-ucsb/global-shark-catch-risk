@@ -159,7 +159,8 @@ all_rfmo_untuned_models <- function(data, save_loc, rfmos, effort_source, logtra
     class_model <- rand_forest(trees = 500, 
                                mtry = mtry_class, 
                                min_n = min_n_class) %>% 
-      set_engine("ranger", seed = 1234) %>% 
+      set_engine("ranger", seed = 1234, 
+                 importance = "impurity") %>% 
       set_mode("classification") %>% 
       translate()
     
@@ -172,13 +173,19 @@ all_rfmo_untuned_models <- function(data, save_loc, rfmos, effort_source, logtra
     class_fit <- class_wflow %>% 
       fit(data = train_class)
     
+    # Return feature importance
+    importance_class <- class_fit %>% 
+      extract_fit_parsnip() %>% 
+      vip::vi()
+    
     ###
     # Regression Model
     ###
     reg_model <- rand_forest(trees = 500, 
                              mtry = mtry_reg, 
                              min_n = min_n_reg) %>% 
-      set_engine("ranger", seed = 1234) %>% 
+      set_engine("ranger", seed = 1234, 
+                 importance = "impurity") %>% 
       set_mode("regression") %>% 
       translate()
     
@@ -190,6 +197,16 @@ all_rfmo_untuned_models <- function(data, save_loc, rfmos, effort_source, logtra
     
     reg_fit <- reg_wflow %>% 
       fit(data = train_reg)
+    
+    # Return feature importance
+    importance_reg <- reg_fit %>% 
+      extract_fit_parsnip() %>% 
+      vip::vi()
+    
+    total_importance <- importance_class %>% 
+      mutate(component = "classification") %>% 
+      bind_rows(importance_reg %>% 
+                  mutate(component = "regression"))
     
     # Predict Final Testing
     final_testing_class <- predict(class_fit, final_test) %>% 
@@ -245,7 +262,8 @@ all_rfmo_untuned_models <- function(data, save_loc, rfmos, effort_source, logtra
                        "test_predict" = test_predict, 
                        "test_metrics" = test_metrics,
                        "final_predict" = final_predict,
-                       "final_metrics" = final_metrics)
+                       "final_metrics" = final_metrics, 
+                       "feature_importance" = total_importance)
     
     saveRDS(output_fit, paste0(save_loc, rfmos, "_ll_untuned_model.rds"))
     write.csv(final_predict, paste0(save_loc, rfmos, "_ll_untuned_final_predict.csv"), row.names = F)
