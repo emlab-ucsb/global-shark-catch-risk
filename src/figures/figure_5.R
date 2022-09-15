@@ -256,29 +256,6 @@ fig_5a <-
 legend_5a <- get_legend(fig_5a)
 
 fig_5a <- fig_5a + 
-  ggpattern::geom_tile_pattern(critically_endangered %>%
-                               filter(!is.na(layer)) %>%
-                               select(-layer) %>%
-                               group_by(x, y) %>%
-                               mutate(n = n()) %>%
-                               ungroup() %>%
-                               filter(n > 1) %>% 
-                               pivot_wider(names_from = species_sciname, values_from = n) %>% 
-                               mutate(`CARCHARHINUS LONGIMANUS` = ifelse(!is.na(`CARCHARHINUS LONGIMANUS`), "CARCHARHINUS LONGIMANUS", NA),  
-                                      `SPHYRNA LEWINI` = ifelse(!is.na(`SPHYRNA LEWINI`), "SPHYRNA LEWINI", NA)) %>% 
-                               rowwise() %>% 
-                               rename(species_1 = `CARCHARHINUS LONGIMANUS`, species_2 = `SPHYRNA LEWINI`),
-                               mapping = aes(x=x, y=y, pattern_colour = species_1, pattern_fill = species_1, fill = species_2),
-                               pattern = "stripe", color = NA, height = 1, width = 1, 
-                               pattern_spacing = 0.01, 
-                               pattern_density = 0.2, 
-                               pattern_size = 0.1) +
-  ggpattern::scale_pattern_colour_manual(name = "", values = sort(color_palette[unique(critically_endangered$species_sciname)]),
-                                         breaks = sort(names(color_palette[unique(critically_endangered$species_sciname)])),
-                                         labels = sort(str_to_sentence(names(color_palette[unique(critically_endangered$species_sciname)])))) + 
-  ggpattern::scale_pattern_fill_manual(name = "", values = sort(color_palette[unique(critically_endangered$species_sciname)]),
-                                       breaks = sort(names(color_palette[unique(critically_endangered$species_sciname)])),
-                                       labels = sort(str_to_sentence(names(color_palette[unique(critically_endangered$species_sciname)])))) +
   geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
   geom_sf(data = iotc_boundary, fill = NA, color = "black") +
   geom_sf(data = iccat_boundary, fill = NA, color = "black") +
@@ -370,10 +347,9 @@ fig_5c <- fig_5c +
                                  filter(n > 1) %>% 
                                  pivot_wider(names_from = species_sciname, values_from = n) %>% 
                                  mutate(`ALOPIAS SUPERCILIOSUS` = ifelse(!is.na(`ALOPIAS SUPERCILIOSUS`), "ALOPIAS SUPERCILIOSUS", NA),  
-                                        `SPHYRNA ZYGAENA` = ifelse(!is.na(`SPHYRNA ZYGAENA`), "SPHYRNA ZYGAENA", NA),  
-                                        `ALOPIAS VULPINUS` = ifelse(!is.na(`ALOPIAS VULPINUS`), "ALOPIAS VULPINUS", NA)) %>% 
+                                        `SPHYRNA ZYGAENA` = ifelse(!is.na(`SPHYRNA ZYGAENA`), "SPHYRNA ZYGAENA", NA)) %>% 
                                  rowwise() %>% 
-                                 mutate(species_2 = ifelse(is.na(`SPHYRNA ZYGAENA`), `ALOPIAS VULPINUS`, `SPHYRNA ZYGAENA`)) %>% 
+                                 rename(species_2 = `SPHYRNA ZYGAENA`) %>% 
                                  rename(species_1 = `ALOPIAS SUPERCILIOSUS`),
                                mapping = aes(x=x, y=y, pattern_colour = species_1, pattern_fill = species_1, fill = species_2),
                                pattern = "stripe", color = NA, height = 1, width = 1, 

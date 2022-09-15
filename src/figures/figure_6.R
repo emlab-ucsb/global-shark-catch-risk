@@ -79,7 +79,7 @@ for(file in list_files) {
 }
 
 # Rasterize based on the center of each cell (a little annoying)
-species_relevant <- c("CARCHARHINUS LONGIMANUS", "SPHYRNA LEWINI", 
+species_relevant <- c("CARCHARHINUS LONGIMANUS", 
                       "ALOPIAS PELAGICUS", "ISURUS PAUCUS", 
                       "ALOPIAS SUPERCILIOSUS", "SPHYRNA ZYGAENA")
 
@@ -159,10 +159,10 @@ for(iter in 1:length(species_relevant)) {
   temp_plot <- ggplot() + 
     geom_tile(temp, 
               mapping = aes(x=x, y=y, fill=layer, color = layer)) + 
-    scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
+    scale_fill_distiller("Catch Risk", palette = "RdYlBu", na.value = NA, 
                          breaks = c(min(temp$layer, na.rm = T), max(temp$layer, na.rm = T)), 
                          labels = c("Low", "High"), 
-                         guide = guide_colorbar(title.vjust = 0.8)) + 
+                         guide = guide_colorbar(title.position =  "top")) + 
     scale_color_distiller("", palette = "RdYlBu", na.value = NA, 
                           breaks = c(min(temp$layer, na.rm = T), max(temp$layer, na.rm = T)), guide = "none") + 
     geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
@@ -185,17 +185,16 @@ for(iter in 1:length(species_relevant)) {
 
 # Final plot
 final_plot <- ggdraw() + 
-  draw_plot(carcharhinus_longimanus_plot, 0, 0.67, 0.5, 0.3) + 
-  draw_plot(sphyrna_lewini_plot, 0.5, 0.67, 0.5, 0.3) + 
-  draw_plot(alopias_pelagicus_plot, 0, 0.37, 0.5, 0.3) +
-  draw_plot(isurus_paucus_plot, 0.5, 0.37, 0.5, 0.3) + 
-  draw_plot(alopias_superciliosus_plot, 0, 0.07, 0.5, 0.3) +
-  draw_plot(sphyrna_zygaena_plot, 0.5, 0.07, 0.5, 0.3) +
-  draw_plot(legend, 0, 0, 1, 0.07) +
-  draw_plot_label(label = LETTERS[1:6], x = c(0, 0.5, 0, 0.5, 0, 0.5), 
-                  y = c(0.985, 0.985, 0.685, 0.685, 0.385, 0.385), 
+  draw_plot(carcharhinus_longimanus_plot, 0, 0.5, 0.33, 0.5) + 
+  draw_plot(alopias_pelagicus_plot, 0.33, 0.5, 0.33, 0.5) +
+  draw_plot(isurus_paucus_plot, 0.66, 0.5, 0.33, 0.5) + 
+  draw_plot(alopias_superciliosus_plot, 0, 0, 0.33, 0.5) +
+  draw_plot(sphyrna_zygaena_plot, 0.33, 0, 0.33, 0.5) +
+  draw_plot(legend, 0.66, 0, 0.33, 0.5) +
+  draw_plot_label(label = LETTERS[1:5], x = c(0, 0.33, 0.66, 0, 0.33), 
+                  y = c(1.009,1.009,1.009,0.509,0.509), 
                   hjust = 0, size = 30)
 
 # Save
 ggsave(here::here("figures/final/figure_6.png"), final_plot,
-       width = 5.6, height = 14, units = "in", dpi = 600, bg = "white")
+       width = 10, height = 10, units = "in", dpi = 600, bg = "white")

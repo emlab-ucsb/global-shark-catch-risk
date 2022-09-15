@@ -4,7 +4,7 @@
 
 # Some important notes
 # 1) Data we are using are 1x1 resolution (with 5x5 resolution evenly redistributed to 1x1 cells)
-#    and count for bycatch catch units and metric tonnes for target catch units. All effort is
+#    and count for shark catch units and metric tonnes for target catch units. All effort is
 #    hooks from total target effort
 # 2) Some RFMOs report their data at different spatial resolutions (1x1 degrees with degrees
 #    centered around whole numbers [e.g., 150] vs centered around half numbers [e.g., 150.5]).
@@ -32,7 +32,7 @@ list_files <- list.files(file.path(here::here(), "data-updated/model-data/output
 all_dat <- NULL
 for(file in list_files) { 
   temp <- read.csv(file) %>% 
-    select(rfmo, year, latitude, longitude, species_commonname, species_sciname, spatial_notes, .final_pred)
+    select(rfmo, year, latitude, longitude, species_commonname, species_sciname, spatial_notes, .final_pred, catch)
   
   if(unique(temp$spatial_notes) == "center of 5x5 cell") { 
     
@@ -68,10 +68,12 @@ for(file in list_files) {
       left_join(locations_x) %>%
       mutate(longitude_rescaled = ifelse(is.na(longitude_rescaled), longitude, longitude_rescaled),
              latitude_rescaled = ifelse(is.na(latitude_rescaled), latitude, latitude_rescaled),
-             .final_pred= .final_pred/25) %>% 
+             .final_pred= .final_pred/25, 
+             catch = catch/25) %>% 
       mutate(spatial_notes = "center of 1x1 cell") %>%
       group_by(rfmo, year, latitude_rescaled, longitude_rescaled, species_commonname, species_sciname, spatial_notes) %>% 
-      summarise(.final_pred = sum(.final_pred, na.rm = T)) %>% 
+      summarise(.final_pred = sum(.final_pred, na.rm = T), 
+                catch = sum(catch, na.rm = T)) %>% 
       ungroup() %>% 
       rename(latitude = latitude_rescaled, 
              longitude = longitude_rescaled)
@@ -209,11 +211,11 @@ for(layer in c("global", "endangered", "BLUE SHARK", "SHORTFIN MAKO SHARK")) {
 fig_3a <- ggplot() + 
   geom_tile(global, 
             mapping = aes(x=x, y=y, fill=layer, color = layer)) + 
-  scale_fill_distiller("Bycatch Risk", palette = "RdYlBu", na.value = NA, 
+  scale_fill_distiller("Catch Risk", palette = "RdYlBu", na.value = NA, 
                        breaks = c(min(global$layer, na.rm = T), max(global$layer, na.rm = T)), 
                        labels = c("Low", "High"), 
                        guide = guide_colorbar(title.vjust = 0.8)) + 
-  scale_color_distiller("Bycatch Risk", palette = "RdYlBu", na.value = NA, 
+  scale_color_distiller("Catch Risk", palette = "RdYlBu", na.value = NA, 
                        breaks = c(min(global$layer, na.rm = T), max(global$layer, na.rm = T)), guide = "none") + 
   geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
   geom_sf(data = iotc_boundary, fill = NA, color = "black") +
@@ -392,7 +394,7 @@ for(layer in unique(all_dat$species_commonname)) {
   fig_supp <- ggplot() + 
     geom_tile(raster_comb, 
               mapping = aes(x=x, y=y, fill=layer, color = layer)) + 
-    scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
+    scale_fill_distiller("Catch Risk", palette = "RdYlBu", na.value = NA, 
                          breaks = c(min(raster_comb$layer, na.rm = T), max(raster_comb$layer, na.rm = T)), 
                          labels = c("Low", "High"), 
                          guide = guide_colorbar(title.vjust = 0.8)) + 
@@ -416,3 +418,98 @@ for(layer in unique(all_dat$species_commonname)) {
                 ".png"), 
          width = 7, height = 4, units = "in", dpi = 600, bg = "white")
 } 
+
+# One more supplemental plot - for observed vs expected
+dat_temp <- all_dat
+  
+dat_temp <- dat_temp %>% 
+  group_by(rfmo, year, latitude, longitude) %>% 
+  summarise(total_obs = sum(catch, na.rm = T)) %>% 
+  ungroup() %>% 
+  group_by(rfmo, latitude, longitude) %>% 
+  summarise(mean_total_obs = mean(total_obs, na.rm = T)) %>% 
+  ungroup() %>% 
+  mutate(longitude_orig = longitude, 
+         latitude_orig = latitude) %>% 
+  st_as_sf(., coords = c("longitude_orig", "latitude_orig"), crs = 4326)
+
+raster_stack <- stack()
+
+raster_1 <- dat_temp %>% 
+  filter(latitude%%1 == 0 & longitude%%1 == 0) 
+
+if(nrow(raster_1) > 0) { 
+  raster_1 <- raster_1 %>% 
+    rasterize(., whole_numbers, 
+              field = "mean_total_obs", fun = mean, background = NA)
+  
+  raster_stack <- stack(raster_stack, raster_1)
+}
+
+raster_2 <- dat_temp %>% 
+  filter(latitude%%1 != 0 & longitude%%1 == 0) 
+
+if(nrow(raster_2) > 0) { 
+  raster_2 <- raster_2 %>% 
+    rasterize(., whole_numbers, 
+              field = "mean_total_obs", fun = mean, background = NA)
+  
+  raster_stack <- stack(raster_stack, raster_2)
+}
+
+raster_3 <- dat_temp %>% 
+  filter(latitude%%1 == 0 & longitude%%1 != 0)  
+
+if(nrow(raster_3) > 0) { 
+  raster_3 <- raster_3 %>% 
+    rasterize(., whole_numbers, 
+              field = "mean_total_obs", fun = mean, background = NA)
+  
+  raster_stack <- stack(raster_stack, raster_3)
+}
+
+raster_4 <- dat_temp %>% 
+  filter(latitude%%1 != 0 & longitude%%1 != 0)  
+
+if(nrow(raster_4) > 0) { 
+  raster_4 <- raster_4 %>% 
+    rasterize(., whole_numbers, 
+              field = "mean_total_obs", fun = mean, background = NA)
+  
+  raster_stack <- stack(raster_stack, raster_4)
+}
+
+raster_comb <- calc(raster_stack, mean, na.rm = T)
+
+raster_comb <- raster::as.data.frame(raster_comb, xy = TRUE) 
+
+fig_supp_expected <- ggplot() + 
+  geom_tile(raster_comb, 
+            mapping = aes(x=x, y=y, fill=layer, color = layer)) + 
+  scale_fill_distiller("", palette = "RdYlBu", na.value = NA, 
+                       breaks = c(min(raster_comb$layer, na.rm = T), max(raster_comb$layer, na.rm = T)), 
+                       labels = c("Low", "High"), 
+                       guide = guide_colorbar(title.vjust = 0.8)) + 
+  scale_color_distiller("", palette = "RdYlBu", na.value = NA, 
+                        breaks = c(min(raster_comb$layer, na.rm = T), max(raster_comb$layer, na.rm = T)), guide = "none") + 
+  geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
+  geom_sf(data = iotc_boundary, fill = NA, color = "black") +
+  geom_sf(data = iccat_boundary, fill = NA, color = "black") +
+  geom_sf(data = iattc_boundary, fill = NA, color = "black") +
+  geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)),
+            mapping = aes(x=x, y=y), fill = "black", color = "black") +
+  coord_sf() + 
+  custom_theme + 
+  theme(legend.position = "none") 
+
+# Final plot
+final_plot <- ggdraw() + 
+  draw_plot(fig_supp_expected, 0, 0.1, 0.5, 0.9) + 
+  draw_plot(fig_3a, 0.5, 0.1, 0.5, 0.9) + 
+  draw_plot(legend, 0, 0, 1, 0.14) +
+  draw_plot_label(label = LETTERS[1:2], x = c(0, 0.5), y = 1, 
+                  hjust = 0, size = 30)
+
+# Save
+ggsave(here::here("figures/supplemental/observed_vs_predicted.png"), final_plot,
+       width = 14, height = 4, units = "in", dpi = 600, bg = "white")
