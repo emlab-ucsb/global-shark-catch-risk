@@ -1,6 +1,7 @@
 # Figure 7 - might get moved around a little
 
-# Calculate Moran's I to determine spatial autocorrelation
+# Calculate temporal autocorrelation 
+
 # Load libraries
 library(raster)
 library(tidyverse)
@@ -70,68 +71,113 @@ for(file in list_files) {
   remove(temp)
 }
 
-# Calculate Moran's I for each year - using this example (https://stats.oarc.ucla.edu/r/faq/how-can-i-calculate-morans-i-in-r/)
+# # Calculate Moran's I for each year - using this example (https://stats.oarc.ucla.edu/r/faq/how-can-i-calculate-morans-i-in-r/)
+# 
+# results <- list() 
+# 
+# for(yr in unique(all_dat$year)) { 
+#   
+#   temp <- all_dat %>% 
+#     filter(year == yr)
+#   
+#   for(rfmos in unique(temp$rfmo)) { 
+#   
+#     temp <- temp %>% 
+#       filter(rfmo == rfmos) %>% 
+#       mutate(.final_pred = sum(.final_pred, na.rm = T))
+#     
+#     # Step 1: Generate matrix oc inverse distance weights
+#     temp_dists <- as.matrix(dist(cbind(temp$longitude, temp$latitude)))
+#     temp_dists_inv <- 1/temp_dists
+#     diag(temp_dists_inv) <- 0
+#     
+#     # Step 2: Calculate Moran's I
+#     temp_moran <- Moran.I(temp$.final_pred, temp_dists_inv)
+#     
+#     # Save results
+#     results <- append(results, temp_moran)
+#   }
+# }
+# 
+# # Try again... 
+# results <- NULL
+# 
+# for(spp in unique(all_dat$species_commonname)) { 
+# all_dat_2 <- all_dat %>% 
+#   filter(species_commonname == spp) %>% 
+#   group_by(latitude, longitude, year) %>% 
+#   summarise(total_pred = sum(.final_pred, na.rm = TRUE)) %>% 
+#   ungroup() 
+# 
+# if(sum(all_dat_2$total_pred) == 0) { next } 
+# 
+# all_dat_2 <- all_dat_2 %>% 
+#   arrange(year) %>% 
+#   pivot_wider(names_from = year, values_from = total_pred, values_fill = 0)
+# 
+# for(i in c(4:ncol(all_dat_2))) { 
+#   temp_results <- cor.test(all_dat_2[[4]], all_dat_2[[i]])
+#   
+#   results <- bind_rows(results, 
+#                        data.frame("species_commonname" = spp, 
+#                                   "year" = colnames(all_dat_2)[i], 
+#                                   "p_val" = temp_results$p.value, 
+#                                   "coef" = temp_results$estimate))
+# }
+# } 
+# 
+# results <- results %>% 
+#   filter(p_val < 0.05) %>% 
+#   select(-p_val) %>% 
+#   pivot_wider(names_from = year, values_from = coef) %>% 
+#   mutate(`2012` = ifelse(!is.na(`2013`), "baseline", NA), 
+#          `2013` = ifelse(is.na(`2013`), "baseline", `2013`)) %>% 
+#   relocate(`2012`, .before = `2013`)
+# 
+# write.csv(results, file.path(here::here(), "tables", "supplemental", "yearly_predict_correlation.csv"), 
+#           row.names = F)
 
-results <- list() 
+# Run autoregressive (AR) model
+# An AR is an arima(1,0,0) model (https://financetrain.com/estimating-autoregressive-ar-model-in-r)
+all_dat_pivot <- all_dat %>% 
+  mutate(cell_id = paste(longitude, latitude, sep = "|")) %>% 
+  group_by(year, latitude, longitude, cell_id) %>% 
+  summarise(.final_pred = sum(.final_pred, na.rm = T)) %>% 
+  ungroup() %>% 
+  pivot_wider(values_from = .final_pred, names_from = year) %>% 
+  pivot_longer(-c(cell_id, latitude, longitude), names_to = "year", values_to = ".final_pred") %>% 
+  arrange(year, longitude, latitude)
 
-for(yr in unique(all_dat$year)) { 
+ar_results <- NULL 
+for(cell in unique(all_dat_pivot$cell_id)) { 
+  temp <- all_dat_pivot %>% filter(cell_id == cell)
   
-  temp <- all_dat %>% 
-    filter(year == yr)
+  min_year <- min(temp$year[which(!is.na(temp$.final_pred))])
+  max_year <- max(temp$year[which(!is.na(temp$.final_pred))])
   
-  for(rfmos in unique(temp$rfmo)) { 
+  temp <- temp %>% 
+    filter(year >= min_year & year <= max_year)
   
-    temp <- temp %>% 
-      filter(rfmo == rfmos) %>% 
-      mutate(.final_pred = sum(.final_pred, na.rm = T))
-    
-    # Step 1: Generate matrix oc inverse distance weights
-    temp_dists <- as.matrix(dist(cbind(temp$longitude, temp$latitude)))
-    temp_dists_inv <- 1/temp_dists
-    diag(temp_dists_inv) <- 0
-    
-    # Step 2: Calculate Moran's I
-    temp_moran <- Moran.I(temp$.final_pred, temp_dists_inv)
-    
-    # Save results
-    results <- append(results, temp_moran)
+  if(nrow(temp) < 2) {next}
+  
+  if(length(unique(temp$.final_pred[!is.na(temp$.final_pred)])) == 1) { next }
+  
+  ts_temp <- ts(temp$.final_pred, start = min_year, end = max_year, frequency = 1)
+  
+  arima_temp <- arima(ts_temp[!is.na(ts_temp)], order = c(1,0,0), method = "ML")
+  
+  ar_results <- bind_rows(ar_results, 
+                          data.frame("cell_id" = cell, 
+                                     "year_start" = min_year, 
+                                     "year_end" = max_year,
+                                     "n_nas" = length(ts_temp[is.na(ts_temp)]),
+                                     "ar1" = arima_temp$coef[1], 
+                                     "intercept" = arima_temp$coef[2], 
+                                     "sigma2" = arima_temp$sigma2, 
+                                     "log_likelihood" = arima_temp$loglik, 
+                                     "aic" = arima_temp$aic))
   }
-}
 
-# Try again... 
-results <- NULL
+all_dat_ts <- ts(all_dat$.final_pred, start = 2012, end = 2020, frequency = 24000)
 
-for(spp in unique(all_dat$species_commonname)) { 
-all_dat_2 <- all_dat %>% 
-  filter(species_commonname == spp) %>% 
-  group_by(latitude, longitude, year) %>% 
-  summarise(total_pred = sum(.final_pred, na.rm = TRUE)) %>% 
-  ungroup() 
-
-if(sum(all_dat_2$total_pred) == 0) { next } 
-
-all_dat_2 <- all_dat_2 %>% 
-  arrange(year) %>% 
-  pivot_wider(names_from = year, values_from = total_pred, values_fill = 0)
-
-for(i in c(4:ncol(all_dat_2))) { 
-  temp_results <- cor.test(all_dat_2[[4]], all_dat_2[[i]])
-  
-  results <- bind_rows(results, 
-                       data.frame("species_commonname" = spp, 
-                                  "year" = colnames(all_dat_2)[i], 
-                                  "p_val" = temp_results$p.value, 
-                                  "coef" = temp_results$estimate))
-}
-} 
-
-results <- results %>% 
-  filter(p_val < 0.05) %>% 
-  select(-p_val) %>% 
-  pivot_wider(names_from = year, values_from = coef) %>% 
-  mutate(`2012` = ifelse(!is.na(`2013`), "baseline", NA), 
-         `2013` = ifelse(is.na(`2013`), "baseline", `2013`)) %>% 
-  relocate(`2012`, .before = `2013`)
-
-write.csv(results, file.path(here::here(), "tables", "supplemental", "yearly_predict_correlation.csv"), 
-          row.names = F)
+plot.ts(all_dat_ts, main = "Predicted Catch Risk", ylab = "individuals")
