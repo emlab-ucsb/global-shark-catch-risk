@@ -227,3 +227,92 @@ final_plot <- ggdraw() +
 ggsave(here::here("figures/supplemental/workflow_zero_cells.png"), final_plot,
        width = 12, height = 7, units = "in", dpi = 600, bg = "white")
 
+
+## Check if the reason we're seeing a decrease in spatial footprint of shark catch (why are there more 0s 
+# in the predicted data for some RFMOs compared to the raw data?)
+
+# Select rows with shark catch that are predicted as 0s by the model
+cells_0 <- all_dat %>% 
+  group_by(rfmo, latitude, longitude) %>% 
+  summarise(.final_pred = sum(.final_pred, na.rm = T), # summarise so all species added together
+            catch = sum(catch, na.rm = T), 
+            effort = mean(effort, na.rm = T)) %>% 
+  ungroup() %>% 
+  filter(effort > 0 & .final_pred == 0 & catch > 0)
+
+# cells_0 <- rfmo_effort_catch %>% 
+#   filter(.final_pred == 0 & catch > 0) #%>% 
+  # select(latitude, longitude, rfmo) %>% 
+  # distinct_all() %>% 
+  # mutate(cell_id = paste(longitude, latitude, rfmo, sep = "|")) 
+  
+# sus <- all_dat %>% 
+#   mutate(cell_id = paste(longitude, latitude, rfmo, sep = "|")) %>% 
+#   filter(cell_id %in% cells_0$cell_id & catch > 0)
+
+sus_n <- cells_0 %>% 
+  group_by(rfmo) %>% 
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  left_join(cells_0 %>% 
+              group_by(rfmo) %>% 
+              summarise(total_catch = round(sum(catch)/0.01)*0.01, 
+                        mean_catch = round(mean(catch)/0.01)*0.01) %>% 
+              ungroup())
+
+plot_labels <- paste0(unique(cells_0$rfmo), " (n = ", sus_n$n, ")\nmean = ", sus_n$mean_catch, "\ntotal = ", 
+                      sus_n$total_catch)
+names(plot_labels) <- unique(cells_0$rfmo)
+
+temp_plot <- ggplot() + 
+  geom_histogram(cells_0, mapping = aes(x = catch)) + 
+  facet_wrap(vars(rfmo), scales = "free", labeller = labeller(rfmo = plot_labels)) + 
+  ylab("number of cells") + 
+  xlab("raw catch")
+
+ggsave(file.path(here::here(), "figures/supplemental/predicted_anomalies.png"), 
+              temp_plot, dpi = 600, bg = "white", height = 7, width = 7)
+
+
+# for(rfmos in unique(sus$rfmo)) { 
+
+  # temp_plot <- ggplot() +
+  #   geom_boxplot(data = sus %>% filter(rfmo == rfmos), mapping = aes(x = cell_id, y = catch)) +
+  #   facet_wrap(vars(rfmo), scales = "free") +
+  #   theme(axis.text.x = element_blank(),
+  #         axis.ticks.x = element_blank())
+  # 
+  # assign(paste0(rfmos, "_plot"), temp_plot)
+  # 
+  # ggsave(file.path(here::here(), paste0("figures/supplemental/predicted_0_anomalies_", str_to_lower(rfmos), "_boxplot.png")),
+  #        temp_plot, dpi = 600, bg = "white", height = 7, width = 20)
+  # 
+  # temp_plot2 <- ggplot() +
+  #   geom_point(data = sus %>% filter(rfmo == rfmos), mapping = aes(x = cell_id, y = catch),
+  #              position = position_jitter(0.1,0.1), alpha = 0.2) +
+  #   facet_wrap(vars(rfmo), scales = "free") +
+  #   theme(axis.text.x = element_blank(),
+  #         axis.ticks.x = element_blank())
+  # 
+  # ggsave(file.path(here::here(), paste0("figures/supplemental/predicted_0_anomalies_", str_to_lower(rfmos), "_scatterplot.png")),
+  #        temp_plot2, dpi = 600, bg = "white", height = 7, width = 20)
+  # 
+  # temp_plot3 <- ggplot() +
+  #   geom_col(data = sus %>% filter(rfmo == rfmos) %>% group_by(cell_id, rfmo) %>% summarise(catch = sum(catch)) %>% ungroup(),
+  #              mapping = aes(x = cell_id, y = catch)) +
+  #   facet_wrap(vars(rfmo), scales = "free") +
+  #   theme(axis.text.x = element_blank(),
+  #         axis.ticks.x = element_blank())
+  # 
+  # ggsave(file.path(here::here(), paste0("figures/supplemental/predicted_0_anomalies_", str_to_lower(rfmos), "_total_catch.png")),
+  #        temp_plot3, dpi = 600, bg = "white", height = 7, width = 20)
+  # 
+  # temp_plot4 <- ggplot() +
+  #   geom_histogram(sus %>% filter(rfmo == rfmos), 
+  #                  mapping = aes(x = catch), bins = max(5, max((sus %>% filter(rfmo == rfmos))$catch)/10))
+  # 
+  # ggsave(file.path(here::here(), paste0("figures/supplemental/predicted_0_anomalies_", str_to_lower(rfmos), "_histogram.png")), 
+  #        temp_plot4, dpi = 600, bg = "white", height = 7, width = 20)
+  
+# } 
+

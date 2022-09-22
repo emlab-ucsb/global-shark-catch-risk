@@ -140,12 +140,12 @@ for(file in list_files) {
 # Run autoregressive (AR) model
 # An AR is an arima(1,0,0) model (https://financetrain.com/estimating-autoregressive-ar-model-in-r)
 all_dat_pivot <- all_dat %>% 
-  mutate(cell_id = paste(longitude, latitude, sep = "|")) %>% 
-  group_by(year, latitude, longitude, cell_id) %>% 
+  mutate(cell_id = paste(longitude, latitude, rfmo, sep = "|")) %>% 
+  group_by(year, latitude, longitude, rfmo, cell_id) %>% 
   summarise(.final_pred = sum(.final_pred, na.rm = T)) %>% 
   ungroup() %>% 
   pivot_wider(values_from = .final_pred, names_from = year) %>% 
-  pivot_longer(-c(cell_id, latitude, longitude), names_to = "year", values_to = ".final_pred") %>% 
+  pivot_longer(-c(cell_id, latitude, longitude, rfmo), names_to = "year", values_to = ".final_pred") %>% 
   arrange(year, longitude, latitude)
 
 ar_results <- NULL 
@@ -159,6 +159,10 @@ for(cell in unique(all_dat_pivot$cell_id)) {
     filter(year >= min_year & year <= max_year)
   
   if(nrow(temp) < 2) {next}
+  
+  temp_test <- temp %>% filter(!is.na(.final_pred))
+  
+  if(temp_test$year[1] == min_year & temp_test$year[2] == max_year) { next }
   
   if(length(unique(temp$.final_pred[!is.na(temp$.final_pred)])) == 1) { next }
   
@@ -178,6 +182,13 @@ for(cell in unique(all_dat_pivot$cell_id)) {
                                      "aic" = arima_temp$aic))
   }
 
-all_dat_ts <- ts(all_dat$.final_pred, start = 2012, end = 2020, frequency = 24000)
+write.csv(ar_results,  file.path(here::here(), "tables", "supplemental", "ar_results.csv"), 
+                    row.names = F)
 
-plot.ts(all_dat_ts, main = "Predicted Catch Risk", ylab = "individuals")
+ar_results <- read.csv(file.path(here::here(), "tables", "supplemental", "ar_results.csv"))
+
+ar_results <- ar_results %>% 
+  separate(cell_id, into = c("longitude", "latitude", "rfmo"), sep = "[|]", remove = FALSE)
+
+ggplot() + 
+  geom_point(data = ar_results, mapping = aes(x = rfmo, y = ar1))
