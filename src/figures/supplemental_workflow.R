@@ -31,8 +31,7 @@ all_dat <- NULL
 for(file in list_files) { 
   temp <- read.csv(file) %>% 
     select(rfmo, year, latitude, longitude, species_commonname, species_sciname, spatial_notes, .final_pred, 
-           catch, matches("target_effort$|bycatch_total_effort$")) %>% 
-    rename(effort = matches("target_effort$|bycatch_total_effort$"))
+           catch, original_effort) 
   
   if(unique(temp$spatial_notes) == "center of 5x5 cell") { 
     
@@ -70,12 +69,12 @@ for(file in list_files) {
              latitude_rescaled = ifelse(is.na(latitude_rescaled), latitude, latitude_rescaled),
              .final_pred= .final_pred/25, 
              catch = catch/25, 
-             effort = effort/25) %>% 
+             original_effort = original_effort/25) %>% 
       mutate(spatial_notes = "center of 1x1 cell") %>%
       group_by(rfmo, year, latitude_rescaled, longitude_rescaled, species_commonname, species_sciname, spatial_notes) %>% 
       summarise(.final_pred = sum(.final_pred, na.rm = T), 
                 catch = sum(catch, na.rm = T), 
-                effort = sum(effort, na.rm = T)) %>% 
+                original_effort = sum(original_effort, na.rm = T)) %>% 
       ungroup() %>% 
       rename(latitude = latitude_rescaled, 
              longitude = longitude_rescaled)
@@ -84,17 +83,17 @@ for(file in list_files) {
   all_dat <- all_dat %>% rbind(temp)
 }
 
-# For each RFMO, the values of cells with effort that have 0 shark catch
+# For each RFMO, the values of cells with original_effort that have 0 shark catch
 rfmo_effort_catch <- all_dat %>% 
   group_by(rfmo, year, latitude, longitude) %>% 
   summarise(.final_pred = sum(.final_pred, na.rm = T), # summarise so all species added together
             catch = sum(catch, na.rm = T), 
-            effort = mean(effort, na.rm = T)) %>% 
+            original_effort = mean(original_effort, na.rm = T)) %>% 
   group_by(rfmo, latitude, longitude) %>%
   summarise(.final_pred = mean(.final_pred, na.rm = T), # grab total mean
             catch = mean(catch, na.rm = T),
-            effort = mean(effort, na.rm = T)) %>%
-  filter(effort > 0) %>% 
+            original_effort = mean(original_effort, na.rm = T)) %>%
+  filter(original_effort > 0) %>% 
   mutate(catch_class_orig = ifelse(catch == 0, 0, 1), 
          catch_class_final = ifelse(.final_pred == 0, 0, 1)) 
 
@@ -236,9 +235,9 @@ cells_0 <- all_dat %>%
   group_by(rfmo, latitude, longitude) %>% 
   summarise(.final_pred = sum(.final_pred, na.rm = T), # summarise so all species added together
             catch = sum(catch, na.rm = T), 
-            effort = mean(effort, na.rm = T)) %>% 
+            original_effort = mean(original_effort, na.rm = T)) %>% 
   ungroup() %>% 
-  filter(effort > 0 & .final_pred == 0 & catch > 0)
+  filter(original_effort > 0 & .final_pred == 0 & catch > 0)
 
 # cells_0 <- rfmo_effort_catch %>% 
 #   filter(.final_pred == 0 & catch > 0) #%>% 
@@ -271,7 +270,7 @@ temp_plot <- ggplot() +
   xlab("raw catch")
 
 ggsave(file.path(here::here(), "figures/supplemental/predicted_anomalies.png"), 
-              temp_plot, dpi = 600, bg = "white", height = 7, width = 7)
+              temp_plot, dpi = 600, bg = "white", height = 4, width = 7)
 
 
 # for(rfmos in unique(sus$rfmo)) { 

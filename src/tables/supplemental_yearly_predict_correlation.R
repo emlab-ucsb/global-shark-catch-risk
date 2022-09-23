@@ -191,4 +191,48 @@ ar_results <- ar_results %>%
   separate(cell_id, into = c("longitude", "latitude", "rfmo"), sep = "[|]", remove = FALSE)
 
 ggplot() + 
-  geom_point(data = ar_results, mapping = aes(x = rfmo, y = ar1))
+  geom_boxplot(data = ar_results, mapping = aes(x = rfmo, y = ar1))
+
+# Calculate cells that are high risk (0.9), low risk (0.1), and intermediate
+summarized_dat <- all_dat %>% 
+  group_by(latitude, longitude, rfmo) %>% 
+  summarise(.final_pred = sum(.final_pred, na.rm = T)) %>% 
+  ungroup() 
+
+thresholds <- NULL
+for(rfmos in unique(summarized_dat$rfmo)) { 
+  temp <- summarized_dat %>% filter(rfmo == rfmos) %>% filter(.final_pred > 0)
+  
+  thresholds <- thresholds %>% 
+    bind_rows(data.frame("rfmo" = rfmos, 
+                         "low_threshold" = as.numeric(quantile(temp$.final_pred, 0.1)), 
+                         "high_threshold" = as.numeric(quantile(temp$.final_pred, 0.9))))
+}
+
+summarized_dat <- summarized_dat %>% 
+  left_join(thresholds) %>% 
+  group_by(rfmo, latitude, longitude) %>% 
+  mutate(risk_level = case_when(.final_pred >= high_threshold ~ "high", 
+                                .final_pred <= low_threshold ~ "low", 
+                                TRUE ~ "intermediate")) %>% 
+  ungroup() %>% 
+  select(latitude, longitude, rfmo, risk_level)
+
+ar_results <- ar_results %>% 
+  mutate(latitude = as.numeric(latitude), 
+         longitude = as.numeric(longitude)) %>% 
+  left_join(summarized_dat)
+
+
+ggplot() + 
+  geom_boxplot(data = ar_results, mapping = aes(x = rfmo, y = ar1, fill = risk_level), 
+               alpha = 0.5) + 
+  xlab("") + 
+  ylab("AR slope (AR1)") + 
+  scale_fill_manual("Risk Level", values = c("high" = "firebrick1", 
+                                             "intermediate" = "gold", 
+                                             "low" = "olivedrab")) + 
+  theme_classic()
+
+ggsave(file.path(here::here(), "figures", "supplemental", "ar_results.png"), bg = "white")
+

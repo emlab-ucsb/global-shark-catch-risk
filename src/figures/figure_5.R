@@ -228,7 +228,7 @@ color_palette <- c(
   "ALOPIAS SUPERCILIOSUS" = "limegreen",
   "ALOPIAS VULPINUS" = "blue",
   "CARCHARHINUS FALCIFORMIS" = "gray48", 
-  "CARCHARHINUS LIMBATUS" = "wheat2", # no data 
+  "CARCHARHINUS LIMBATUS" = "wheat2", 
   "LAMNA NASUS" = "lightskyblue",
   "SPHYRNA ZYGAENA" = "violetred4",  
   # near threatened
@@ -346,11 +346,11 @@ fig_5c <- fig_5c +
                                  ungroup() %>%
                                  filter(n > 1) %>% 
                                  pivot_wider(names_from = species_sciname, values_from = n) %>% 
-                                 mutate(`ALOPIAS SUPERCILIOSUS` = ifelse(!is.na(`ALOPIAS SUPERCILIOSUS`), "ALOPIAS SUPERCILIOSUS", NA),  
-                                        `SPHYRNA ZYGAENA` = ifelse(!is.na(`SPHYRNA ZYGAENA`), "SPHYRNA ZYGAENA", NA)) %>% 
+                                 mutate(`CARCHARHINUS FALCIFORMIS` = ifelse(!is.na(`CARCHARHINUS FALCIFORMIS`), "CARCHARHINUS FALCIFORMIS", NA),  
+                                        `CARCHARHINUS LIMBATUS` = ifelse(!is.na(`CARCHARHINUS LIMBATUS`), "CARCHARHINUS LIMBATUS", NA)) %>% 
                                  rowwise() %>% 
-                                 rename(species_2 = `SPHYRNA ZYGAENA`) %>% 
-                                 rename(species_1 = `ALOPIAS SUPERCILIOSUS`),
+                                 rename(species_2 = `CARCHARHINUS LIMBATUS`) %>% 
+                                 rename(species_1 = `CARCHARHINUS FALCIFORMIS`),
                                mapping = aes(x=x, y=y, pattern_colour = species_1, pattern_fill = species_1, fill = species_2),
                                pattern = "stripe", color = NA, height = 1, width = 1, 
                                pattern_spacing = 0.01, 

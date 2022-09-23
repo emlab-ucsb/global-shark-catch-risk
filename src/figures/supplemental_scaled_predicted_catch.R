@@ -18,7 +18,7 @@ all_dat <- NULL
 for(file in list_files) { 
   temp <- read.csv(file) %>% 
     select(rfmo, year, latitude, longitude, species_commonname, species_sciname, spatial_notes, .final_pred, catch, 
-           matches("target_effort$|bycatch_total_effort$")) %>% 
+           matches("target_effort$|bycatch_total_effort$")) %>% # use the effort that the model predicted
     rename(effort = matches("target_effort$|bycatch_total_effort$"))
   
   if(unique(temp$spatial_notes) == "center of 5x5 cell") { 
@@ -162,58 +162,64 @@ fig_1a <- ggplot() +
             mapping = aes(x=x, y=y), fill = "black", color = "black") +
   coord_sf() + 
   custom_theme + 
-  theme(legend.position = "bottom") 
+  theme(legend.position = "bottom", 
+        legend.text = element_text(size = 18)) 
 
-legend <- get_legend(fig_1a)
+ggsave(here::here("figures/supplemental/rfmo_scaled_predict.png"), fig_1a,
+       width = 10, height = 5, units = "in", dpi = 600, bg = "white")
 
-fig_1a <- fig_1a + 
-  theme(legend.position = "none")
+# legend <- get_legend(fig_1a)
+# 
+# fig_1a <- fig_1a + 
+#   theme(legend.position = "none")
+# 
+# # Figure 1b. effort
+# fig_1b <- ggplot() + 
+#   geom_raster(mean_bycatch_effort_scaled, 
+#               mapping = aes(x=x, y=y, fill=layer)) + 
+#   scale_fill_distiller("", 
+#                        palette = "RdYlBu", na.value = NA,
+#                        breaks = c(min(mean_bycatch_effort_scaled$layer, na.rm = T), max(mean_bycatch_effort_scaled$layer, na.rm = T)), 
+#                        labels = c("Low", "High")) + 
+#   geom_sf(data = wcpfc_boundary, fill = NA, color = "black") + 
+#   geom_sf(data = iotc_boundary, fill = NA, color = "black") + 
+#   geom_sf(data = iccat_boundary, fill = NA, color = "black") + 
+#   geom_sf(data = iattc_boundary, fill = NA, color = "black") + 
+#   geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)), 
+#             mapping = aes(x=x, y=y), fill = "black", color = "black") + 
+#   coord_sf() + 
+#   custom_theme + 
+#   theme(legend.position = "none")
+# 
+# # Figure 1c. cpue
+# fig_1c <- ggplot() + 
+#   geom_raster(mean_cpue_scaled, 
+#               mapping = aes(x=x, y=y, fill=layer)) + 
+#   scale_fill_distiller("", 
+#                        palette = "RdYlBu", na.value = NA, 
+#                        breaks = c(min(mean_cpue_scaled$layer, na.rm = T), max(mean_cpue_scaled$layer, na.rm = T)), 
+#                        labels = c("Low", "High")) + 
+#   geom_sf(data = wcpfc_boundary, fill = NA, color = "black") + 
+#   geom_sf(data = iotc_boundary, fill = NA, color = "black") + 
+#   geom_sf(data = iccat_boundary, fill = NA, color = "black") + 
+#   geom_sf(data = iattc_boundary, fill = NA, color = "black") + 
+#   geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)), 
+#             mapping = aes(x=x, y=y), fill = "black", color = "black") + 
+#   coord_sf() + 
+#   custom_theme + 
+#   theme(legend.position = "none")
+# 
+# # Put them all together
+# final_plot <- ggdraw() + 
+#   draw_plot(fig_1a, 0, 0.1, 0.33, 0.9) + 
+#   draw_plot(fig_1b, 0.33, 0.1, 0.33, 0.9) + 
+#   draw_plot(fig_1c, 0.66, 0.1, 0.33, 0.9) + 
+#   draw_plot(legend, 0, 0, 1, 0.22) + 
+#   draw_plot_label(label = c("A", "B", "C"), 
+#                   x = c(0, 0.33, 0.66), y = 1, hjust = 0)
+# 
+# # Save
+# ggsave(here::here("figures/supplemental/rfmo_scaled_predict.png"), final_plot,
+#        width = 10, height = 2.5, units = "in", dpi = 600, bg = "white")
 
-# Figure 1b. effort
-fig_1b <- ggplot() + 
-  geom_raster(mean_bycatch_effort_scaled, 
-              mapping = aes(x=x, y=y, fill=layer)) + 
-  scale_fill_distiller("", 
-                       palette = "RdYlBu", na.value = NA,
-                       breaks = c(min(mean_bycatch_effort_scaled$layer, na.rm = T), max(mean_bycatch_effort_scaled$layer, na.rm = T)), 
-                       labels = c("Low", "High")) + 
-  geom_sf(data = wcpfc_boundary, fill = NA, color = "black") + 
-  geom_sf(data = iotc_boundary, fill = NA, color = "black") + 
-  geom_sf(data = iccat_boundary, fill = NA, color = "black") + 
-  geom_sf(data = iattc_boundary, fill = NA, color = "black") + 
-  geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)), 
-            mapping = aes(x=x, y=y), fill = "black", color = "black") + 
-  coord_sf() + 
-  custom_theme + 
-  theme(legend.position = "none")
 
-# Figure 1c. cpue
-fig_1c <- ggplot() + 
-  geom_raster(mean_cpue_scaled, 
-              mapping = aes(x=x, y=y, fill=layer)) + 
-  scale_fill_distiller("", 
-                       palette = "RdYlBu", na.value = NA, 
-                       breaks = c(min(mean_cpue_scaled$layer, na.rm = T), max(mean_cpue_scaled$layer, na.rm = T)), 
-                       labels = c("Low", "High")) + 
-  geom_sf(data = wcpfc_boundary, fill = NA, color = "black") + 
-  geom_sf(data = iotc_boundary, fill = NA, color = "black") + 
-  geom_sf(data = iccat_boundary, fill = NA, color = "black") + 
-  geom_sf(data = iattc_boundary, fill = NA, color = "black") + 
-  geom_tile(basemap_df %>% filter(!is.na(land_low_res_moll)), 
-            mapping = aes(x=x, y=y), fill = "black", color = "black") + 
-  coord_sf() + 
-  custom_theme + 
-  theme(legend.position = "none")
-
-# Put them all together
-final_plot <- ggdraw() + 
-  draw_plot(fig_1a, 0, 0.1, 0.33, 0.9) + 
-  draw_plot(fig_1b, 0.33, 0.1, 0.33, 0.9) + 
-  draw_plot(fig_1c, 0.66, 0.1, 0.33, 0.9) + 
-  draw_plot(legend, 0, 0, 1, 0.22) + 
-  draw_plot_label(label = c("A", "B", "C"), 
-                  x = c(0, 0.33, 0.66), y = 1, hjust = 0)
-
-# Save
-ggsave(here::here("figures/supplemental/rfmo_scaled_predict.png"), final_plot,
-       width = 10, height = 2.5, units = "in", dpi = 600, bg = "white")
