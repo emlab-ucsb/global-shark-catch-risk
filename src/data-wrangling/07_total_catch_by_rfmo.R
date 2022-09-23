@@ -12,7 +12,8 @@ library(rgdal)
 library(here)
 
 # Load data
-all_data <- read.csv(file.path(here::here(), "data-updated/rfmo-data/outputs/all_data.csv"))
+all_data <- read.csv(file.path(here::here(), "data-updated/rfmo-data/outputs/all_data.csv")) %>% 
+  mutate(sources = ifelse(sources == "ublicLLSharkNum", "PublicLLSharkNum", sources))
 
 # Sharks to mt conversion
 mt_count <- read.csv(file.path(here::here(), "data-updated/species-information/spp_weight_count_conversion.csv")) %>%
@@ -42,20 +43,20 @@ for(rfmos in unique(all_data$rfmo)) {
   if(rfmos == "WCPFC") { 
     temp <- temp %>% 
       select(rfmo, year, country, latitude, longitude, gear_group, time_period, effort, effort_units, spatial_notes, 
-             species_commonname, species_sciname, catch, catch_units, species_group) %>% 
+             species_commonname, species_sciname, catch, catch_units, species_group, sources) %>% 
       distinct_all() %>% 
       group_by(rfmo, year, country, latitude, longitude, gear_group, time_period, effort_units,
-               spatial_notes, species_commonname, species_sciname, catch_units, species_group) %>% 
+               spatial_notes, species_commonname, species_sciname, catch_units, species_group, sources) %>% 
       summarise(catch = sum(catch, na.rm = T), 
                 effort = sum(effort, na.rm = T)) %>% 
       ungroup() 
   } else {
     temp <- temp %>%
       select(rfmo, year, country, latitude, longitude, gear_group, time_period, effort, effort_units, spatial_notes, 
-             species_commonname, species_sciname, catch, catch_units, species_group) %>% 
+             species_commonname, species_sciname, catch, catch_units, species_group, sources) %>% 
       distinct_all() %>% 
       group_by(rfmo, year, country, latitude, longitude, gear_group, time_period, effort_units,
-               spatial_notes, species_commonname, species_sciname, catch_units, species_group) %>% 
+               spatial_notes, species_commonname, species_sciname, catch_units, species_group, sources) %>% 
       summarise(catch = sum(catch, na.rm = T), 
                 effort = sum(effort, na.rm = T)) %>% 
       ungroup() %>% 
@@ -71,7 +72,7 @@ for(rfmos in unique(all_data$rfmo)) {
   short_data <- short_data %>% 
     mutate(species_sciname = ifelse(is.na(species_sciname), species_commonname, species_sciname)) %>%
     group_by(rfmo, country, year, latitude, longitude, gear_group, effort_units, species_commonname, spatial_notes,
-             species_sciname, catch_units, species_group) %>% 
+             species_sciname, catch_units, species_group, sources) %>% 
     summarise(catch = sum(catch, na.rm = T), 
               effort = sum(effort, na.rm = T)) %>% 
     ungroup() 
@@ -150,7 +151,7 @@ for(rfmos in unique(all_data$rfmo)) {
   
   short_data <- short_data %>%
     select(rfmo, year, latitude, longitude, gear_group, species_group, spatial_notes, 
-           species_commonname, species_sciname, catch, catch_units)
+           species_commonname, species_sciname, catch, catch_units, sources)
   
   # New dataset
   short_data_5x5 <- short_data %>%
@@ -180,7 +181,7 @@ for(rfmos in unique(all_data$rfmo)) {
   # Save sharks by count
   sharks_count_temp <- short_data_1x1 %>% 
     filter(catch_units == "count" & species_group == "sharks and rays") %>% 
-    group_by(rfmo, latitude, longitude, year, gear_group) %>% 
+    group_by(rfmo, latitude, longitude, year, gear_group, sources) %>% 
     summarise(total_catch = sum(catch, na.rm = T)) %>% 
     ungroup()
   
@@ -199,7 +200,7 @@ for(rfmos in unique(all_data$rfmo)) {
   sharks_mt_temp <- short_data_1x1 %>% 
     filter(catch_units == "metric tonnes" & species_group == "sharks and rays") %>% 
     bind_rows(short_data_shark_mt) %>% 
-    group_by(rfmo, latitude, longitude, year, gear_group) %>% 
+    group_by(rfmo, latitude, longitude, year, gear_group, sources) %>% 
     summarise(total_catch = sum(catch, na.rm = T)) %>% 
     ungroup()
   
@@ -209,7 +210,7 @@ for(rfmos in unique(all_data$rfmo)) {
   # Save tunas and tuna-like species in metric tonnes
   tunas_mt_temp <- short_data_1x1 %>% 
     filter(catch_units == "metric tonnes" & species_group %in% c("tunas", "tuna-like species")) %>% 
-    group_by(rfmo, latitude, longitude, year, gear_group) %>% 
+    group_by(rfmo, latitude, longitude, year, gear_group, sources) %>% 
     summarise(total_catch = sum(catch, na.rm = T)) %>% 
     ungroup()
   
