@@ -302,7 +302,7 @@ all_model_results_p2
 #               rename(tuned_rsq = rsq))
 ```
 
-```{r}
+```{r warning=FALSE}
 # Re-run untuned best performing model
 
 for(selected_rfmo in c("IATTC", "ICCAT", "IOTC", "WCPFC")) { 
@@ -347,6 +347,8 @@ for(selected_rfmo in c("IATTC", "ICCAT", "IOTC", "WCPFC")) {
                                               "median_price_species$|", 
                                             TRUE ~ ""))
   
+  # Note - there will be warnings for NAs but this is just from the enviro data that is NA in the original
+  # data as well carrying over into the pedicted data
   all_rfmo_untuned_models(data = rfmo_data,
                   rfmos = selected_rfmo,
                   effort_source = rfmo_model_option$effort_source,
