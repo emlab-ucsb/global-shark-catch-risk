@@ -23,7 +23,7 @@ totals_table <- all_data %>%
   group_by(rfmo, catch_units) %>% 
   mutate(total_catch = sum(sum_catch, na.rm = T)) %>% 
   ungroup() %>% 
-  mutate(perc_total_catch = round(sum_catch/total_catch*100/0.01)*0.01) %>% 
+  mutate(perc_total_catch = sum_catch/total_catch*100) %>% 
   bind_rows(all_data %>% 
               group_by(species_commonname, species_sciname, catch_units) %>% 
               summarise(sum_catch = sum(catch, na.rm = T)) %>% 
@@ -31,10 +31,19 @@ totals_table <- all_data %>%
               group_by(catch_units) %>% 
               mutate(total_catch = sum(sum_catch, na.rm = T)) %>% 
               ungroup() %>% 
-              mutate(perc_total_catch = round(sum_catch/total_catch*100/0.01)*0.01, 
+              mutate(perc_total_catch = sum_catch/total_catch*100, 
                      rfmo = "Global Total")) %>% 
   select(- sum_catch, - total_catch) %>% 
   pivot_wider(names_from = rfmo, values_from = perc_total_catch, values_fill = 0) 
+
+totals_table <- totals_table %>% 
+  bind_rows(totals_table %>% 
+              group_by(catch_units) %>% 
+              summarise_at(vars(IATTC:`Global Total`), sum) %>% 
+              mutate(species_commonname = "Total")) %>% 
+  mutate(species_commonname = str_to_sentence(species_commonname), 
+         species_sciname = str_to_sentence(species_sciname)) %>% 
+  mutate_at(vars(IATTC:`Global Total`), function(x){round(x/0.01)*0.01})
 
 write.csv(totals_table, file.path(here::here(), "tables", "supplemental", "raw_catch_rfmo_species.csv"), 
           row.names = FALSE)
