@@ -1,606 +1,272 @@
-# mpa-bycatch-publication
-Publication-ready version of MPA bycatch repo. 
+# Description
 
-## File Structure
+This repository contains code used in the paper: Burns, E.S., Bradley, D., Thomas, L.R. in prep). Global hotspots of shark interactions with industrial longline fisheries. 
 
-```
--- data
-   |__chlorophyll-a
-      |__intermediates
-         |__chla_2012.csv
-         |__chla_2013.csv
-         |__chla_2014.csv
-         |__chla_2015.csv
-         |__chla_2016.csv
-         |__chla_2017.csv
-         |__chla_2018.csv
-      |__outputs
-         |__binned_global_chla_1x1.csv
-         |__binned_global_chla_5x5.csv
-   |__ex-vessel-prices
-      |__exvessel_price_database_1976_2017.csv
-   |__global-fishing-watch
-      |__inputs
-         |__1x1_gfw_query_v20190502.csv
-         |__tonnage_groups_v20200410.csv
-      |__outputs
-         |__binned_global_gfw_1x1.csv
-         |__binned_global_gfw_5x5.csv
-   |__iucn-sdm-data
-      |__intermediates
-         |__iucn_sid_10030_wgs.csv
-         |__iucn_sid_103055306_wgs.csv
-         |__iucn_sid_11200_wgs.csv
-         |__iucn_sid_116857982_wgs.csv
-         |__iucn_sid_124554059_wgs.csv
-         |__iucn_sid_130393378_wgs.csv
-         |__iucn_sid_130394197_wgs.csv
-         |__iucn_sid_141744346_wgs.csv
-         |__iucn_sid_144136822_wgs.csv
-         |__iucn_sid_144141186_wgs.csv
-         |__iucn_sid_152781341_wgs.csv
-         |__iucn_sid_161307554_wgs.csv
-         |__iucn_sid_161308360_wgs.csv
-         |__iucn_sid_161325_wgs.csv
-         |__iucn_sid_161333_wgs.csv
-         |__iucn_sid_161334_wgs.csv
-         |__iucn_sid_161351_wgs.csv
-         |__iucn_sid_161355_wgs.csv
-         |__iucn_sid_161364_wgs.csv
-         |__iucn_sid_161367_wgs.csv
-         |__iucn_sid_161368_wgs.csv
-         |__iucn_sid_161376_wgs.csv
-         |__iucn_sid_161378_wgs.csv
-         |__iucn_sid_161395_wgs.csv
-         |__iucn_sid_161398_wgs.csv
-         |__iucn_sid_161406_wgs.csv
-         |__iucn_sid_161426_wgs.csv
-         |__iucn_sid_161434_wgs.csv
-         |__iucn_sid_161437_wgs.csv
-         |__iucn_sid_161449_wgs.csv
-         |__iucn_sid_161451_wgs.csv
-         |__iucn_sid_161455_wgs.csv
-         |__iucn_sid_161456_wgs.csv
-         |__iucn_sid_161468_wgs.csv
-         |__iucn_sid_161473_wgs.csv
-         |__iucn_sid_161480_wgs.csv
-         |__iucn_sid_161484_wgs.csv
-         |__iucn_sid_161485_wgs.csv
-         |__iucn_sid_161488_wgs.csv
-         |__iucn_sid_161497_wgs.csv
-         |__iucn_sid_161501_wgs.csv
-         |__iucn_sid_161506_wgs.csv
-         |__iucn_sid_161507_wgs.csv
-         |__iucn_sid_161515_wgs.csv
-         |__iucn_sid_161518_wgs.csv
-         |__iucn_sid_161524_wgs.csv
-         |__iucn_sid_161525_wgs.csv
-         |__iucn_sid_161526_wgs.csv
-         |__iucn_sid_161531_wgs.csv
-         |__iucn_sid_161539_wgs.csv
-         |__iucn_sid_161543_wgs.csv
-         |__iucn_sid_161558_wgs.csv
-         |__iucn_sid_161563_wgs.csv
-         |__iucn_sid_161564_wgs.csv
-         |__iucn_sid_161567_wgs.csv
-         |__iucn_sid_161571_wgs.csv
-         |__iucn_sid_161581_wgs.csv
-         |__iucn_sid_161591_wgs.csv
-         |__iucn_sid_161597_wgs.csv
-         |__iucn_sid_161606_wgs.csv
-         |__iucn_sid_161625_wgs.csv
-         |__iucn_sid_161633_wgs.csv
-         |__iucn_sid_161634_wgs.csv
-         |__iucn_sid_161639_wgs.csv
-         |__iucn_sid_161640_wgs.csv
-         |__iucn_sid_161644_wgs.csv
-         |__iucn_sid_161648_wgs.csv
-         |__iucn_sid_161650_wgs.csv
-         |__iucn_sid_161651_wgs.csv
-         |__iucn_sid_161652_wgs.csv
-         |__iucn_sid_161662_wgs.csv
-         |__iucn_sid_161664_wgs.csv
-         |__iucn_sid_161667_wgs.csv
-         |__iucn_sid_161675_wgs.csv
-         |__iucn_sid_161679_wgs.csv
-         |__iucn_sid_161680_wgs.csv
-         |__iucn_sid_161695_wgs.csv
-         |__iucn_sid_161696_wgs.csv
-         |__iucn_sid_161705_wgs.csv
-         |__iucn_sid_161707_wgs.csv
-         |__iucn_sid_161709_wgs.csv
-         |__iucn_sid_161714_wgs.csv
-         |__iucn_sid_161715_wgs.csv
-         |__iucn_sid_161720_wgs.csv
-         |__iucn_sid_161733_wgs.csv
-         |__iucn_sid_161736_wgs.csv
-         |__iucn_sid_162207827_wgs.csv
-         |__iucn_sid_169232956_wgs.csv
-         |__iucn_sid_169234201_wgs.csv
-         |__iucn_sid_169473392_wgs.csv
-         |__iucn_sid_169760690_wgs.csv
-         |__iucn_sid_171728748_wgs.csv
-         |__iucn_sid_181361_wgs.csv
-         |__iucn_sid_19488_wgs.csv
-         |__iucn_sid_195422_wgs.csv
-         |__iucn_sid_195426_wgs.csv
-         |__iucn_sid_195439_wgs.csv
-         |__iucn_sid_197087_wgs.csv
-         |__iucn_sid_3851_wgs.csv
-         |__iucn_sid_3852_wgs.csv
-         |__iucn_sid_3853_wgs.csv
-         |__iucn_sid_3854_wgs.csv
-         |__iucn_sid_3855_wgs.csv
-         |__iucn_sid_39324_wgs.csv
-         |__iucn_sid_39328_wgs.csv
-         |__iucn_sid_39329_wgs.csv
-         |__iucn_sid_39331_wgs.csv
-         |__iucn_sid_39332_wgs.csv
-         |__iucn_sid_39333_wgs.csv
-         |__iucn_sid_39334_wgs.csv
-         |__iucn_sid_39335_wgs.csv
-         |__iucn_sid_39336_wgs.csv
-         |__iucn_sid_39337_wgs.csv
-         |__iucn_sid_39338_wgs.csv
-         |__iucn_sid_39339_wgs.csv
-         |__iucn_sid_39341_wgs.csv
-         |__iucn_sid_39342_wgs.csv
-         |__iucn_sid_39345_wgs.csv
-         |__iucn_sid_39346_wgs.csv
-         |__iucn_sid_39347_wgs.csv
-         |__iucn_sid_39348_wgs.csv
-         |__iucn_sid_39349_wgs.csv
-         |__iucn_sid_39350_wgs.csv
-         |__iucn_sid_39351_wgs.csv
-         |__iucn_sid_39352_wgs.csv
-         |__iucn_sid_39353_wgs.csv
-         |__iucn_sid_39354_wgs.csv
-         |__iucn_sid_39355_wgs.csv
-         |__iucn_sid_39356_wgs.csv
-         |__iucn_sid_39357_wgs.csv
-         |__iucn_sid_39358_wgs.csv
-         |__iucn_sid_39359_wgs.csv
-         |__iucn_sid_39360_wgs.csv
-         |__iucn_sid_39361_wgs.csv
-         |__iucn_sid_39362_wgs.csv
-         |__iucn_sid_39363_wgs.csv
-         |__iucn_sid_39365_wgs.csv
-         |__iucn_sid_39366_wgs.csv
-         |__iucn_sid_39367_wgs.csv
-         |__iucn_sid_39368_wgs.csv
-         |__iucn_sid_39369_wgs.csv
-         |__iucn_sid_39370_wgs.csv
-         |__iucn_sid_39371_wgs.csv
-         |__iucn_sid_39372_wgs.csv
-         |__iucn_sid_39374_wgs.csv
-         |__iucn_sid_39375_wgs.csv
-         |__iucn_sid_39378_wgs.csv
-         |__iucn_sid_39379_wgs.csv
-         |__iucn_sid_39380_wgs.csv
-         |__iucn_sid_39381_wgs.csv
-         |__iucn_sid_39382_wgs.csv
-         |__iucn_sid_39384_wgs.csv
-         |__iucn_sid_39385_wgs.csv
-         |__iucn_sid_39386_wgs.csv
-         |__iucn_sid_39387_wgs.csv
-         |__iucn_sid_39388_wgs.csv
-         |__iucn_sid_40797_wgs.csv
-         |__iucn_sid_41718_wgs.csv
-         |__iucn_sid_41719_wgs.csv
-         |__iucn_sid_41720_wgs.csv
-         |__iucn_sid_41722_wgs.csv
-         |__iucn_sid_41723_wgs.csv
-         |__iucn_sid_41724_wgs.csv
-         |__iucn_sid_41725_wgs.csv
-         |__iucn_sid_41727_wgs.csv
-         |__iucn_sid_41728_wgs.csv
-         |__iucn_sid_41729_wgs.csv
-         |__iucn_sid_41730_wgs.csv
-         |__iucn_sid_41731_wgs.csv
-         |__iucn_sid_41732_wgs.csv
-         |__iucn_sid_41733_wgs.csv
-         |__iucn_sid_41736_wgs.csv
-         |__iucn_sid_41737_wgs.csv
-         |__iucn_sid_41738_wgs.csv
-         |__iucn_sid_41739_wgs.csv
-         |__iucn_sid_41741_wgs.csv
-         |__iucn_sid_41753_wgs.csv
-         |__iucn_sid_41791_wgs.csv
-         |__iucn_sid_41792_wgs.csv
-         |__iucn_sid_41794_wgs.csv
-         |__iucn_sid_41810_wgs.csv
-         |__iucn_sid_41811_wgs.csv
-         |__iucn_sid_41812_wgs.csv
-         |__iucn_sid_41814_wgs.csv
-         |__iucn_sid_41816_wgs.csv
-         |__iucn_sid_41818_wgs.csv
-         |__iucn_sid_41819_wgs.csv
-         |__iucn_sid_41820_wgs.csv
-         |__iucn_sid_41822_wgs.csv
-         |__iucn_sid_41823_wgs.csv
-         |__iucn_sid_41824_wgs.csv
-         |__iucn_sid_41825_wgs.csv
-         |__iucn_sid_41829_wgs.csv
-         |__iucn_sid_41831_wgs.csv
-         |__iucn_sid_41835_wgs.csv
-         |__iucn_sid_41836_wgs.csv
-         |__iucn_sid_41837_wgs.csv
-         |__iucn_sid_41838_wgs.csv
-         |__iucn_sid_41839_wgs.csv
-         |__iucn_sid_41841_wgs.csv
-         |__iucn_sid_41842_wgs.csv
-         |__iucn_sid_41843_wgs.csv
-         |__iucn_sid_41844_wgs.csv
-         |__iucn_sid_41845_wgs.csv
-         |__iucn_sid_41846_wgs.csv
-         |__iucn_sid_41850_wgs.csv
-         |__iucn_sid_41851_wgs.csv
-         |__iucn_sid_41852_wgs.csv
-         |__iucn_sid_41862_wgs.csv
-         |__iucn_sid_41863_wgs.csv
-         |__iucn_sid_41864_wgs.csv
-         |__iucn_sid_41870_wgs.csv
-         |__iucn_sid_41872_wgs.csv
-         |__iucn_sid_41873_wgs.csv
-         |__iucn_sid_41874_wgs.csv
-         |__iucn_sid_41875_wgs.csv
-         |__iucn_sid_41876_wgs.csv
-         |__iucn_sid_42700_wgs.csv
-         |__iucn_sid_42701_wgs.csv
-         |__iucn_sid_42703_wgs.csv
-         |__iucn_sid_42704_wgs.csv
-         |__iucn_sid_42706_wgs.csv
-         |__iucn_sid_42707_wgs.csv
-         |__iucn_sid_42709_wgs.csv
-         |__iucn_sid_42710_wgs.csv
-         |__iucn_sid_42711_wgs.csv
-         |__iucn_sid_42712_wgs.csv
-         |__iucn_sid_42713_wgs.csv
-         |__iucn_sid_42716_wgs.csv
-         |__iucn_sid_42717_wgs.csv
-         |__iucn_sid_42720_wgs.csv
-         |__iucn_sid_42728_wgs.csv
-         |__iucn_sid_42729_wgs.csv
-         |__iucn_sid_4292_wgs.csv
-         |__iucn_sid_44170_wgs.csv
-         |__iucn_sid_44207_wgs.csv
-         |__iucn_sid_44209_wgs.csv
-         |__iucn_sid_44216_wgs.csv
-         |__iucn_sid_44217_wgs.csv
-         |__iucn_sid_44221_wgs.csv
-         |__iucn_sid_44222_wgs.csv
-         |__iucn_sid_44223_wgs.csv
-         |__iucn_sid_44225_wgs.csv
-         |__iucn_sid_44565_wgs.csv
-         |__iucn_sid_44566_wgs.csv
-         |__iucn_sid_44571_wgs.csv
-         |__iucn_sid_44573_wgs.csv
-         |__iucn_sid_44578_wgs.csv
-         |__iucn_sid_44579_wgs.csv
-         |__iucn_sid_44580_wgs.csv
-         |__iucn_sid_44581_wgs.csv
-         |__iucn_sid_44585_wgs.csv
-         |__iucn_sid_44586_wgs.csv
-         |__iucn_sid_44587_wgs.csv
-         |__iucn_sid_44591_wgs.csv
-         |__iucn_sid_44599_wgs.csv
-         |__iucn_sid_44602_wgs.csv
-         |__iucn_sid_44606_wgs.csv
-         |__iucn_sid_44611_wgs.csv
-         |__iucn_sid_44612_wgs.csv
-         |__iucn_sid_44613_wgs.csv
-         |__iucn_sid_44614_wgs.csv
-         |__iucn_sid_44617_wgs.csv
-         |__iucn_sid_44657_wgs.csv
-         |__iucn_sid_44666_wgs.csv
-         |__iucn_sid_44996_wgs.csv
-         |__iucn_sid_60201_wgs.csv
-         |__iucn_sid_60202_wgs.csv
-         |__iucn_sid_60203_wgs.csv
-         |__iucn_sid_60204_wgs.csv
-         |__iucn_sid_60205_wgs.csv
-         |__iucn_sid_60206_wgs.csv
-         |__iucn_sid_60218_wgs.csv
-         |__iucn_sid_60219_wgs.csv
-         |__iucn_sid_60225_wgs.csv
-         |__iucn_sid_60227_wgs.csv
-         |__iucn_sid_60231_wgs.csv
-         |__iucn_sid_60232_wgs.csv
-         |__iucn_sid_60233_wgs.csv
-         |__iucn_sid_60234_wgs.csv
-         |__iucn_sid_60235_wgs.csv
-         |__iucn_sid_60247_wgs.csv
-         |__iucn_sid_61400_wgs.csv
-         |__iucn_sid_61407_wgs.csv
-         |__iucn_sid_61417_wgs.csv
-         |__iucn_sid_61418_wgs.csv
-         |__iucn_sid_63128_wgs.csv
-         |__iucn_sid_63129_wgs.csv
-         |__iucn_sid_63130_wgs.csv
-         |__iucn_sid_63149_wgs.csv
-         |__iucn_sid_63165_wgs.csv
-         |__iucn_sid_70680197_wgs.csv
-      |__outputs
-         |__global_combined_iucn_sdm_1x1.csv
-         |__global_combined_iucn_sdm_5x5.csv
-   |__mapping-templates
-      |__land_low_res_moll.tif
-   |__model-data
-      |__inputs
-         |__all-rfmo-models
-            |__global_ll_data_1x1_count_hooks.csv
-            |__global_ll_data_1x1_count_kwh.csv
-            |__global_ll_data_1x1_mt_to_count_hooks.csv
-            |__global_ll_data_1x1_mt_to_count_kwh.csv
-            |__global_ll_data_5x5_count_hooks.csv
-            |__global_ll_data_5x5_count_kwh.csv
-            |__global_ll_data_5x5_mt_to_count_hooks.csv
-            |__global_ll_data_5x5_mt_to_count_kwh.csv
-         |__wcpfc-only-model
-            |__wcpfc_1x1_hooks.csv
-            |__wcpfc_1x1_kwh.csv
-            |__wcpfc_all.csv
-            |__wcpfc_flagquarter_with_gfw.csv
-            |__wcpfc_flagquarter.csv
-            |__wcpfc_flagyear_with_gfw.csv
-            |__wcpfc_flagyear.csv
-            |__wcpfc_gfw.csv
-            |__wcpfc_monthly_with_gfw.csv
-            |__wcpfc_monthly.csv
-      |__outputs
-         |__all-rfmo-models
-            |__1x1_count_all_rfmos_effort_results.csv
-            |__1x1_mt_to_count_all_rfmos_effort_results.csv
-            |__5x5_count_all_rfmos_effort_results.csv
-            |__5x5_mt_to_count_all_rfmos_effort_results.csv
-         |__wcpfc-only-model
-            |__wcpfc_final_untuned_model.rds
-            |__wcpfc_full_predict.csv
-            |__wcpfc_models_effort_results.csv
-            |__wcpfc_models_others_results.csv
-   |__rfmo-observer-data
-      |__inputs
-         |__ccsbt
-            |__ASFIS_sp_2019.txt
-            |__CatchAtSize_Codes.txt
-            |__CatchAtSize.txt
-            |__CatchByOYF.xlsx
-            |__CatchByYMGOLoLa.xlsx
-            |__ccsbt-zones.csv
-            |__CEData_Longline.xlsx
-            |__CEData_Surface.xlsx
-            |__ERSWG_Data.xlsx
-            |__GlobalCatch_Flag_Gear.xlsx
-            |__trade_information_scheme.pdf
-         |__iattc
-            |__ASFIS_sp_2019.txt
-            |__CatchByFlagGear.pdf
-            |__CatchFlagGear1918-2018.csv
-            |__flag_codes.csv
-            |__LLShark-Tiburon.pdf
-            |__LLTunaBillfish-AtunPicudo.pdf
-            |__LPTuna-Atun.pdf
-            |__PSBillfish-Picudos.pdf
-            |__PSBillfishSize-PicudosTamano.pdf
-            |__PSShark-Tiburon.pdf
-            |__PSTuna-Atun.pdf
-            |__PublicLLSharkMt.csv
-            |__PublicLLSharkNum.csv
-            |__PublicLLTunaBillfishMt.csv
-            |__PublicLLTunaBillfishNum.csv
-            |__PublicLPTunaFlag.csv
-            |__PublicPSBillfishFlag.csv
-            |__PublicPSBillfishSetType.csv
-            |__PublicPSSharkFlag.csv
-            |__PublicPSSharkSetType.csv
-            |__PublicPSTunaFlag.csv
-            |__PublicPSTunaSetType.csv
-            |__PublicSizePSBillfish.csv
-         |__iccat
-            |__ASFIS_sp_2020.xlsx
-            |__cdis_readme.pdf
-            |__cdis5017-all9sp.csv
-            |__CODES_EffortTypes.xls
-            |__CODES_Flags-Fleets.xlsx
-            |__CODES_Gears.xls
-            |__CODES_Other.xls
-            |__CODES_SamplingAreas.xls
-            |__CODES_Species.xlsx
-            |__CODES_SquareTypes.xls
-            |__CODES_T1Areas.xls
-            |__CODES_TimePeriods.xls
-            |__ICCAT_birds.xlsx
-            |__ICCAT_codes.xlsx
-            |__ICCAT_inverts.xlsx
-            |__ICCAT_marinemammals.xlsx
-            |__ICCAT_sharks.xlsx
-            |__ICCAT_teleosts.xlsx
-            |__ICCAT_tunas.xlsx
-            |__ICCAT_turtles.xlsx
-            |__Species.xlsx
-            |__t1nc-ALL_20200115.xlsx
-            |__t2ce_20200115web.mdb
-            |__t2ce_num_1950-1991.csv
-            |__t2ce_num_1992-2004.csv
-            |__t2ce_num_2005-2018.csv
-            |__t2ce_numweight_1950-2004.csv
-            |__t2ce_numweight_2005-2018.csv
-            |__t2ce_PS91-18_bySchool.xlsx
-            |__t2ce_weight_1950-1975.csv
-            |__t2ce_weight_1976-1980.csv
-            |__t2ce_weight_1981-1986.csv
-            |__t2ce_weight_1987-1992.csv
-            |__t2ce_weight_1993-1996.csv
-            |__t2ce_weight_1997-1999.csv
-            |__t2ce_weight_2000-2001.csv
-            |__t2ce_weight_2002-2003.csv
-            |__t2ce_weight_2004-2005.csv
-            |__t2ce_weight_2006-2008.csv
-            |__t2ce_weight_2009-2011.csv
-            |__t2ce_weight_2012-2014.csv
-            |__t2ce_weight_2015-2016.csv
-            |__t2ce_weight_2017-2018.csv
-            |__t2ce-readme.pdf
-            |__t2sz_20131210web.mdb
-            |__t2szFreqs.xlsx
-            |__t2szProcs.xlsx
-            |__t2szStrata.xlsx
-         |__iotc
-            |___readme_IOTC-2019-DATASETS-CECoastal.txt
-            |__ASFIS_sp_2019.txt
-            |__IOTC-2019-DATASETS-CECoastal.csv
-            |__IOTC-2019-DATASETS-CELongline.csv
-            |__IOTC-2019-DATASETS-CEref.xlsx
-            |__IOTC-2019-DATASETS-CESurface.csv
-            |__IOTC-2019-DATASETS-NCDB_061219.xlsx
-            |__IOTC-2019-WPEB15-DATA09 - SFSKH.xlsx
-         |__wcpfc
-            |__ASFIS_sp_2019.txt
-            |__BDEP Tables (MASTER - 30 July 2019).xlsx
-            |__DRIFTNET.CSV
-            |__driftnet.pdf
-            |__DRIFTNET.xml
-            |__LONGLINE.CSV
-            |__longline.pdf
-            |__LONGLINE.xml
-            |__POLE_AND_LINE.CSV
-            |__pole_and_line.pdf
-            |__POLE_AND_LINE.xml
-            |__PURSE_SEINE.CSV
-            |__purse_seine.pdf
-            |__PURSE_SEINE.xml
-            |__WCPFC_L_PUBLIC_BY_FLAG_QTR.CSV
-            |__WCPFC_L_PUBLIC_BY_FLAG_QTR.pdf
-            |__WCPFC_L_PUBLIC_BY_FLAG_QTR.xml
-            |__WCPFC_L_PUBLIC_BY_FLAG_YR.CSV
-            |__WCPFC_L_PUBLIC_BY_FLAG_YR.pdf
-            |__WCPFC_L_PUBLIC_BY_FLAG_YR.xml
-            |__WCPFC_S_PUBLIC_BY_FLAG_QTR.CSV
-            |__WCPFC_S_PUBLIC_BY_FLAG_QTR.pdf
-            |__WCPFC_S_PUBLIC_BY_FLAG_QTR.xml
-            |__WCPFC_S_PUBLIC_BY_FLAG_YEAR.CSV
-            |__WCPFC_S_PUBLIC_BY_FLAG_YEAR.pdf
-            |__WCPFC_S_PUBLIC_BY_FLAG_YEAR.xml
-      |__intermediates
-         |__ccsbt
-            |__ERSWG.csv
-            |__longline.csv
-            |__SBT_YMGO.csv
-            |__size.csv
-            |__surface.csv
-         |__iattc
-            |__PublicLLSharkMt.csv
-            |__PublicLLSharkNum.csv
-            |__PublicLLTunaBillfishMt.csv
-            |__PublicLLTunaBillfishNum.csv
-            |__PublicLPTunaFlag.csv
-            |__PublicPSBillfishFlag.csv
-            |__PublicPSBillfishSetType.csv
-            |__PublicPSSharkFlag_mt.csv
-            |__PublicPSSharkFlag_n.csv
-            |__PublicPSSharkSetType_mt.csv
-            |__PublicPSSharkSetType_n.csv
-            |__PublicPSTunaFlag.csv
-            |__PublicPSTunaSetType.csv
-            |__PublicSizePSBillfish.csv
-         |__iccat
-            |__bycatch-birds.csv
-            |__bycatch-marinemammals.csv
-            |__bycatch-sharks.csv
-            |__bycatch-teleosts.csv
-            |__bycatch-tunas.csv
-            |__bycatch-turtles.csv
-            |__cdis.csv
-            |__t2ce_by_school.csv
-            |__t2ce_web.csv
-         |__iotc
-            |__CECoastal.csv
-            |__CELongline.csv
-            |__CESurface.csv
-            |__ncdb.csv
-            |__sfskh.csv
-         |__wcpfc
-            |__bycatch_longline.csv
-            |__bycatch_seine.csv
-            |__longline_flagqtr.csv
-            |__longline_flagyear.csv
-            |__longline.csv
-            |__poleline.csv
-            |__purseseine_flagqtr.csv
-            |__purseseine_flagyear.csv
-            |__purseseine.csv
-      |__outputs
-         |__all_data.csv
-         |__ccsbt-all.csv
-         |__iattc-all.csv
-         |__iccat-all.csv
-         |__iotc-all.csv
-         |__wcpfc-all.csv
-   |__sea-surface-height
-      |__intermediates
-         |__mean_ssh_2012.csv
-         |__mean_ssh_2013.csv
-         |__mean_ssh_2014.csv
-         |__mean_ssh_2015.csv
-         |__mean_ssh_2016.csv
-         |__mean_ssh_2017.csv
-         |__mean_ssh_2018.csv
-      |__outputs
-         |__binned_global_ssh_1x1.csv
-         |__binned_global_ssh_5x5.csv
-   |__sea-surface-temperature
-      |__intermediates
-         |__sst_2012.csv
-         |__sst_2013.csv
-         |__sst_2014.csv
-         |__sst_2015.csv
-         |__sst_2016.csv
-         |__sst_2017.csv
-         |__sst_2018.csv
-      |__outputs
-         |__binned_global_sst_1x1.csv
-         |__binned_global_sst_5x5.csv
-   |__species-information
-      |__species_groups.xlsx
-      |__species_list_for_sdms.csv
-      |__species_list.csv
-      |__spp_list_fishing_threat.csv
-      |__spp_weight_count_conversion.csv
--- figures
--- mpa-bycatch-publication.Rproj
--- README.md
--- src
-   |__data-wrangling
-      |__01_rfmo_cleaning_ccsbt.Rmd
-      |__01_rfmo_cleaning_iattc.Rmd
-      |__01_rfmo_cleaning_iccat.Rmd
-      |__01_rfmo_cleaning_iotc.Rmd
-      |__01_rfmo_cleaning_wcpfc.Rmd
-      |__02_combine_all_rfmo_data.Rmd
-      |__03_species_list_for_sdms.Rmd
-      |__04_generate_grids.nb.html
-      |__04_generate_grids.Rmd
-      |__05_wcpfc_model_data_cleaning_collation.nb.html
-      |__05_wcpfc_model_data_cleaning_collation.Rmd
-      |__06_all_rfmo_model_data_cleaning_collation.nb.html
-      |__06_all_rfmo_model_data_cleaning_collation.pdf
-      |__06_all_rfmo_model_data_cleaning_collation.Rmd
-   |__functions
-      |__func-all_rfmo_effort_models.R
-      |__func-all_rfmo_initial_models.R
-      |__func-raster_blaster.R
-      |__func-run_wcpfc_model_final.R
-      |__func-run_wcpfc_models_effort.R
-      |__func-run_wcpfc_models_others.R
-      |__func-train_all_models.R
-      |__func-train_test_split.R
-   |__get_repo_structure.R
-   |__header.tex
-   |__models
-      |__01_wcpfc_model_exhaustive_test.nb.html
-      |__01_wcpfc_model_exhaustive_test.Rmd
-      |__02_all_rfmo_models.nb.html
-      |__02_all_rfmo_models.Rmd
-   |__start_project.R
--- tables
-```
+For any questions, comments, or concerns, please contact Echelle Burns [echelle_burns@uscb.edu](echelle_burns@ucsb.edu).
+
+**Internal Note:** Scripts within files flagged as `to-delete` or `not-vital-to-mpa-bycatch` will be removed if not used for the final manuscript submission. These are currently maintained in case we want to revive them. 
+
+This repository will be citeable at Zenodo.
+
+<insert doi>
+
+Raw and final datasets will be uploaded to Dryad.
+
+<insert doi>
+
+# Instructions
+
+The order of running scripts should be as follows: 
+
+- The first scripts run should be from the `src/data-wrangling` folder. The scripts within this folder are labeled starting at `01`. Scripts with the same numbers can be run in any order. For example, it makes no difference whether you clean the ICCAT or IOTC data first, but all RFMO cleaning (scripts starting with `01` should be completed before moving on to `02_combine_all_rfmo_data.Rmd`). 
+- The second scripts run should be from the `src/models` folder. The scripts within this folder are labeled starting at `01`.
+- Additional scripts for figure and table creation in `src/figures` and `src/tables`, respectively, should be run after data wrangling and models, but order of scripts within these folders does not matter.
+
+# Folder Schema
+
+Please ensure that your folder schema is the same as described below to ensure that all codes run appropriately. Several datasets were pulled from independent sources for this modeling effort and can be found in `data-updated/[relevant-dataset]/inputs` folder. All data within `intermediate` or `output` folders are generated by the codes provided. 
+
+## Overview
++ `data-updated`
+  - `chlorophyll-a`
+    - `intermediates`
+    - `outputs`
+  - `ex-vessel-prices`
+  - `global-fishing-watch`
+    - `inputs`
+    - `outputs`
+  - `iucn-sdm-data`
+    - `intermediates`
+    - `outputs`
+  - `mapping-templates`
+  - `model-data`
+    - `inputs`
+    - `outputs`
+  - `rfmo-boundaries`
+    - `RFB_IATTC`
+    - `RFB_ICCAT`
+    - `RFB_IOTC`
+    - `RFB_WCPFC`
+  - `rfmo-data`
+    - `inputs`
+    - `intermediates`
+    - `outputs`
+  - `sea-surface-height`
+    - `inputs`
+    - `intermediates`
+    - `outputs`
+  - `sea-surface-temperature`
+    - `intermediates`
+    - `outputs`
+  - `species-information`
++ `figures`
+  - `final`
+  - `intermediates`
+  - `supplemental`
++ `src`
+  - `data-wrangling`
+  - `figures`
+  - `functions`
+  - `models`
+  - `tables`
++ `tables`
+  - `supplemental`
+  
+## Detailed list
++ `data-updated`: should include all datasets used and created for this project
+  - `chlorophyll-a`: chlorophyll-a collated and cleaned for model use
+    - `intermediates`: chlorophyll-a data collected for each year from ERDDAP (id: pmlEsaCCI42OceanColorMonthly)
+      - `chla_<YY>.csv`: where <YY> represents a 4-digit year from 2012-2020
+    - `outputs`: gridded chlorophyll-a data at a 1x1 and 5x5 degree spatial scale, generated from `src/data-wrangling/04_generate_grids.Rmd`
+      - `binned_global_chla_1x1.csv`: gridded chlorophyll-a data at a 1x1 degree spatial scale
+      - `binned_global_chla_5x5.csv`: : gridded chlorophyll-a data at a 5x5 degree spatial scale
+  - `ex-vessel-prices`: ex-vessel prices for fishery caught species from 1976-2019
+    - `exvessel_price_database_1976_2019.csv`: ex-vessel price data gathered from [Melnychuk et al. 2016](https://doi.org/10.1093/icesjms/fsw169) and updated to 2019 using methods described in the public-facing [github repo](https://github.com/SFG-UCSB/price-db-sfg) associated with the Melnychuk et al. 2016 paper
+  - `global-fishing-watch`: remotely-sensed fishing effort collected through a collaboration with [Global Fishing Watch](https://globalfishingwatch.org/)
+    - `inputs`: data downloaded directly via Global Fishing Watch queries
+      - `gfw_effort_ll_ps_1x1_2012_2021.csv`: Global Fishing Watch effort (kwh) data collected for purse seines and longlines at a 1x1 degree scale from 2012-2021
+      - `gfw_tonnage-groups-v20220803.csv`: specifies the gross tonnage groupings for individual vessel classes
+    - `outputs`: gridded fishing effort (kwh) data at a 1x1 and 5x5 degree spatial scale, generated from `src/data-wrangling/04_generate_grids.Rmd`
+      - `binned_global_gfw_1x1.csv`: gridded fishing effort (kwh) data at a 1x1 degree spatial scale
+      - `binned_global_gfw_5x5.csv`: gridded fishing effort (kwh) data at a 5x5 degree spatial scale
+    - `iucn-sdm-data`: species distribution data for all shark species downloaded from [IUCN](https://www.iucnredlist.org/resources/spatial-data-download) spatial data and mapping resources
+      - `intermediates`: species distribution data for each species with presence re-categorized from a 1-5 scale to a 0-1 scale
+        - `iucn_sid_<id>_wgs.csv`: where <id> represents a unique species identification number, as assigned by the IUCN
+      - `outputs`: species distribution data for all shark species at a 1x1 and 5x5 degree spatial scale, generated from `src/data-wrangling/04_generate_grids.Rmd`
+        - `global_combined_iucn_sdm_1x1.csv`: gridded species distribution data at a 1x1 degree spatial scale
+        - `global_combined_iucn_sdm_5c5.csv`: gridded species distribution data at a 5x5 degree spatial scale
+    - `mapping-templates`: geoTif files for plotting
+      - `land_low_res_moll.tif`: used as a basemap for land designation for all figures
+    - `model-data`: data generated and produced by the random forest machine learning models to predict shark catch risk
+      - `inputs`: data generated for use in the machine learning model
+        - `all-rfmo-models`: data generated for each RFMO random forest model that includes chlorophyll-a, sea surface temperature, sea surface height, ex-vessel prices, Global Fishing Watch, and RFMO collected datasets, generated by `src/data-wrangling/05_all_rfmo_model_data_cleaning_collation.Rmd`
+          - `<rfmo>_ll_data_<res>_count_kwh`: where <rfmo> is each RFMO for which we run the models and <res> refers to a 1x1 or 5x5 degree spatial scale; a dataset for testing the models using Global Fishing Watch effort using just reported shark counts (no data reported as metric tonnes)
+          - `<rfmo>_ll_data_<res>_count_hooks`: where <rfmo> is each RFMO for which we run the models and <res> refers to a 1x1 or 5x5 degree spatial scale; a dataset for testing the models using RFMO reported effort using just reported shark counts (no data reported as metric tonnes)
+          - `<rfmo>_ll_data_<res>_mt_to_count_kwh`: where <rfmo> is each RFMO for which we run the models and <res> refers to a 1x1 or 5x5 degree spatial scale; a dataset for testing the models using Global Fishing Watch effort using reported shark counts and data reported as metric tonnes and converted to counts
+          - `<rfmo>_ll_data_<res>_mt_to_count_hooks`: where <rfmo> is each RFMO for which we run the models and <res> refers to a 1x1 or 5x5 degree spatial scale; a dataset for testing the models using RFMO reported effort using reported shark counts and data reported as metric tonnes and converted to counts
+          - `<rfmo>_ll_data_<res>_tuna_hooks`: where <rfmo> is each RFMO for which we run the models and <res> refers to a 1x1 or 5x5 degree spatial scale; a dataset with tuna catch and effort reported by RFMO
+      - `outputs`: model results for each RFMO
+        - `all-rfmo-models`: model results for each RFMO, generated by `src/models/01_all_rfmo_models.Rmd`
+          - `<res>_count_all_rfmos_ll_effort_results.csv`: where <res> refers to a 1x1 or 5x5 degree spatial scale; results from the first round of machine learning models to determine which effort (Global Fishing Watch or RFMO reported effort) metric performed best at predicting shark catch (count only) for that resolution 
+          - `<res>_mt_to_count_all_rfmos_ll_effort_results.csv`: where <res> refers to a 1x1 or 5x5 degree spatial scale; results from the first round of machine learning models to determine which effort (Global Fishing Watch or RFMO reported effort) metric performed best at predicting shark catch (count and metric tonnes converted to count) for that resolution 
+          - `<rfmo>_ll_models_other_results.csv`: where <rfmo> refers to each RFMO for which we run the models; results from the second round of machine learning models to determine which additional parameters (e.g., sea surface height, ex-vessel prices) result in the best performing model
+          - `<rfmo>_ll_untuned_final_predict.csv`: where <rfmo> refers to each RFMO for which we run the models; the final, global prediction from the trained machine learning model for that RFMO
+          - `<rfmo>_ll_untuned_model.rds`: where <rfmo> refers to each RFMO for which we run the models; the final fitted classification and regression model, the model prediction on the test dataset, the metrics for the prediction on the test dataset, the final global prediction on the novel dataset, the metrics for the final global prediction on the novel dataset, and the feature importances for the model
+    - `rfmo-boundaries`: boundaries of the RFMOs for plotting from the [FAO](https://data.apps.fao.org/map/catalog/srv/eng/catalog.search#/home)
+      - `RFB_IATTC`: shapefile for the IATTC boundary
+      - `RFB_ICCAT`: shapefile for the ICCAT boundary
+      - `RFB_IOTC`: shapefile for the IOTC boundary
+      - `RFB_WCPFC`: shapefile for the WCPFC boundary
+    - `rfmo-data`: data collected from each RFMO for use in the model
+      - `inputs`: data downloaded directly from each RFMO
+        - `iattc`: data collected from [IATTC's public domain data](https://www.iattc.org/en-US/Data/Public-domain)
+          - `PublicLLSharkMt.csv`: longline data for sharks reported in metric tonnes
+          - `PublicLLSharkNum.csv`: longline data for sharks reported in counts
+          - `PublicLLTunaBillfishMt.csv`: longline data for tunas and tuna-like species reported in metric tonnes
+          - `PublicLLTunaBillfishNum.csv`: longline data for tunas and tuna-like species reported in number
+          - `PublicPSBillfishFlag.csv`: purse seine data for billfish by flag (not used in current models, but used in data collation)
+          - `PublicPSBillfishSetType.csv`: purse seine data for billfish by set type (not used in current models, but used in data collation)
+          - `PublicPSSharkFlag.csv`: purse seine data for sharks by flag (not used in current models, but used in data collation)
+          - `PublicPSSharkSetType.csv`: purse seine data for sharks by set type (not used in current models, but used in data collation)
+          - `PublicPSTunaFlag.csv`: purse seine data for tunas by flag (not used in current models, but used in data collation)
+          - `PublicPSTunaSetType.csv`: purse seine data for tunas by set type (not used in current models, but used in data collation)
+          - `PublicSizePSBillfish.csv`: purse seine size data for billfish (not used in current models, but used in data collation)
+          - `flag_codes.csv`: a reference to convert flag codes to country names accessible [here](https://www.iban.com/country-codes)
+          - `ASFIS_sp_2019.txt`: a reference to convert species codes into species names, available from the [FAO](https://www.fao.org/fishery/en/collection/asfis/en)
+        - `iccat`: data collected from [ICCAT's public domain data](https://www.iccat.int/en/accesingdb.html) - Task 2 catch/effort
+          - `t2ce_20220131web.mdb`: web database that was downloaded from the public domain data
+          - `t2ce_20220131web.csv`: web database that was converted to a csv for usability
+          - `CODES_EffortTypes.xls`: a reference to convert effort type codes to effort types
+          - `CODES_Flags-Fleets.xlsx`: a reference to convert flag codes to countries
+          - `CODES_Gears.xls`: a reference to convert gear codes into gears
+          - `CODES_Other.xls`: a reference to convert other codes into text
+          - `CODES_SamplingAreas.xls`: a reference to convert areas into spatial coordinates
+          - `CODES_Species.xlsx`: a reference to convert species codes to species name
+          - `CODES_SquareTypes.xls`: a reference to convert spatial resolution codes to spatial resolutions
+          - `CODES_TimePeriods.xls`: a reference to convert time period codes into time periods
+          - `Species.xlsx`: a secondary reference to convert species to species name
+          - `ASFIS_sp_2020.xlsx`: a secondary reference to convert species codes into species names, available from the [FAO](https://www.fao.org/fishery/en/collection/asfis/en)
+        - `iotc`: data collected from [IOTC's public domain data](https://iotc.org/data/datasets/latest/CEAll)
+          - `IOTC-2020-WPEB16-DATA12_CE.xlsx`: data collected from observers, primarily for purse seine (not used in current models, but used in data collation)
+          - `IOTC-DATASETS-2022-02-23-CELongline_1950-2020.csv`: longline catch data from 1950-2020
+          - `IOTC-DATASETS-2022-02-23-CEOther_1950-2020.csv`: other gear catch data from 1950-2020
+          - `IOTC-DATASETS-2022-02-23-CESurface_1950-2020.csv`: surface gear catch data from 1950-2020
+          - `ASFIS_sp_2020.xlsx`: a reference to convert species codes into species names, available from the [FAO](https://www.fao.org/fishery/en/collection/asfis/en)
+        - `wcpfc`: data collected from WCPFC's public domain data
+          - `WCPFC_L_PUBLIC_BY_FLAG_YR.csv`: longline catch data reported by year and flag for target species' [public domain data](https://www.wcpfc.int/public-domain)
+          - `WCPFC_S_PUBLIC_BY_FLAG_YEAR.csv`: purse seine catch data reported by year and flag for target species' [public domain data](https://www.wcpfc.int/public-domain) (not used in current models, but used in data collation)
+          - `BDEP Tables (MASTER - 27 July 2021).xlsx`: longline and purse seine [bycatch public domain data](https://www.wcpfc.int/public-domain-bycatch)
+          - `ASFIS_sp_2020.xlsx`: a reference to convert species codes into species names, available from the [FAO](https://www.fao.org/fishery/en/collection/asfis/en)
+      - `intermediates`: cleaned files originating from the input files
+        - `iattc`: cleaned IATTC files that have the same data as the original input files but have been structured with consistent column names, generated by `src/data-wrangling/01_rfmo_cleaning_iattc.Rmd`
+          - `PublicPSTunaSetType.csv`: originates from `../../inputs/iattc/PublicPSTunaSetType.csv`
+          - `PublicPSTunaFlag.csv`: originates from `../../inputs/iattc/PublicPSTunaFlag.csv`
+          - `PublicPSSharkSetType_n.csv`: originates from `../../inputs/iattc/PublicPSSharkSetType_n.csv`
+          - `PublicPSSharkSetType_mt.csv`: originates from `../../inputs/iattc/PublicPSSharkSetType_mt.csv`
+          - `PublicPSSharkFlag_n.csv`: originates from `../../inputs/iattc/PublicPSSharkFlag_n.csv`
+          - `PublicPSSharkFlag_mt.csv`: originates from `../../inputs/iattc/PublicPSSharkFlag_mt.csv`
+          - `PublicPSBillfishSetType.csv`: originates from `../../inputs/iattc/PublicPSBillfishSetType.csv`
+          - `PublicPSBillfishFlag.csv`: originates from `../../inputs/iattc/PublicPSBillfishFlag.csv`
+          - `PublicLLTunaBillfishNum.csv`: originates from `../../inputs/iattc/PublicLLTunaBillfishNum.csv`
+          - `PublicLLTunaBillfishMt.csv`: originates from `../../inputs/iattc/PublicLLTunaBillfishMt.csv`
+          - `PublicLLSharkNum.csv`: originates from `../../inputs/iattc/PublicLLSharkNum.csv`
+          - `PublicLLSharkMt.csv`: originates from `../../inputs/iattc/PublicLLSharkMt.csv`
+        - `iccat`: cleaned ICCAT files that have the same data as the original input files, but have been structured with consistent column names, generated by `src/data-wrangling/01_rfmo_cleaning_iccat.Rmd`
+          - `t2ce_web.csv`: originates from `../../inputs/iccat/t2ce_20220131web.csv`
+        - `iotc`: cleaned IOTC files that have the same data as the original input files, but have been structured with consistent column names, generated by `src/data-wrangling/01_rfmo_cleaning_iotc.Rmd`
+          - `interactions.csv`: originates from `../../inputs/iotc/IOTC-2020-WPEB16-DATA12_CE.xlsx`
+          - `CESurface.csv`: originates from `../../inputs/iotc/IOTC-DATASETS-2022-02-23-CESurface_1950-2020.csv`
+          - `CEOther.csv`: originates from `../../inputs/iotc/IOTC-DATASETS-2022-02-23-CEOther_1950-2020.csv`
+          - `CELongline.csv`: originates from `../../inputs/iotc/IOTC-DATASETS-2022-02-23-CELongline_1950-2020.csv`
+        - `wcpfc`: cleaned WCPFC files that have the same data as the original input files, but have been structured with consistent column names, generated by `src/data-wrangling/01_rfmo_cleaning_wcpfc.Rmd`
+          - `purseseine_flagyear.csv`: originates from `../../inputs/wcpfc/WCPFC_S_PUBLIC_BY_FLAG_YEAR.csv`
+          - `longline_flagyear.csv`: originates from `../../inputs/wcpfc/WCPFC_L_PUBLIC_BY_FLAG_YR.csv`
+          - `bycatch_seine.csv`: originates from `../../inputs/wcpfc/BDEP Tables (MASTER - 27 July 2021).xlsx`
+          - `bycatch_longline.csv`: originates from `../../inputs/wcpfc/BDEP Tables (MASTER - 27 July 2021).xlsx`
+      - `outputs`: collated outputs by RFMO and all RFMOs combined
+        - `wcpfc-all.csv`: all individual WCPFC files combined, generated by `src/data-wrangling/01_rfmo_cleaning_wcpfc.Rmd`
+        - `iccat-all.csv`: all individual ICCAT files combined, generated by `src/data-wrangling/01_rfmo_cleaning_iccat.Rmd`
+        - `iotc-all.csv`: all individual IOTC files combined, generated by `src/data-wrangling/01_rfmo_cleaning_iotc.Rmd`
+        - `iattc-all.csv`: all individual IATTC files combined, generated by `src/data-wrangling/01_rfmo_cleaning_iattc.Rmd`
+        - `all_data.csv`: data combined from all RFMOs to be used in the machine learning models, generated by `src/data-wrangling/02_combine_all_rfmo_data.Rmd`
+    - `sea-surface-height`: sea surface height data collated and cleaned for model use
+      - `inputs`: sea surface height data gathered from [MEaSUREs Gridded Sea Surface Height Anomalies Version 1812](ttps://doi.org/10.5067/SLREF-CDRV2)
+        - `ssh_grids_v1812_<dateid>.nc`: where <dateid> is a unique combination of date and time; netcdf files gathered directly from the MEaSUREs database
+      - `intermediates`: sea surface height data converted to .csv files and collated by mean, generated from `src/data-wrangling/04_generate_grids.Rmd`
+        - `ssh_grids_v1812_<dateid>.csv`: where <dateid> is a unique combination of date and time; csv files converted from netcdf files
+        - `mean_ssh_<YY>.csv`: where <YY> is a 4 digit year; the mean sea surface height for a particular year
+      - `outputs`: gridded sea surface height data at a 1x1 and 5x5 degree spatial scale, generated from `src/data-wrangling/04_generate_grids.Rmd`
+        - `binned_global_ssh_1x1.csv`: gridded sea surface height data at a 1x1 degree spatial scale
+        - `binned_global_ssh_5x5.csv`: gridded sea surface height data at a 5x5 degree spatial scale
+    - `sea-surface-temperature`: sea surface temperature collated and cleaned for model use
+      - `intermediates`: sea surface temperature data collected for each year from ERDDAP (id: erdHadISST)
+        - `sst_<YY>.csv`: where <YY> represents a 4-digit year from 2012-2020
+      - `outputs`: gridded sea surface temperature data at a 1x1 and 5x5 degree spatial scale, generated from `src/data-wrangling/04_generate_grids.Rmd`
+        - `binned_global_sst_1x1.csv`: gridded sea surface temperature data at a 1x1 degree spatial scale
+        - `binned_global_sst_5x5.csv`: : gridded sea surface temperature data at a 5x5 degree spatial scale
+    - `species-information`: various files that provide information on species groups, species weight (mt) to count conversions, etc. 
+      - `species_groups.xlsx`: a list of species scientific names, common names, and species group for categorization
+      - `species_list_for_sdms.csv`: a list of species for which we should grab species distribution data for modeling
+      - `species_list.csv`: the full list of species, including all possible species within "nei" categories
+      - `spp_list_fishing_thread.csv`: a list of species that are threatened by fishing
+      - `spp_weight_count_conversion.csv`: the conversion metrics we use to calculate count from metric tonnes using methods described in [Worm et al., 2013](https://doi.org/10.1016/j.marpol.2012.12.034)
++ `figures`: output figures
+  - `final`: figures used in the submitted manuscript
+  - `intermediates`: figures generated during intermediate steps of the modeling process
+  - `supplemental`: figures used in the supplemental data in the submitted manuscript
++ `src`: all scripts used to clean, model, and analyze data
+  - `data-wrangling`: scripts for data cleaning and collation
+    - `01_rfmo_cleaning_<rfmo>.Rmd`: where <rfmo> refers to each RFMO for which we run the models; script to pull raw data, clean and collate
+    - `02_combine_all_rfmo_data.Rmd`: script that combines and harmonizes all RFMO data
+    - `03_species_list_for_sdms.Rmd`: script that gathers relevant species for pulling IUCN species distribution data
+    - `04_generate_grids.Rmd`: converts non-RFMO spatial data (chlorophyll-a, sea surface temperature, sea surface height, Global Fishing Watch effort, IUCN species distribution models) into a gridded format to match with the RFMO data
+    - `05_all_rfmo_model_data_cleaning_collation.Rmd`: generates datasets for each RFMO to be used in model training
+  - `figures`: all scripts used to generate figures for the submitted manuscript
+    - `figure_<x>.R`: where <x> corresponds to a figure number in the submitted manuscript; script for creating individual figures
+    - `plot_dfaults.R`: script that provides datasets and themes used across all figures
+    - `supplemental_scaled_predicted_catch.R`: script that generates a figure for the predicted catch where each RFMO is independently scaled
+    - `supplemental_workflow.R`: script that generates a figure for the result of assumptions we made during model creation and data manipulation processes
+  - `functions`: functions used throughout
+    - `func-all_rfmo_effort_models.R`: function `all_rfmo_effort_models()` used in `src/models/01_all_rfmo_models.Rmd` to test the predictive power of different effort sources
+    - `func-all_rfmo_other_models.R`: function `all_rfmo_other_models()` used in `src/models/01_all_rfmo_models.Rmd` to test the predictive power of different predictor variables, once the effort source had been chosen
+    - `func-all_rfmo_untuned_models.R`: function `all_rfmo_untuned_models()` used in `src/models/01_all_rfmo_models.Rmd` to generate the final models and predictions used for manuscript results
+    - `func-get_names.R`: function `get_names()` used in `src/data-wrangling/03_species_list_for_sdms.Rmd` to gather names of species within particular species groups
+    - `func-train_test_split.R`: function `train_test_split()` used in `all_rfmo_effort_models()`, `all_rfmo_other_models()`, and `all_rfmo_untuned_models()` to split the data into a training and testing dataset spatially and temporally
+  - `tables`: all scripts used to generate tables
+    - `table_1.R`: script used to generate table 1 in the submitted manuscript
+    - `supplemental_raw_catch_rfmo_species.R`: script used to calculate the raw proportions of shark catch by each RFMO
+    - `supplemental_percent_zero_catch_predicted_nonzero.R`: script used to determine which cells were reported as non-zero values but predicted as 0 values for gut-checking 
++ `tables`: output tables
+  - `supplemental`: tables used in the supplemental data in the submitted manuscript
+
+# R Version
+All code was run using RStudio: 2022.07.1+554 for macOS and R version 4.2.1
+
+# Required Libraries
++ Data Ingestion, Cleaning, Harmonization, and Organization
+  - `tidyverse` (version 1.3.2)
+  - `readxl` (version 1.4.1)
+  - `reshape` (version 0.8.9)
+  - `here` (version 1.0.1)
+  - `rfishbase` (version 4.0.0)
+  - `googledrive` (version 2.0.0)
+  - `readr` (version 2.1.2)
+  - `vroom` (version 1.5.7)
++ Geospatial Data Ingestion and Manipulation
+  - `sf` (version 1.0-8)
+  - `rdgal` (version 1.5-32)
+  - `raster` (version 3.5-29)
+  - `fasterize` (version 1.0.3)
+  - `geosphere` (version 1.5-14)
++ Data Visualization
+  - `scales` (version 1.2.1)
+  - `knitr` (version 1.40)
+  - `RColorBrewer` (version 1.1-3)
+  - `cowplot` (version 1.1.1)
+  - `paletteer` (version 1.4.1)
+  - `tmap` (version 3.3-3)
++ Data Analysis
+  - `pscl` (version 1.5.1)
+  - `tidymodels` (version 1.0.0)
+  - `broom.mixed` (version 0.2.9.4)
+  - `MultivariateRandomForest` (version 1.1.5)
