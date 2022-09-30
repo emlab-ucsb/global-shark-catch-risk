@@ -320,6 +320,18 @@ final_plot <- ggdraw() +
 ggsave(here::here("figures/final/figure_3_option2.png"), final_plot,
        width = 14, height = 4, units = "in", dpi = 600, bg = "white")
 
+# Final plot, but vertical
+final_plot <- ggdraw() + 
+  draw_plot(fig_3a, 0, 0.55, 1, 0.45) + 
+  draw_plot(fig_3b, 0, 0.1, 1, 0.45) + 
+  draw_plot(legend, 0, 0, 1, 0.14) +
+  draw_plot_label(label = LETTERS[1:2], x = c(0,0), y = c(1,0.55), 
+                  hjust = 0, size = 30)
+
+# Save
+ggsave(here::here("figures/final/figure_3_vertical.png"), final_plot,
+       width = 10, height = 11, units = "in", dpi = 600, bg = "white")
+
 # Run similar plots but for every species independently for the supplemental
 for(layer in unique(all_dat$species_commonname)) { 
   
