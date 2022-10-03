@@ -8,7 +8,7 @@ This repository will be citeable at Zenodo.
 
 <insert doi>
 
-Raw and final datasets will be uploaded to Dryad.
+Final datasets will be uploaded to Dryad.
 
 <insert doi>
 
