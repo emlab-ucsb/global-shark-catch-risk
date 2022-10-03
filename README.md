@@ -4,8 +4,6 @@ This repository contains code used in the paper: Burns, E.S., Bradley, D., Thoma
 
 For any questions, comments, or concerns, please contact Echelle Burns [echelle_burns@uscb.edu](echelle_burns@ucsb.edu).
 
-**Internal Note:** Scripts within files flagged as `to-delete` or `not-vital-to-mpa-bycatch` will be removed if not used for the final manuscript submission. These are currently maintained in case we want to revive them. 
-
 This repository will be citeable at Zenodo.
 
 <insert doi>
