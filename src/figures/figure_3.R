@@ -27,7 +27,7 @@ source(file.path(here::here(), "src/figures/plot_defaults.R"))
 
 # Load data - use cleaned data at the 1x1 resolution using count (not mt converted to count)
 list_files <- list.files(file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-models"), 
-                         pattern = "_untuned_final_predict", full.names = TRUE)
+                         pattern = "_untuned_final_predict.csv", full.names = TRUE)
 
 all_dat <- NULL
 for(file in list_files) { 
@@ -253,7 +253,7 @@ fig_3b <- ggplot() +
   custom_theme + 
   theme(legend.position = "none") 
 
-# Figure 3c - silky shark
+# Figure 3c - blue shark
 fig_3c <- ggplot() + 
   geom_tile(blue_shark, 
             mapping = aes(x=x, y=y, fill=layer, color = layer)) + 
@@ -322,14 +322,15 @@ ggsave(here::here("figures/final/figure_3_option2.png"), final_plot,
 
 # Final plot, but vertical
 final_plot <- ggdraw() + 
-  draw_plot(fig_3a, 0, 0.55, 1, 0.45) + 
-  draw_plot(fig_3b, 0, 0.1, 1, 0.45) + 
+  draw_plot(fig_3a, 0, 0.53, 1, 0.45) + 
+  draw_plot(fig_3b, 0, 0.09, 1, 0.45) + 
   draw_plot(legend, 0, 0, 1, 0.14) +
-  draw_plot_label(label = LETTERS[1:2], x = c(0,0), y = c(1,0.55), 
+  draw_plot_label(label = paste0(LETTERS[1:2], ") ", c("All shark species", 
+                                                       "Threatened shark species")), x = c(0,0), y = c(1,0.56), 
                   hjust = 0, size = 30)
 
 # Save
-ggsave(here::here("figures/final/figure_3_vertical.png"), final_plot,
+ggsave(here::here("figures/final/figure_3_vertical_revised.png"), final_plot,
        width = 10, height = 11, units = "in", dpi = 600, bg = "white")
 
 # Run similar plots but for every species independently for the supplemental
@@ -516,12 +517,12 @@ fig_supp_expected <- ggplot() +
 
 # Final plot
 final_plot <- ggdraw() + 
-  draw_plot(fig_supp_expected, 0, 0.1, 0.5, 0.9) + 
-  draw_plot(fig_3a, 0.5, 0.1, 0.5, 0.9) + 
+  draw_plot(fig_supp_expected, 0, 0.08, 0.5, 0.88) + 
+  draw_plot(fig_3a, 0.5, 0.08, 0.5, 0.88) + 
   draw_plot(legend, 0, 0, 1, 0.14) +
-  draw_plot_label(label = LETTERS[1:2], x = c(0, 0.5), y = 1, 
+  draw_plot_label(label = paste0(LETTERS[1:2], ") ", c("Reported catch", "Predicted catch risk")), x = c(0, 0.5), y = 1, 
                   hjust = 0, size = 30)
 
 # Save
-ggsave(here::here("figures/supplemental/observed_vs_predicted.png"), final_plot,
-       width = 14, height = 4, units = "in", dpi = 600, bg = "white")
+ggsave(here::here("figures/supplemental/observed_vs_predicted_revised.png"), final_plot,
+       width = 14, height = 4.2, units = "in", dpi = 600, bg = "white")

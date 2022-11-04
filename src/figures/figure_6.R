@@ -25,7 +25,7 @@ source(file.path(here::here(), "src/figures/plot_defaults.R"))
 
 # Load data - use cleaned data at the 1x1 resolution using count (not mt converted to count)
 list_files <- list.files(file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-models"), 
-                         pattern = "_untuned_final_predict", full.names = TRUE)
+                         pattern = "_untuned_final_predict.csv", full.names = TRUE)
 
 all_dat <- NULL
 for(file in list_files) { 
@@ -185,16 +185,20 @@ for(iter in 1:length(species_relevant)) {
 
 # Final plot
 final_plot <- ggdraw() + 
-  draw_plot(carcharhinus_longimanus_plot, 0, 0.5, 0.33, 0.5) + 
-  draw_plot(alopias_pelagicus_plot, 0.33, 0.5, 0.33, 0.5) +
-  draw_plot(isurus_paucus_plot, 0.66, 0.5, 0.33, 0.5) + 
+  draw_plot(carcharhinus_longimanus_plot, 0, 0.48, 0.33, 0.5) + 
+  draw_plot(alopias_pelagicus_plot, 0.33, 0.48, 0.33, 0.5) +
+  draw_plot(isurus_paucus_plot, 0.66, 0.48, 0.33, 0.5) + 
   draw_plot(alopias_superciliosus_plot, 0, 0, 0.33, 0.5) +
   draw_plot(sphyrna_zygaena_plot, 0.33, 0, 0.33, 0.5) +
   draw_plot(legend, 0.66, 0, 0.33, 0.5) +
-  draw_plot_label(label = LETTERS[1:5], x = c(0, 0.33, 0.66, 0, 0.33), 
-                  y = c(1.009,1.009,1.009,0.509,0.509), 
-                  hjust = 0, size = 30)
+  draw_plot_label(label = paste0(LETTERS[1:5], ") ", c("Oceanic whitetip", 
+                                                       "Pelagic thresher", 
+                                                       "Longfin mako", 
+                                                       "Bigeye thresher", 
+                                                       "Smooth hammerhead")), x = c(0, 0.33, 0.66, 0, 0.33), 
+                  y = c(0.99,0.99,0.99,0.509,0.509), 
+                  hjust = 0, size = 23)
 
 # Save
-ggsave(here::here("figures/final/figure_6.png"), final_plot,
+ggsave(here::here("figures/final/figure_6_revised.png"), final_plot,
        width = 10, height = 10, units = "in", dpi = 600, bg = "white")

@@ -44,7 +44,7 @@ for(file in list_files) {
 
 # Load final predicted data
 list_files <- list.files(file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-models"), 
-                         pattern = "_untuned_final_predict", full.names = TRUE)
+                         pattern = "_untuned_final_predict.csv", full.names = TRUE)
 
 all_dat <- NULL
 for(file in list_files) { 
@@ -175,14 +175,17 @@ pred_rfmo_fig <- ggplot() +
 
 # Save figure
 final_plot <- ggdraw() + 
-  draw_plot(count_1x1_rfmo_fig, 0, 0.05, 0.33, 0.9) + 
-  draw_plot(mt_1x1_rfmo_fig, 0.33, 0.05, 0.33, 0.9) + 
-  draw_plot(pred_rfmo_fig, 0.66, 0.05, 0.33, 0.9) + 
+  draw_plot(count_1x1_rfmo_fig, 0, 0.05, 0.33, 0.8) + 
+  draw_plot(mt_1x1_rfmo_fig, 0.33, 0.05, 0.33, 0.8) + 
+  draw_plot(pred_rfmo_fig, 0.66, 0.05, 0.33, 0.8) + 
   draw_plot(rfmo_legend, 0, 0, 1, 0.1) + 
-  draw_plot_label(label = LETTERS[1:3], x = c(0.011, 0.341, 0.671), y = 1, hjust = 0.5, size = 30)
+  draw_plot_label(label = paste0(LETTERS[1:3], ") ", 
+                                 c("Reported shark catch", 
+                                   "Processed shark catch", 
+                                   "Predicted shark catch")), x = c(0, 0.33, 0.66), y = 1, hjust = 0, size = 28)
 
 # Save
-ggsave(here::here("figures/supplemental/workflow_mt_to_count.png"), final_plot,
+ggsave(here::here("figures/supplemental/workflow_mt_to_count_revised.png"), final_plot,
        width = 15, height = 5, units = "in", dpi = 600, bg = "white")
   
 ###
@@ -325,17 +328,21 @@ fig_d <- ggplot() +
 
 # combine
 final_plot <- ggdraw() + 
-  draw_plot(fig_a, 0, 0.5, 0.5, 0.45) + 
-  draw_plot(fig_b, 0.5, 0.5, 0.5, 0.45) + 
-  draw_plot(fig_c, 0, 0.06, 0.5, 0.45) + 
-  draw_plot(fig_d, 0.5, 0.06, 0.5, 0.45) + 
+  draw_plot(fig_a, 0, 0.5, 0.5, 0.43) + 
+  draw_plot(fig_b, 0.5, 0.5, 0.5, 0.43) + 
+  draw_plot(fig_c, 0, 0.06, 0.5, 0.43) + 
+  draw_plot(fig_d, 0.5, 0.06, 0.5, 0.43) + 
   draw_plot(legend_a, 0, 0, 0.5, 0.1) + 
   draw_plot(legend_b, 0.52, 0, 0.5, 0.1) + 
-  draw_plot_label(label = LETTERS[1:4], x = c(0, 0.5, 0, 0.5), y = c(1, 1, 0.55, 0.55), 
-             hjust = 0, size = 30)
+  draw_plot_label(label = paste0(LETTERS[1:4], ") ", 
+                                 c("Reported shark catch", 
+                                   "Reported shark catch", 
+                                   "Predicted shark catch", 
+                                   "Predicted shark catch")), x = c(0, 0.5, 0, 0.5), 
+                  y = c(1, 1, 0.55, 0.55), hjust = 0, size = 28)
 
 # Save
-ggsave(here::here("figures/supplemental/workflow_zero_cells.png"), final_plot,
+ggsave(here::here("figures/supplemental/workflow_zero_cells_revised.png"), final_plot,
        width = 12, height = 7, units = "in", dpi = 600, bg = "white")
 
 

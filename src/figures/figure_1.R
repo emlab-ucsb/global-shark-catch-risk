@@ -177,16 +177,17 @@ fig_1c <- ggplot() +
 
 # Put them all together
 final_plot <- ggdraw() + 
-  draw_plot(fig_1a, 0, 0.1, 0.33, 0.9) + 
-  draw_plot(fig_1b, 0.33, 0.1, 0.33, 0.9) + 
-  draw_plot(fig_1c, 0.66, 0.1, 0.33, 0.9) + 
-  draw_plot(legend, 0, 0, 1, 0.22) + 
-  draw_plot_label(label = c("A", "B", "C"), 
-                  x = c(0, 0.33, 0.66), y = 1, hjust = 0)
+  draw_plot(fig_1a, 0, 0.68, 1, 0.3) + 
+  draw_plot(fig_1b, 0, 0.38, 1, 0.3) + 
+  draw_plot(fig_1c, 0, 0.08, 1, 0.3) + 
+  draw_plot(legend, 0, 0, 1, 0.1) + 
+  draw_plot_label(label = c("A) Shark catch", "B) Effort associated with shark catch",
+                            "C) Shark CPUE"), 
+                  x = 0, y = c(1, 0.7, 0.4), hjust = 0)
 
 # Save
 ggsave(here::here("figures/final/figure_1.png"), final_plot,
-       width = 10, height = 2.5, units = "in", dpi = 600, bg = "white")
+       width = 6*0.8, height = 10*0.8, units = "in", dpi = 600, bg = "white")
 
 # Calculate how many cells overlap
 overlapping_cells <- mean_total_catch_scaled %>% 

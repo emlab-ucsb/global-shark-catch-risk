@@ -198,12 +198,39 @@ for(name in names(tuna_rasters)) {
 top_sharks <- top_ten %>% 
   filter(species_group == "sharks and rays" & catch_units == "count")
 
-species_listing <- stocks(str_to_sentence(unique(top_sharks$species_sciname)), 
-                          fields = c("Species", "IUCN_Code", "IUCN_DateAssessed")) %>% 
-  filter(!is.na(IUCN_Code)) %>% 
-  group_by(Species) %>% 
-  slice_max(order_by = IUCN_DateAssessed, n = 1) %>% 
-  ungroup() 
+# Get list of species and their IUCN code
+# Had to look up by hand because rfishbase is not up to date
+species_listing <- data.frame(
+  species_sciname = c("Alopias pelagicus",
+                      "Alopias superciliosus",
+                      "Alopias vulpinus",
+                      "Carcharhinus falciformis",
+                      "Carcharhinus limbatus",
+                      "Carcharhinus longimanus",
+                      "Isurus oxyrinchus",
+                      "Isurus paucus",
+                      "Lamna nasus",
+                      "Prionace glauca",
+                      "Rhincodon typus",
+                      "Sphyrna lewini",
+                      "Sphyrna mokarran",
+                      "Sphyrna zygaena"), 
+  IUCN_Code = c("EN",
+                "VU",
+                "VU",
+                "VU",
+                "VU",
+                "CR",
+                "EN",
+                "EN",
+                "VU",
+                "NT",
+                "EN",
+                "CR",
+                "CR",
+                "VU")) %>% 
+  filter(IUCN_Code %in% c("EN", "VU", "CR")) %>% 
+  mutate(species_sciname = str_to_upper(species_sciname))
 
 top_sharks <- species_listing %>% 
   filter(IUCN_Code %in% c("EN", "VU", "CR")) %>% 
@@ -264,16 +291,25 @@ for(name in names(tuna_rasters)) {
 # Final plot
 final_plot <- ggdraw() + 
   draw_plot(location_plots[[1]], 0, 0.66, 0.33, 0.32) + 
-  draw_plot(tuna_plots[[1]], 0.33, 0.66, 0.33, 0.32) + 
-  draw_plot(shark_plots[[1]], 0.66, 0.66, 0.33, 0.32) + 
+  draw_plot(tuna_plots[[1]], 0.33, 0.66, 0.33, 0.31) + 
+  draw_plot(shark_plots[[1]], 0.66, 0.66, 0.33, 0.31) + 
   draw_plot(location_plots[[2]], 0, 0.33, 0.33, 0.32) + 
-  draw_plot(tuna_plots[[2]], 0.33, 0.33, 0.33, 0.32) + 
-  draw_plot(shark_plots[[2]], 0.66, 0.33, 0.33, 0.32) + 
+  draw_plot(tuna_plots[[2]], 0.33, 0.33, 0.33, 0.31) + 
+  draw_plot(shark_plots[[2]], 0.66, 0.33, 0.33, 0.31) + 
   draw_plot(location_plots[[3]], 0, 0.0, 0.33, 0.32) + 
-  draw_plot(tuna_plots[[3]], 0.33, 0.0, 0.33, 0.32) + 
-  draw_plot(shark_plots[[3]], 0.66, 0.0, 0.33, 0.32) + 
-  draw_plot_label(label = LETTERS[1:9], x = rep(c(0.02, 0.333, 0.666), 3), 
-                  y = rep(c(0.985, 0.66, 0.33), each = 3), hjust = 0.5, vjust = 0.5,
+  draw_plot(tuna_plots[[3]], 0.33, 0.0, 0.33, 0.31) + 
+  draw_plot(shark_plots[[3]], 0.66, 0.0, 0.33, 0.31) + 
+  draw_plot_label(label = c("A) High bigeye tuna catch",
+                            "B) Bigeye tuna CPUE", 
+                            "C) Shark CPUE", 
+                            "D) High albacore tuna catch", 
+                            "E) Albacore tuna CPUE", 
+                            "F) Shark CPUE", 
+                            "G) High yellowfin tuna catch", 
+                            "H) Yellowfin tuna CPUE", 
+                            "I) Shark CPUE"), 
+                  x = rep(c(0.0, 0.33, 0.66), 3), 
+                  y = rep(c(0.985, 0.66, 0.33), each = 3), hjust = 0, vjust = 0.5,
                   size = 30)
 
 # Save

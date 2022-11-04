@@ -31,7 +31,7 @@ source(file.path(here::here(), "src/figures/plot_defaults.R"))
 
 # Load data - use output data from the best model and convert to 1x1 if necessary
 list_files <- list.files(file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-models"), 
-                         pattern = "_untuned_final_predict", full.names = TRUE)
+                         pattern = "_untuned_final_predict.csv", full.names = TRUE)
 
 all_dat <- NULL
 for(file in list_files) { 
@@ -110,6 +110,8 @@ for(spp in unique(all_dat$species_commonname)) {
 plot_data <- top_ten_dat %>% 
   filter(species_sciname != "SHARKS NEI") %>% 
   mutate(species_sciname = str_to_sentence(species_sciname)) %>% 
+         # species_commonname = gsub(" shark$| shark [(]vulpinus[)]", "", species_commonname), 
+         # species_commonname = gsub("sharks,porbeagles", "sharks, porbeagles", species_commonname)) %>% 
   group_by(rfmo, species_sciname) %>% 
   summarise(n_cells = n()) %>% 
   ungroup() %>% 
@@ -151,7 +153,7 @@ fig_4b <- ggplot() +
                                           "WCPFC" = "dodgerblue4")) + 
   theme_classic() + 
   theme(panel.grid.major.x = element_line(color = "gray58"), 
-        axis.text.y = element_text(face = "italic"), 
+        axis.text.y = element_text(face = "italic"),
         legend.position = "bottom", 
         text = element_text(size = 18))
 
@@ -163,12 +165,13 @@ fig_4b <- fig_4b +
 # Final plot
 final_plot <- ggdraw() + 
   draw_plot(fig_4a, 0, 0.1, 0.4, 0.9) + 
-  draw_plot(fig_4b, 0.4, 0, 0.6, 1) + 
+  draw_plot(fig_4b, 0.4, 0, 0.6, 0.91) + 
   draw_plot(legend, 0, 0, 0.4, 0.1) + 
-  draw_plot_label(label = LETTERS[1:2], x = c(0, 0.4), y = c(1,1), 
+  draw_plot_label(label = c("A) tRFMO regions", 
+                            "B) High catch risk cells"), x = c(0, 0.4), y = c(1,1), 
                   hjust = 0, size = 30)
 
 # Save
-ggsave(here::here("figures/final/figure_4.png"), final_plot,
-       width = 15, height = 4, units = "in", dpi = 600, bg = "white")
+ggsave(here::here("figures/final/figure_4_revised.png"), final_plot,
+       width = 15, height = 5, units = "in", dpi = 600, bg = "white")
 
