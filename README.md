@@ -1,6 +1,6 @@
 # Description
 
-This repository contains code used in the paper: Burns, E.S., Bradley, D., Thomas, L.R. (in prep). Global hotspots of shark interactions with industrial longline fisheries. 
+This repository contains code used in the paper: Burns, E.S., Bradley, D., Thomas, L.R. (in revisions). Global hotspots of shark interactions with industrial longline fisheries. 
 
 For any questions, comments, or concerns, please contact Echelle Burns [echelle_burns@uscb.edu](echelle_burns@ucsb.edu).
 
