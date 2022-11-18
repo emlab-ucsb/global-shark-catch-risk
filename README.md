@@ -4,13 +4,11 @@ This repository contains code used in the paper: Burns, E.S., Bradley, D., Thoma
 
 For any questions, comments, or concerns, please contact Echelle Burns [echelle_burns@uscb.edu](echelle_burns@ucsb.edu).
 
-This repository will be citeable at Zenodo.
+This repository is citeable at Zenodo: 
+Burns, Echelle S., Bradley, Darcy, & Thomas, Lennon R. (2022). Global hotspots of shark interactions with industrial longline fisheries. Zenodo.
 
-<insert doi>
-
-Final datasets will be uploaded to Dryad.
-
-<insert doi>
+Final datasets are uploaded to Dryad and are citable as: 
+Burns, Echelle S.; Bradley, Darcy; Thomas, Lennon R. (2022), Global hotspots of shark interactions with industrial longline fisheries, Dryad, Dataset, https://doi.org/10.25349/D9789W
 
 # Instructions
 
