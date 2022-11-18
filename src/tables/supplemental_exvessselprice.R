@@ -12,7 +12,7 @@ prices <- read.csv(file.path(here::here(), "data-updated/ex-vessel-prices/exvess
 
 # Load species lists
 species_list <- read.csv(file.path(here::here(), "data-updated/rfmo-data/outputs/all_data.csv")) %>% 
-  filter(gear_group == "longline") %>% 
+  filter(gear_group == "longline" & species_group == "sharks and rays") %>% 
   select(species_sciname, species_commonname) %>% 
   distinct_all() 
 
@@ -93,8 +93,14 @@ spp_prices_ind <- spp_prices_ind  %>%
               select(year, scientific_name, median_price_species))
 
 # Save output
-write.csv(spp_prices %>% rename(median_price_sharks = median_price_group), file.path(here::here(), "tables/supplemental/sharks_exvessel_price.csv"), 
+write.csv(spp_prices %>% rename(median_price_sharks = median_price_group) %>% 
+            mutate(median_price_sharks = round(median_price_sharks/0.01)*0.01) %>% 
+            filter(year <= 2020), file.path(here::here(), "tables/supplemental/sharks_exvessel_price.csv"), 
           row.names = F)
 
-write.csv(spp_prices_ind, file.path(here::here(), "tables/supplemental/species_exvessel_price.csv"), 
+write.csv(spp_prices_ind %>% 
+            mutate(scientific_name = str_to_sentence(scientific_name), 
+                   median_price_species = round(median_price_species/0.01)*0.01) %>% 
+            arrange(scientific_name, year) %>% 
+            filter(year <= 2020), file.path(here::here(), "tables/supplemental/species_exvessel_price.csv"), 
           row.names = F)
