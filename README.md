@@ -224,6 +224,9 @@ Please ensure that your folder schema is the same as described below to ensure t
     - `plot_dfaults.R`: script that provides datasets and themes used across all figures
     - `supplemental_scaled_predicted_catch.R`: script that generates a figure for the predicted catch where each RFMO is independently scaled
     - `supplemental_workflow.R`: script that generates a figure for the result of assumptions we made during model creation and data manipulation processes
+    - `supplemental_sdm.R`: script that generates a figure that shows the IUCN species distribution for each species we evaluate
+    - `supplemental_environmentals.R`: script that generates paneled figures showing mean environmental conditions (chla, sst, ssh) each year
+    - `supplemental_effort.R`: script that generates paneled figures showing mean effort (GFW, tRFMO) each year
   - `functions`: functions used throughout
     - `func-all_rfmo_effort_models.R`: function `all_rfmo_effort_models()` used in `src/models/01_all_rfmo_models.Rmd` to test the predictive power of different effort sources
     - `func-all_rfmo_other_models.R`: function `all_rfmo_other_models()` used in `src/models/01_all_rfmo_models.Rmd` to test the predictive power of different predictor variables, once the effort source had been chosen
@@ -234,6 +237,7 @@ Please ensure that your folder schema is the same as described below to ensure t
     - `table_1.R`: script used to generate table 1 in the submitted manuscript
     - `supplemental_raw_catch_rfmo_species.R`: script used to calculate the raw proportions of shark catch by each RFMO
     - `supplemental_percent_zero_catch_predicted_nonzero.R`: script used to determine which cells were reported as non-zero values but predicted as 0 values for gut-checking 
+    - `supplemental_exvessselprice.R`: script used to generate table of ex-vessel prices used in analyses
 + `tables`: output tables
   - `supplemental`: tables used in the supplemental data in the submitted manuscript
 
