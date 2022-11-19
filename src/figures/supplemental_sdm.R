@@ -95,11 +95,11 @@ for(layer in unique(sdms$species_commonname)) {
     geom_tile(raster_comb, 
               mapping = aes(x=x, y=y, fill=layer, color = layer)) + 
     scale_fill_distiller("Probability of Occurrence", palette = "RdYlBu", na.value = NA, 
-                         breaks = c(min(raster_comb$layer, na.rm = T), max(raster_comb$layer, na.rm = T)), 
-                         labels = c("Low", "High"), 
+                         limits = c(0,1), 
+                         breaks = c(0, 0.5, 1),
                          guide = guide_colorbar(title.vjust = 0.8)) + 
     scale_color_distiller("", palette = "RdYlBu", na.value = NA, 
-                          breaks = c(min(raster_comb$layer, na.rm = T), max(raster_comb$layer, na.rm = T)), guide = "none") + 
+                          limits = c(0,1), guide = "none") + 
     geom_sf(data = wcpfc_boundary, fill = NA, color = "black") +
     geom_sf(data = iotc_boundary, fill = NA, color = "black") +
     geom_sf(data = iccat_boundary, fill = NA, color = "black") +
