@@ -219,7 +219,8 @@ Please ensure that your folder schema is the same as described below to ensure t
     - `05_all_rfmo_model_data_cleaning_collation.Rmd`: generates datasets for each RFMO to be used in model training
   - `figures`: all scripts used to generate figures for the submitted manuscript
     - `figure_<x>.R`: where <x> corresponds to a figure number in the submitted manuscript; script for creating individual figures
-    - `plot_dfaults.R`: script that provides datasets and themes used across all figures
+    - `plot_defaults.R`: script that provides datasets and themes used across all figures
+    - `supplemental_effort.R`: script that generates supplemental figures for annual mean effort
     - `supplemental_scaled_predicted_catch.R`: script that generates a figure for the predicted catch where each RFMO is independently scaled
     - `supplemental_workflow.R`: script that generates a figure for the result of assumptions we made during model creation and data manipulation processes
     - `supplemental_sdm.R`: script that generates a figure that shows the IUCN species distribution for each species we evaluate
