@@ -1,6 +1,6 @@
 # Description
 
-This repository contains code used in the paper: Burns, E.S., Bradley, D., Thomas, L.R. (in revisions). Global hotspots of shark interactions with industrial longline fisheries. 
+This repository contains code used in the paper: Burns, E.S., Bradley, D., Thomas, L.R. (2022). Global hotspots of shark interactions with industrial longline fisheries. Frontiers in Marine Science. doi: 10.3389/fmars.2022.1062447
 
 For any questions, comments, or concerns, please contact Echelle Burns [echelle_burns@uscb.edu](echelle_burns@ucsb.edu).
 
@@ -220,7 +220,6 @@ Please ensure that your folder schema is the same as described below to ensure t
   - `figures`: all scripts used to generate figures for the submitted manuscript
     - `figure_<x>.R`: where <x> corresponds to a figure number in the submitted manuscript; script for creating individual figures
     - `plot_defaults.R`: script that provides datasets and themes used across all figures
-    - `supplemental_effort.R`: script that generates supplemental figures for annual mean effort
     - `supplemental_scaled_predicted_catch.R`: script that generates a figure for the predicted catch where each RFMO is independently scaled
     - `supplemental_workflow.R`: script that generates a figure for the result of assumptions we made during model creation and data manipulation processes
     - `supplemental_sdm.R`: script that generates a figure that shows the IUCN species distribution for each species we evaluate
