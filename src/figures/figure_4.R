@@ -144,7 +144,7 @@ fig_4b <- ggplot() +
            aes(y = species_sciname, x = n_cells_perc), fill = "white", color = "white") + 
   geom_col(data = plot_data, 
            aes(y = species_sciname, x = n_cells_perc, fill = rfmo), alpha = 0.6, color = "white") + 
-  scale_x_continuous(name = "% of cells in each RFMO considered high-risk", labels = scales::comma, 
+  scale_x_continuous(name = "% of cells in each tRFMO considered high-risk", labels = scales::comma, 
                      expand = c(0,0)) + 
   ylab("") + 
   scale_fill_manual(name = "", values = c("IATTC" = "darkorchid4", 
