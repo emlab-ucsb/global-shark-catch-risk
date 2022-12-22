@@ -164,11 +164,11 @@ fig_4b <- fig_4b +
 
 # Final plot
 final_plot <- ggdraw() + 
-  draw_plot(fig_4a, 0, 0.1, 0.4, 0.9) + 
-  draw_plot(fig_4b, 0.4, 0, 0.6, 0.91) + 
-  draw_plot(legend, 0, 0, 0.4, 0.1) + 
+  draw_plot(fig_4a, 0, 0.08, 0.6, 0.82) + 
+  draw_plot(fig_4b, 0.53, 0, 0.4, 0.9) + 
+  draw_plot(legend, 0, 0, 0.6, 0.08) + 
   draw_plot_label(label = c("A) tRFMO regions", 
-                            "B) High catch risk cells"), x = c(0, 0.4), y = c(1,1), 
+                            "B) High catch risk cells"), x = c(0, 0.53), y = c(1,1), 
                   hjust = 0, size = 30)
 
 # Save
