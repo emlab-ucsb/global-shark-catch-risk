@@ -1,6 +1,7 @@
 # Description
 
-This repository contains code used in the paper: Burns, E.S., Bradley, D., Thomas, L.R. (2022). Global hotspots of shark interactions with industrial longline fisheries. Frontiers in Marine Science. doi: 10.3389/fmars.2022.1062447
+This repository contains code used in the paper: Burns, E. S., Bradley, D., & Thomas, L. R. (2023). Global hotspots of shark interactions with industrial longline fisheries. Frontiers in Marine Science, 9. https://doi.org/10.3389/fmars.2022.1062447
+
 
 For any questions, comments, or concerns, please contact Echelle Burns [echelle_burns@uscb.edu](echelle_burns@ucsb.edu).
 
