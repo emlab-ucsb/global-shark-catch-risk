@@ -321,31 +321,61 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
       summarise(.pred_class = round(mean(.pred_class))) %>% 
       ungroup()
     
-    pred_conf_cell <- pred_class_cell_ave |>
+    # Save outputs
+    pred_conf_pred <- NULL
+    
+    pred_conf_beta_par <- NULL
+    
+    confidence_cell <- NULL
+    
+    for(ind in unique(pred_class_cell_ave$indID)) { 
       
-      dplyr::mutate(confidence = furrr::future_map_dbl(.data$indID, function(x){
+      line_classif <- which(pred_class_cell_ave$indID == ind) # in averaged data frame
+      predictions <- pred_class_cell$.pred_present[which(pred_class_cell$indID == ind)]
+      
+      pred_conf_pred <- pred_conf_pred %>% 
+        bind_rows(data.frame("indID" = ind,
+                             "run" = "cell",
+                             "predictions" = predictions))
+      
+      if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
+        conf <- 1
+      }else{
+        # beta fitting
+        beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
         
-        line_classif <- which(.data$indID == x) # in averaged data frame
-        predictions <- pred_class_cell$.pred_present[which(pred_class_cell$indID == x)]
-        
-        if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
-          conf <- 1
+        if (pred_class_cell_ave$.pred_class[line_classif] == 1){
+          conf <- stats::pbeta(q = 0.5,
+                               shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
+          
+          pred_conf_beta_par <- pred_conf_beta_par %>% 
+            bind_rows(data.frame("indID" = ind,
+                                 "run" = "cell",
+                                 "shape1" = as.numeric(beta_par[1]),
+                                 "shape2" = as.numeric(beta_par[2]),
+                                 "lower_tail" = "FALSE")) 
+          
         }else{
-          # beta fitting
-          beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
+          conf <- stats::pbeta(q = 0.5,
+                               shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
           
-          if (.data$.pred_class[line_classif] == 1){
-            conf <- stats::pbeta(q = 0.5,
-                                 shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
-            
-          }else{
-            conf <- stats::pbeta(q = 0.5,
-                                 shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
-          }
-          
+          pred_conf_beta_par <- pred_conf_beta_par %>% 
+            bind_rows(data.frame("indID" = ind,
+                                 "run" = "cell",
+                                 "shape1" = as.numeric(beta_par[1]),
+                                 "shape2" = as.numeric(beta_par[2]),
+                                 "lower_tail" = "TRUE"))
         }
         
-      }, .options = furrr::furrr_options(seed = TRUE)))
+        confidence_cell <- c(confidence_cell, conf)
+        
+      }
+      
+      }
+    
+    pred_conf_cell <- pred_class_cell_ave %>% 
+      mutate(confidence = confidence_cell)
+    
     
     ### By species
     pred_class_spp <- pred_class %>% 
@@ -356,31 +386,56 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
       summarise(.pred_class = round(mean(.pred_class))) %>% 
       ungroup()
     
-    pred_conf_spp <- pred_class_spp_ave |>
+    # Save outputs
+    confidence_spp <- NULL
+    
+    for(ind in unique(pred_class_spp_ave$indID)) { 
       
-      dplyr::mutate(confidence = furrr::future_map_dbl(.data$indID, function(x){
+      line_classif <- which(pred_class_spp_ave$indID == ind) # in averaged data frame
+      predictions <- pred_class_spp$.pred_present[which(pred_class_spp$indID == ind)]
+      
+      pred_conf_pred <- pred_conf_pred %>% 
+        bind_rows(data.frame("indID" = ind,
+                             "run" = "spp",
+                             "predictions" = predictions))
+      
+      if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
+        conf <- 1
+      }else{
+        # beta fitting
+        beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
         
-        line_classif <- which(.data$indID == x) # in averaged data frame
-        predictions <- pred_class_spp$.pred_present[which(pred_class_spp$indID == x)]
-        
-        if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
-          conf <- 1
+        if (pred_class_spp_ave$.pred_class[line_classif] == 1){
+          conf <- stats::pbeta(q = 0.5,
+                               shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
+          
+          pred_conf_beta_par <- pred_conf_beta_par %>% 
+            bind_rows(data.frame("indID" = ind,
+                                 "run" = "spp",
+                                 "shape1" = as.numeric(beta_par[1]),
+                                 "shape2" = as.numeric(beta_par[2]),
+                                 "lower_tail" = "FALSE")) 
+          
         }else{
-          # beta fitting
-          beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
+          conf <- stats::pbeta(q = 0.5,
+                               shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
           
-          if (.data$.pred_class[line_classif] == 1){
-            conf <- stats::pbeta(q = 0.5,
-                                 shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
-            
-          }else{
-            conf <- stats::pbeta(q = 0.5,
-                                 shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
-          }
-          
+          pred_conf_beta_par <- pred_conf_beta_par %>% 
+            bind_rows(data.frame("indID" = ind,
+                                 "run" = "spp",
+                                 "shape1" = as.numeric(beta_par[1]),
+                                 "shape2" = as.numeric(beta_par[2]),
+                                 "lower_tail" = "TRUE"))
         }
         
-      }, .options = furrr::furrr_options(seed = TRUE)))
+        confidence_spp <- c(confidence_spp, conf)
+        
+      }
+      
+    }
+    
+    pred_conf_spp <- pred_class_spp_ave %>% 
+      mutate(confidence = confidence_spp)
     
     # Regression
     pred_reg <- predict(reg_fit, prep_pred) %>% 
@@ -409,13 +464,15 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
                        "final_predict" = final_predict,
                        "final_metrics" = final_metrics, 
                        "feature_importance" = total_importance, 
-                       "confidence_class_cell" = pred_conf_cell, 
-                       "confidence_class_spp" = pred_conf_spp)
+                       "species_class_confidence" = pred_conf_spp, 
+                       "cell_class_confidence" = pred_conf_cell,
+                       "id_predictions" = pred_conf_pred, 
+                       "beta_parameters" = pred_conf_beta_par)
     
     saveRDS(output_fit, paste0(save_loc, rfmos, "_ll_untuned_model.rds"))
     write.csv(final_predict, paste0(save_loc, rfmos, "_ll_untuned_final_predict.csv"), row.names = F)
     
     return(test_metrics)
-    } 
+    }
   }
 } 
