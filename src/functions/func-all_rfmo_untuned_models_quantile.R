@@ -338,9 +338,18 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
                              "run" = "cell",
                              "predictions" = predictions))
       
-      if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
+      if(length(unique(predictions)) == 1) { 
+        # if there's just one prediction, or many predictions with the same exact value, we can't calculate confidence 
+        conf <- NA 
+        confidence_cell <- c(confidence_cell, conf)
+        
+      } else if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
         conf <- 1
       }else{
+        # Can't do predictions if values are 0 or 1
+        predictions[predictions == 1] <- 0.99999999
+        predictions[predictions == 0] <- 0.00000001
+        
         # beta fitting
         beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
         
@@ -399,9 +408,19 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
                              "run" = "spp",
                              "predictions" = predictions))
       
-      if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
+      if(length(unique(predictions)) == 1) { 
+        # if there's just one prediction, or many predictions with the same exact value, we can't calculate confidence 
+        conf <- NA 
+        confidence_spp <- c(confidence_spp, conf)
+        
+        } else if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
         conf <- 1
       }else{
+        
+        # Can't do predictions if values are 0 or 1
+        predictions[predictions == 1] <- 0.99999999
+        predictions[predictions == 0] <- 0.00000001
+        
         # beta fitting
         beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
         
