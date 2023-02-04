@@ -412,7 +412,7 @@ untuned_wcpfc <- readRDS(paste0(save_loc, "WCPFC_ll_untuned_model.rds"))
 # Run again, but for all sharks
 save_loc <- file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-models/all-sharks-model/")
 
-for(selected_rfmo in c("IATTC", "ICCAT", "IOTC", "WCPFC")) { 
+for(selected_rfmo in c("ICCAT", "IOTC", "WCPFC", "IATTC")) { 
 
   rfmo_model_option <- all_model_results_p2 %>% filter(rfmo == selected_rfmo)
   
@@ -481,4 +481,42 @@ for(selected_rfmo in c("IATTC", "ICCAT", "IOTC", "WCPFC")) {
                   min_n_reg = rfmo_model_option$min_n_reg)
 } 
 ```
+
+```{r}
+catch_presence <- NULL
+for(selected_rfmo in c("ICCAT", "IOTC", "WCPFC", "IATTC")) { 
+
+  rfmo_model_option <- all_model_results_p2 %>% filter(rfmo == selected_rfmo)
+  
+  rfmo_data <- eval(as.name(effort_model_results_p1$df_name[which(effort_model_results_p1$rfmo ==
+                                                                    selected_rfmo)])) 
+  if(grepl("gfw", rfmo_model_option$effort_source)) { 
+    rfmo_data <- rfmo_data %>% 
+      mutate(effort_units = "kwh")
+    }
+  
+  rfmo_data <- rfmo_data %>% 
+    mutate_at(colnames(.)[grepl("target_effort|bycatch_total_effort|sst|chla|ssh|sdm|price", colnames(.))], as.numeric) %>% 
+    group_by(latitude, longitude, year, rfmo, gear_group, catch_units, effort_units, spatial_notes, species_group) %>% 
+    summarise(across(where(is.numeric) & !catch, mean, na.rm = T), 
+              catch = sum(catch, na.rm = T)) %>% 
+    ungroup() %>% 
+    mutate(species_commonname = "SHARKS", 
+           species_sciname = "SHARKS", 
+           species_resolution = "NEI") %>% 
+    select(colnames(rfmo_data)) 
+  
+  rfmo_data <- rfmo_data %>% 
+    filter(rfmo == selected_rfmo) %>% 
+    mutate(catch_fact = ifelse(catch >0, 1, 0)) %>% 
+    group_by(catch_fact) %>% 
+    summarise(n = n()) %>% 
+    ungroup() %>% 
+    mutate(rfmo = selected_rfmo)
+  
+  catch_presence <- catch_presence %>% 
+    rbind(rfmo_data)
+} 
+```
+
 
