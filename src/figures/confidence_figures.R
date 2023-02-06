@@ -378,14 +378,14 @@ spp_conf <- NULL
 for(file in file_list) { 
   temp_rds <- readRDS(file)$species_class_confidence
   spp_conf <- bind_rows(spp_conf, 
-                        ttemp_rds %>%
+                        temp_rds %>%
                           mutate(rfmo = gsub("[^IATTC|IOTC|WCPFC|ICCAT]+", "", file)) %>% 
                           mutate(rfmo = gsub("\\<C", "", rfmo)))
 } 
 
 spp_conf <- spp_conf %>% 
-  pivot_wider(names_from = .pred_class, values_from = confidence) %>% 
-  pivot_longer(`0`:`1`, names_to = ".pred_class", values_to = "confidence") %>% 
+  # pivot_wider(names_from = .pred_class, values_from = confidence) %>% 
+  # pivot_longer(`0`:`1`, names_to = ".pred_class", values_to = "confidence") %>% 
   pivot_wider(names_from = "rfmo", values_from = "confidence") %>% 
   arrange(indID, .pred_class)
 
@@ -553,11 +553,11 @@ for(file in file_list) {
                           mutate(rfmo = gsub("\\<C", "", rfmo)))
 } 
 
-if(length(unique(spp_conf$.pred_class)) > 1) { 
-  spp_conf <- spp_conf %>% 
-    pivot_wider(names_from = .pred_class, values_from = confidence) %>% 
-    pivot_longer(`0`:`1`, names_to = ".pred_class", values_to = "confidence") 
-}
+# if(length(unique(spp_conf$.pred_class)) > 1) { 
+#   spp_conf <- spp_conf %>% 
+#     pivot_wider(names_from = .pred_class, values_from = confidence) %>% 
+#     pivot_longer(`0`:`1`, names_to = ".pred_class", values_to = "confidence") 
+# }
 
 spp_conf <- spp_conf %>% 
   pivot_wider(names_from = "rfmo", values_from = "confidence") %>% 
