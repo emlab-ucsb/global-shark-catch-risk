@@ -370,6 +370,29 @@ final <- ggdraw() +
 ggsave(file.path(here::here(), "figures", "supplemental", "longline_regression.png"), 
        final, height = 3, width = 12, units = "in", dpi = 600, bg = "white")
 
+# Save tables for outputs as well
+file_list <- list.files(file.path(here::here(), "data-updated", "model-data", "outputs", "all-rfmo-models", "quantiles"), 
+                        pattern = ".rds", full.names = TRUE)
+
+spp_conf <- NULL
+for(file in file_list) { 
+  temp_rds <- readRDS(file)$species_class_confidence
+  spp_conf <- bind_rows(spp_conf, 
+                        ttemp_rds %>%
+                          mutate(rfmo = gsub("[^IATTC|IOTC|WCPFC|ICCAT]+", "", file)) %>% 
+                          mutate(rfmo = gsub("\\<C", "", rfmo)))
+} 
+
+spp_conf <- spp_conf %>% 
+  pivot_wider(names_from = .pred_class, values_from = confidence) %>% 
+  pivot_longer(`0`:`1`, names_to = ".pred_class", values_to = "confidence") %>% 
+  pivot_wider(names_from = "rfmo", values_from = "confidence") %>% 
+  arrange(indID, .pred_class)
+
+write.csv(spp_conf, 
+          file.path(here::here(), "tables", "supplemental", "longline_classification_spp.csv"), 
+          row.names =  FALSE)
+
 ###
 # All sharks - not species specific
 ###
@@ -516,3 +539,30 @@ final <- ggdraw() +
 
 ggsave(file.path(here::here(), "figures", "supplemental", "longline_regression_justsharks.png"), 
        final, height = 3, width = 12, units = "in", dpi = 600, bg = "white")
+
+# Save tables for outputs as well
+file_list <- list.files(file.path(here::here(), "data-updated", "model-data", "outputs", "all-rfmo-models", "all-sharks-model"), 
+                        pattern = ".rds", full.names = TRUE)
+
+spp_conf <- NULL
+for(file in file_list) { 
+  temp_rds <- readRDS(file)$species_class_confidence
+  spp_conf <- bind_rows(spp_conf, 
+                        temp_rds %>%
+                          mutate(rfmo = gsub("[^IATTC|IOTC|WCPFC|ICCAT]+", "", file)) %>% 
+                          mutate(rfmo = gsub("\\<C", "", rfmo)))
+} 
+
+if(length(unique(spp_conf$.pred_class)) > 1) { 
+  spp_conf <- spp_conf %>% 
+    pivot_wider(names_from = .pred_class, values_from = confidence) %>% 
+    pivot_longer(`0`:`1`, names_to = ".pred_class", values_to = "confidence") 
+}
+
+spp_conf <- spp_conf %>% 
+  pivot_wider(names_from = "rfmo", values_from = "confidence") %>% 
+  arrange(indID, .pred_class)
+
+write.csv(spp_conf, 
+          file.path(here::here(), "tables", "supplemental", "longline_classification_spp_justsharks.csv"), 
+          row.names =  FALSE)
