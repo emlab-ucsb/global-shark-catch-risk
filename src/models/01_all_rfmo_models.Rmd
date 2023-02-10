@@ -154,7 +154,7 @@ effort_model_results <- read.csv(paste0(save_loc, "5x5_count_all_rfmos_ll_effort
                      option = "1x1, count and mt")) 
 
 effort_model_results_p1 <- effort_model_results %>%
-  select(rfmo, type, option, effort_source, rsq) %>%
+  dplyr::select(rfmo, type, option, effort_source, rsq) %>%
   group_by(rfmo) %>% 
   slice_max(., n = 1, rsq) %>% 
   mutate(df_name = paste0(ifelse(grepl("mt", option), "mt_", "count_"), 
@@ -338,7 +338,7 @@ save_loc <- file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-mo
 
 # Re-run untuned best performing model
 
-for(selected_rfmo in c("IATTC", "ICCAT", "IOTC", "WCPFC")) { 
+for(selected_rfmo in c("ICCAT", "IOTC", "WCPFC", "IATTC")) { 
 
   rfmo_model_option <- all_model_results_p2 %>% filter(rfmo == selected_rfmo)
   
@@ -393,7 +393,8 @@ for(selected_rfmo in c("IATTC", "ICCAT", "IOTC", "WCPFC")) {
                   mtry_class = rfmo_model_option$mtry_class, 
                   min_n_class = rfmo_model_option$min_n_class, 
                   mtry_reg = rfmo_model_option$mtry_reg, 
-                  min_n_reg = rfmo_model_option$min_n_reg)
+                  min_n_reg = rfmo_model_option$min_n_reg, 
+                  original_output = file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-models", paste0(selected_rfmo, "_ll_untuned_model.rds")))
 } 
 ```
 

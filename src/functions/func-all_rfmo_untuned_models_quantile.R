@@ -10,8 +10,9 @@
 #' @param mtry_reg the original model's mtry for regression
 #' @param min_n_class the original model's min_n for classification
 #' @param min_n_reg the original model's min_n for classification
+#' @param original_output the output from the first run of this model
 
-all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_source, logtrans = FALSE, classification_variables, regression_variables, mtry_class, mtry_reg, min_n_class, min_n_reg){
+all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_source, logtrans = FALSE, classification_variables, regression_variables, mtry_class, mtry_reg, min_n_class, min_n_reg, original_output = NULL){
 
   # Filter to only include relevant data
   prep_ll <- data %>% 
@@ -254,57 +255,60 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
     
     # Predict on full dataset
     ## Grab means, sd, and n years for each cell
-    prep_means <- prep_ll %>% select(-effort_units) %>% 
-      group_by(latitude, longitude) %>% 
-      summarise_at(colnames(.)[grepl("sst|chla|ssh|effort|kwh", colnames(.))], mean, na.rm = T) %>% 
-      ungroup() %>% 
-      mutate(value = "mean") %>% 
-      left_join( prep_ll %>% select(-effort_units) %>% 
-                   select(latitude, longitude, year) %>% 
-                   distinct_all() %>% 
-                   group_by(latitude, longitude) %>% 
-                   summarise(n = n()) %>% 
+    if(is.null(original_output)) { 
+    prep_means <- prep_ll %>% select(-effort_units) %>%
+      group_by(latitude, longitude) %>%
+      summarise_at(colnames(.)[grepl("sst|chla|ssh|effort|kwh", colnames(.))], mean, na.rm = T) %>%
+      ungroup() %>%
+      mutate(value = "mean") %>%
+      left_join( prep_ll %>% select(-effort_units) %>%
+                   select(latitude, longitude, year) %>%
+                   distinct_all() %>%
+                   group_by(latitude, longitude) %>%
+                   summarise(n = n()) %>%
                    ungroup() )
-    
-    prep_sds <- prep_ll %>% select(-effort_units) %>% 
-                   group_by(latitude, longitude) %>% 
-                   summarise_at(colnames(.)[grepl("sst|chla|ssh|effort|kwh", colnames(.))], sd, na.rm = T) %>% 
-                   ungroup() %>% 
+
+    prep_sds <- prep_ll %>% select(-effort_units) %>%
+                   group_by(latitude, longitude) %>%
+                   summarise_at(colnames(.)[grepl("sst|chla|ssh|effort|kwh", colnames(.))], sd, na.rm = T) %>%
+                   ungroup() %>%
                    mutate(value = "sd")
 
     ## Create empty dataset to iterate over
-    prep_new <- prep_ll %>% select(-effort_units) %>% 
-      select(latitude, longitude, year, matches("sst|chla|ssh|effort|kwh")) %>% 
-      mutate_at(colnames(.)[grepl("sst|chla|ssh|effort|kwh", colnames(.))], function(x){0}) %>% 
-      ungroup() %>% 
+    prep_new <- prep_ll %>% select(-effort_units) %>%
+      select(latitude, longitude, year, matches("sst|chla|ssh|effort|kwh")) %>%
+      mutate_at(colnames(.)[grepl("sst|chla|ssh|effort|kwh", colnames(.))], function(x){0}) %>%
+      ungroup() %>%
       distinct_all()
-    
+
     ## Build new dataset that takes the mean and sd of original data and randomly selects a value using
     ## a normal distirubtion for each year and each cell
     prep_yearly_enviro <- NULL
-    
-    for(i in 1:nrow(prep_means)) { 
-      prep_temp <- prep_new %>% 
+
+    for(i in 1:nrow(prep_means)) {
+      prep_temp <- prep_new %>%
         filter(latitude == prep_means$latitude[i] & longitude == prep_means$longitude[i])
-      for(j in colnames(prep_sds)[grepl("sst|chla|ssh|effort|kwh", colnames(prep_sds))]) { 
+      for(j in colnames(prep_sds)[grepl("sst|chla|ssh|effort|kwh", colnames(prep_sds))]) {
         t <- rnorm(n = prep_means$n[i], mean = prep_means[[j]][i], sd = ifelse(!is.na(prep_sds[[j]][i])&prep_sds[[j]][i]>0, prep_sds[[j]][i], 0.001))
-        prep_temp <- prep_temp %>% 
+        prep_temp <- prep_temp %>%
           mutate_at(vars(j), function(x){ifelse(t<0, 0, t)})
         }
       prep_yearly_enviro <- prep_yearly_enviro %>%
         bind_rows(prep_temp)
       }
-    
+
     ## Bind with original data, keeping tabs on the original total effort column
-    prep_pred <- prep_ll %>% 
-      select(-effort_units, -matches("sst|chla|ssh|bycatch_total_effort_|target_effort_|kwh")) %>% 
-      rename(original_effort = matches("target_effort$|bycatch_total_effort$")) %>% 
-      left_join(prep_yearly_enviro) %>% 
-      dplyr::select(pres_abs, catch, 
-                    matches(paste0(classification_variables, 
-                                   regression_variables, sep = "|"))) %>% 
+    prep_pred <- prep_ll %>%
+      select(-effort_units, -matches("sst|chla|ssh|bycatch_total_effort_|target_effort_|kwh")) %>%
+      rename(original_effort = matches("target_effort$|bycatch_total_effort$")) %>%
+      left_join(prep_yearly_enviro) %>%
+      dplyr::select(pres_abs, catch,
+                    matches(paste0(classification_variables,
+                                   regression_variables, sep = "|"))) %>%
       distinct_all()
-    
+    } else { prep_pred <- readRDS(original_output)$final_predict %>% 
+      dplyr::select(-.pred, -.final_pred, -.pred_class) 
+    }
     ## Predict on new dataset
     pred_class <- predict(class_fit, prep_pred, type = "prob") %>% 
       bind_cols(predict(class_fit, prep_pred) %>% 
