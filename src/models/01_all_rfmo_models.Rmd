@@ -334,7 +334,7 @@ for(rfmo in c("iattc", "iccat", "iotc", "wcpfc")) {
 
 ```{r}
 # Run again but calculate quantiles 
-save_loc <- file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-models/quantiles/")
+save_loc <- file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-models/updated-quantiles-95/")
 
 # Re-run untuned best performing model
 
@@ -394,6 +394,8 @@ for(selected_rfmo in c("ICCAT", "IOTC", "WCPFC", "IATTC")) {
                   min_n_class = rfmo_model_option$min_n_class, 
                   mtry_reg = rfmo_model_option$mtry_reg, 
                   min_n_reg = rfmo_model_option$min_n_reg, 
+                  lower_q = 0.025, 
+                  upper_q = 0.975,
                   original_output = file.path(here::here(), "data-updated/model-data/outputs/all-rfmo-models", paste0(selected_rfmo, "_ll_untuned_model.rds")))
 } 
 ```

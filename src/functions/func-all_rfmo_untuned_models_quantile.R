@@ -12,7 +12,7 @@
 #' @param min_n_reg the original model's min_n for classification
 #' @param original_output the output from the first run of this model
 
-all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_source, logtrans = FALSE, classification_variables, regression_variables, mtry_class, mtry_reg, min_n_class, min_n_reg, original_output = NULL){
+all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_source, logtrans = FALSE, classification_variables, regression_variables, mtry_class, mtry_reg, min_n_class, min_n_reg, original_output = NULL, lower_q = 0, upper_q = 1){
 
   # Filter to only include relevant data
   prep_ll <- data %>% 
@@ -160,8 +160,8 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
     class_model <- rand_forest(trees = 500, 
                                mtry = mtry_class, 
                                min_n = min_n_class) %>% 
-      set_engine("ranger", seed = 1234, 
-                 importance = "impurity") %>% 
+      set_engine("ranger", seed = 1234 ) %>% #, 
+                 # importance = "impurity") %>% 
       set_mode("classification") %>% 
       translate()
     
@@ -175,9 +175,9 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
       fit(data = train_class)
     
     # Return feature importance
-    importance_class <- class_fit %>% 
-      extract_fit_parsnip() %>% 
-      vip::vi()
+    # importance_class <- class_fit %>% 
+    #   extract_fit_parsnip() %>% 
+    #   vip::vi()
     
     ###
     # Regression Model
@@ -185,8 +185,8 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
     reg_model <- rand_forest(trees = 500, 
                              mtry = mtry_reg, 
                              min_n = min_n_reg) %>% 
-      set_engine("ranger", seed = 1234, quantreg = TRUE,
-                 importance = "impurity") %>% 
+      set_engine("ranger", seed = 1234, quantreg = TRUE) %>% #,
+                 # importance = "impurity") %>% 
       set_mode("regression") %>% 
       translate()
     
@@ -200,14 +200,14 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
       fit(data = train_reg)
     
     # Return feature importance
-    importance_reg <- reg_fit %>% 
-      extract_fit_parsnip() %>% 
-      vip::vi()
+    # importance_reg <- reg_fit %>% 
+    #   extract_fit_parsnip() %>% 
+    #   vip::vi()
     
-    total_importance <- importance_class %>% 
-      mutate(component = "classification") %>% 
-      bind_rows(importance_reg %>% 
-                  mutate(component = "regression"))
+    # total_importance <- importance_class %>% 
+    #   mutate(component = "classification") %>% 
+    #   bind_rows(importance_reg %>% 
+    #               mutate(component = "regression"))
     
     # Predict Final Testing
     final_testing_class <- predict(class_fit, final_test) %>% 
@@ -238,7 +238,7 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
     }
     
     ## Quantile prediction
-    rf_preds_test <- preds_bind(final_test)
+    rf_preds_test <- preds_bind(final_test, lower = lower_q, upper = upper_q)
     
     test_predict <- final_testing_class %>% 
       left_join(full_join(final_testing_reg, rf_preds_test) %>% 
@@ -307,7 +307,7 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
                                    regression_variables, sep = "|"))) %>%
       distinct_all()
     } else { prep_pred <- readRDS(original_output)$final_predict %>% 
-      dplyr::select(-.pred, -.final_pred, -.pred_class) 
+      dplyr::select(-.pred, -.final_pred, -.pred_class, -.pred_upper, -.pred_lower, -.pred_mid, -.pred_present, - .pred_absent)
     }
     ## Predict on new dataset
     pred_class <- predict(class_fit, prep_pred, type = "prob") %>% 
@@ -470,7 +470,7 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
       bind_cols(prep_pred)
     
     ## Quantile prediction
-    rf_pred_reg <- preds_bind(prep_pred)
+    rf_pred_reg <- preds_bind(prep_pred, lower = lower_q, upper = upper_q)
     
     final_predict <- pred_class %>% 
       left_join(full_join(pred_reg, rf_pred_reg) %>% 
@@ -491,7 +491,7 @@ all_rfmo_untuned_models_quantile <- function(data, save_loc, rfmos, effort_sourc
                        "test_metrics" = test_metrics,
                        "final_predict" = final_predict,
                        "final_metrics" = final_metrics, 
-                       "feature_importance" = total_importance, 
+                       # "feature_importance" = total_importance, 
                        "species_class_confidence" = pred_conf_spp, 
                        "cell_class_confidence" = pred_conf_cell,
                        "id_predictions" = pred_conf_pred, 
